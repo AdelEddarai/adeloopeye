@@ -1,0 +1,639 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────
+   PHAROS — Blueprint / Palantir design system
+───────────────────────────────────────────── */
+
+:root {
+  --app-height: 100vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* ── Typography scale ──
+     Semantic text size tokens consumed by components via text-[var(--text-*)].
+     Scale variants (compact / default / large) override these below.
+  */
+  --text-micro:     7px;
+  --text-tiny:      8px;
+  --text-caption:   9px;
+  --text-label:     10px;
+  --text-body-sm:   11px;
+  --text-body:      13px;
+  --text-subhead:   15px;
+}
+
+/* Light theme (default) */
+:root,
+.light {
+  /* ── Background layers ── */
+  --bg-app:    #fcfcfc;
+  --bg-1:      #ffffff;
+  --bg-2:      #f6f6f6;
+  --bg-3:      #ededed;
+  --bg-sel:    #e8f5ef;
+
+  /* ── Borders ── */
+  --bd:        #dfdfdf;
+  --bd-s:      #e5e5e5;
+
+  /* ── Text ── */
+  --t1:        #171717;
+  --t2:        #444444;
+  --t3:        #666666;
+  --t4:        #888888;
+
+  /* ── Primary green ── */
+  --blue:      #72e3ad;
+  --blue-l:    #5dd89a;
+  --blue-dim:  rgba(114, 227, 173, 0.15);
+
+  /* ── Status ── */
+  --danger:    #ca3214;
+  --warning:   #f59e0b;
+  --success:   #10b981;
+  --info:      #3b82f6;
+  --cyber:     #8b5cf6;
+  --teal:      #14b8a6;
+  --il-green:  #10b981;
+  --gold:      #f59e0b;
+
+  /* ── Dim / border variants ── */
+  --danger-dim:  rgba(202, 50, 20, 0.12);
+  --danger-bd:   rgba(202, 50, 20, 0.30);
+  --warning-dim: rgba(245, 158, 11, 0.12);
+  --warning-bd:  rgba(245, 158, 11, 0.25);
+  --success-dim: rgba(16, 185, 129, 0.12);
+  --success-bd:  rgba(16, 185, 129, 0.25);
+  --info-dim:    rgba(59, 130, 246, 0.12);
+  --info-bd:     rgba(59, 130, 246, 0.25);
+  --blue-sel:    rgba(114, 227, 173, 0.10);
+  --teal-dim:    rgba(20, 184, 166, 0.12);
+  --gold-dim:    rgba(245, 158, 11, 0.12);
+  --cyber-dim:   rgba(139, 92, 246, 0.15);
+}
+
+/* ── shadcn/Tailwind bridge (Vercel Style) ── */
+:root,
+.light {
+  --background:            #ffffff;
+  --foreground:            #171717;
+  --card:                  #ffffff;
+  --card-foreground:       #171717;
+  --popover:               #ffffff;
+  --popover-foreground:    #171717;
+  --primary:               #171717;
+  --primary-foreground:    #ffffff;
+  --secondary:             #fafafa;
+  --secondary-foreground:  #171717;
+  --muted:                 #fafafa;
+  --muted-foreground:      #737373;
+  --accent:                #fafafa;
+  --accent-foreground:     #171717;
+  --destructive:           #e5484d;
+  --destructive-foreground: #ffffff;
+  --border:                #eaeaea;
+  --input:                 #eaeaea;
+  --ring:                  #171717;
+  --radius:                0.375rem;
+}
+
+.dark {
+  /* ── Background layers (Vercel Dark) ── */
+  --bg-app:    #000000;
+  --bg-1:      #0a0a0a;
+  --bg-2:      #111111;
+  --bg-3:      #222222;
+  --bg-sel:    #1a1a1a;
+
+  /* ── Borders ── */
+  --bd:        #333333;
+  --bd-s:      #222222;
+
+  /* ── Text ── */
+  --t1:        #ededed;
+  --t2:        #a1a1aa;
+  --t3:        #888888;
+  --t4:        #666666;
+
+  /* ── Primary Vercel Accent ── */
+  --blue:      #ededed;
+  --blue-l:    #ffffff;
+  --blue-dim:  rgba(255, 255, 255, 0.10);
+
+  /* ── Status ── */
+  --danger:    #ef4444;
+  --warning:   #fbbf24;
+  --success:   #4ade80;
+  --info:      #60a5fa;
+  --cyber:     #a78bfa;
+  --teal:      #2dd4bf;
+  --il-green:  #4ade80;
+  --gold:      #fbbf24;
+
+  /* ── Dim / border variants ── */
+  --danger-dim:  rgba(239, 68, 68, 0.12);
+  --danger-bd:   rgba(239, 68, 68, 0.30);
+  --warning-dim: rgba(251, 191, 36, 0.12);
+  --warning-bd:  rgba(251, 191, 36, 0.25);
+  --success-dim: rgba(74, 222, 128, 0.12);
+  --success-bd:  rgba(74, 222, 128, 0.25);
+  --info-dim:    rgba(96, 165, 250, 0.12);
+  --info-bd:     rgba(96, 165, 250, 0.25);
+  --blue-sel:    rgba(0, 98, 57, 0.10);
+  --teal-dim:    rgba(45, 212, 191, 0.12);
+  --gold-dim:    rgba(251, 191, 36, 0.12);
+  --cyber-dim:   rgba(167, 139, 250, 0.15);
+
+  /* ── Tailwind bridge (Vercel Dark) ── */
+  --background:            #000000;
+  --foreground:            #ededed;
+  --card:                  #0a0a0a;
+  --card-foreground:       #ededed;
+  --popover:               #0a0a0a;
+  --popover-foreground:    #ededed;
+  --primary:               #ededed;
+  --primary-foreground:    #000000;
+  --secondary:             #222222;
+  --secondary-foreground:  #ededed;
+  --muted:                 #222222;
+  --muted-foreground:      #a1a1aa;
+  --accent:                #222222;
+  --accent-foreground:     #ededed;
+  --destructive:           #e5484d;
+  --destructive-foreground: #ffffff;
+  --border:                #333333;
+  --input:                 #333333;
+  --ring:                  #ededed;
+  --radius:                0.375rem;
+}
+
+/* ── UI scale overrides ──
+   Applied on <html> by SettingsRuntime — affects dashboard and browse.
+*/
+html[data-ui-scale="compact"] {
+  --text-micro:     6px;
+  --text-tiny:      7px;
+  --text-caption:   8px;
+  --text-label:     9px;
+  --text-body-sm:   10px;
+  --text-body:      12px;
+  --text-subhead:   14px;
+}
+
+html[data-ui-scale="large"] {
+  --text-micro:     8px;
+  --text-tiny:      9px;
+  --text-caption:   10px;
+  --text-label:     11px;
+  --text-body-sm:   12px;
+  --text-body:      14px;
+  --text-subhead:   16px;
+}
+
+/* ── Browse light theme (follows OS preference) ───────────────────────────
+   Only applies inside [data-theme="auto"]. Dashboard stays dark always.
+──────────────────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    --bg-app:    #FFFFFF;
+    --bg-1:      #FFFFFF;
+    --bg-2:      #FFFFFF;
+    --bg-3:      #F0F0F0;
+    --bg-sel:    #E3ECFF;
+
+    --bd:        #D5D5D5;
+    --bd-s:      #E5E5E5;
+
+    --t1:        #111111;
+    --t2:        #444444;
+    --t3:        #666666;
+    --t4:        #888888;
+
+    --blue:      #0066CC;
+    --blue-l:    #0066CC;
+    --blue-dim:  rgba(0, 102, 204, 0.06);
+
+    --danger:    #CC0000;
+    --warning:   #CC6600;
+    --success:   #008800;
+    --info:      #0066CC;
+
+    --danger-dim:  rgba(204, 0, 0, 0.08);
+    --danger-bd:   rgba(204, 0, 0, 0.25);
+    --warning-dim: rgba(204, 102, 0, 0.08);
+    --warning-bd:  rgba(204, 102, 0, 0.25);
+    --success-dim: rgba(0, 136, 0, 0.08);
+    --success-bd:  rgba(0, 136, 0, 0.25);
+    --info-dim:    rgba(0, 102, 204, 0.08);
+    --info-bd:     rgba(0, 102, 204, 0.25);
+    --blue-sel:    rgba(0, 102, 204, 0.06);
+
+    --background:            #FFFFFF;
+    --foreground:            #111111;
+    --card:                  #FFFFFF;
+    --card-foreground:       #111111;
+    --muted:                 #F4F4F4;
+    --muted-foreground:      #666666;
+    --border:                #D5D5D5;
+    --input:                 #EAEAEA;
+    --popover:               #FFFFFF;
+    --popover-foreground:    #111111;
+    --primary:               #0066CC;
+    --primary-foreground:    #FFFFFF;
+    --secondary:             #F4F4F4;
+    --secondary-foreground:  #444444;
+    --accent:                #EAEAEA;
+    --accent-foreground:     #111111;
+    --destructive:           #CC0000;
+
+    color-scheme: light;
+  }
+}
+
+
+/* ── Base — resets and body defaults ────────────────────────────────────────
+   Wrapped in @layer base so Tailwind utilities always win.
+──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  @supports (height: 100dvh) {
+    :root {
+      --app-height: 100dvh;
+    }
+  }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-app);
+    color: var(--t1);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+
+  ::-webkit-scrollbar          { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track    { background: transparent; }
+  ::-webkit-scrollbar-thumb    { background: var(--bd); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--t4); }
+
+  /* Timeline: prominent horizontal scrollbar */
+  .timeline-scroll::-webkit-scrollbar          { height: 10px; }
+  .timeline-scroll::-webkit-scrollbar-track    { background: rgba(255,255,255,0.03); border-radius: 5px; margin: 0 20px; }
+  .timeline-scroll::-webkit-scrollbar-thumb    { background: rgba(255,255,255,0.15); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  .timeline-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  .timeline-scroll { scrollbar-width: auto; scrollbar-color: rgba(255,255,255,0.15) rgba(255,255,255,0.03); }
+
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Components — design system primitives ──────────────────────────────────
+   Wrapped in @layer components so Tailwind utilities override them.
+──────────────────────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* Layout */
+  .layout-fill { display: flex; flex: 1 1 0%; min-height: 0; overflow: hidden; }
+  .layout-col  { display: flex; flex-direction: column; }
+  .dashboard-shell {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .browse-shell {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .safe-px { padding-left: max(12px, var(--safe-left)); padding-right: max(12px, var(--safe-right)); }
+  .safe-pt { padding-top: var(--safe-top); }
+  .safe-pb { padding-bottom: var(--safe-bottom); }
+
+  @supports (min-height: 100dvh) {
+    .dashboard-shell {
+      min-height: 100dvh;
+    }
+
+    .browse-shell {
+      min-height: 100dvh;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .dashboard-shell {
+      min-height: 0;
+      height: var(--app-height);
+      overflow: hidden;
+    }
+  }
+
+  /* Panel primitives */
+  .panel {
+    background: var(--bg-1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--bd) 78%, transparent);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--bg-3) 50%, transparent),
+      0 10px 26px color-mix(in srgb, #000 9%, transparent);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+    height: 36px;
+    min-height: 36px;
+    background:
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--bg-2) 95%, var(--blue-dim)),
+        var(--bg-2)
+      );
+    border-bottom: 1px solid var(--bd);
+    flex-shrink: 0;
+    backdrop-filter: saturate(120%) blur(2px);
+  }
+
+  .panel-body {
+    flex: 1 1 0%;
+    overflow-y: auto;
+  }
+
+  /* Typography helpers — use semantic scale tokens */
+  .label {
+    font-size: var(--text-label);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--t3);
+    font-family: inherit;
+  }
+
+  .mono {
+    font-family: 'SFMono-Regular', 'Menlo', 'Cascadia Code', monospace;
+    font-size: var(--text-body-sm);
+    color: var(--t2);
+    letter-spacing: -0.01em;
+  }
+
+  .section-title {
+    font-size: var(--text-body-sm);
+    font-weight: 700;
+    color: var(--t1);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* Row / button reset */
+  .row-btn {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    font-size: inherit;
+    padding: 0;
+    display: block;
+    transition: background 0.1s;
+  }
+  .row-btn:hover { background: var(--bg-3); }
+
+  /* Status dots */
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-danger  { background: var(--danger);  }
+  .dot-warning { background: var(--warning); }
+  .dot-info    { background: var(--info);    }
+  .dot-success { background: var(--success); }
+  .dot-cyber   { background: var(--cyber);   }
+  .dot-teal    { background: var(--teal);    }
+  .dot-live    { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+
+  /* Severity pills */
+  .sev {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    font-size: var(--text-caption);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: inherit;
+  }
+  .sev-crit  { background: var(--danger-dim);  color: var(--danger);  border: 1px solid var(--danger-bd);  }
+  .sev-high  { background: var(--warning-dim); color: var(--warning); border: 1px solid var(--warning-bd); }
+  .sev-std   { background: var(--info-dim);    color: var(--info);    border: 1px solid var(--info-bd);    }
+  .sev-mon   { background: var(--success-dim); color: var(--success); border: 1px solid var(--success-bd); }
+
+  /* Mini bar */
+  .bar-track { height: 4px; background: var(--bd); width: 100%; overflow: hidden; }
+  .bar-fill  { height: 100%; }
+
+  /* Card (X posts, detail sections) */
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--bd);
+  }
+  .card + .card { margin-top: 6px; }
+  .card-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--bd-s);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-body   { padding: 10px 12px; }
+  .card-footer {
+    padding: 6px 12px;
+    border-top: 1px solid var(--bd-s);
+    background: var(--bg-app);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  /* Nav items */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 18px;
+    font-size: var(--text-body);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--t3);
+    border-bottom: 2px solid transparent;
+    border-right: 1px solid var(--bd);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .1s, background .1s;
+  }
+  .nav-item:hover           { color: var(--t1); background: var(--bg-3); }
+  .nav-item.active          { color: var(--t1); background: var(--bg-3); border-bottom-color: var(--blue); }
+
+  /* Table header */
+  .tbl-hdr {
+    display: flex;
+    align-items: center;
+    padding: 4px 14px;
+    gap: 0;
+    background: var(--bg-app);
+    border-bottom: 1px solid var(--bd);
+  }
+
+  /* No-underline links */
+  .no-underline { text-decoration: none; color: inherit; }
+
+  /* Resizable panel handles */
+  [data-slot="resizable-handle"] {
+    background: var(--bd) !important;
+    transition: background 0.15s;
+  }
+  [data-slot="resizable-handle"]:hover,
+  [data-slot="resizable-handle"]:active {
+    background: var(--blue) !important;
+  }
+  [data-slot="resizable-handle"][aria-orientation="vertical"] {
+    width: 1px !important;
+  }
+  [data-slot="resizable-handle"][aria-orientation="horizontal"] {
+    height: 1px !important;
+  }
+
+  /* Critical timeline pulse */
+  @keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 0 6px var(--danger), 0 0 12px var(--danger-dim); }
+    50% { box-shadow: 0 0 8px var(--danger), 0 0 20px var(--danger-dim); }
+  }
+
+  @keyframes market-flash-up {
+    0% {
+      background-color: color-mix(in srgb, var(--success) 28%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 35%, transparent);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: inset 0 0 0 1px transparent;
+    }
+  }
+
+  @keyframes market-flash-down {
+    0% {
+      background-color: color-mix(in srgb, var(--danger) 24%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 35%, transparent);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: inset 0 0 0 1px transparent;
+    }
+  }
+
+  .market-flash-up {
+    animation: market-flash-up 0.85s ease-out;
+  }
+
+  .market-flash-down {
+    animation: market-flash-down 0.85s ease-out;
+  }
+
+  /* Hide map attribution / copyright */
+  .maplibregl-ctrl-attrib,
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left,
+  .mapboxgl-ctrl-attrib,
+  .mapboxgl-ctrl-bottom-right { display: none !important; }
+
+  /* Chat trigger */
+  .chat-trigger {
+    bottom: max(20px, var(--safe-bottom, 0px));
+    right: max(20px, var(--safe-right, 0px));
+  }
+
+  /* Chat panel — desktop */
+  .chat-panel {
+    width: 380px;
+    height: min(520px, calc(var(--app-height) - 100px));
+    min-width: 320px;
+    min-height: 360px;
+    max-width: min(680px, calc(100vw - 20px));
+    max-height: min(760px, calc(var(--app-height) - 24px));
+    animation: chat-slide-in 0.2s ease-out;
+  }
+
+  /* Chat panel — mobile full-screen sheet */
+  .chat-panel-mobile {
+    width: 100%;
+    height: 100dvh;
+    max-width: 100%;
+    max-height: 100dvh;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 0;
+    padding-top: var(--safe-top);
+    padding-bottom: 0;
+    overscroll-behavior: contain;
+    animation: chat-slide-up 0.25s ease-out;
+  }
+
+  @keyframes chat-slide-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes chat-slide-up {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .chat-dot-pulse {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--blue-l);
+    animation: chat-pulse 1.2s infinite ease-in-out;
+  }
+
+  @keyframes chat-pulse {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  @media (max-width: 1024px) {
+    .nav-item {
+      padding: 0 12px;
+      font-size: var(--text-body-sm);
+      letter-spacing: 0.03em;
+    }
+    .panel-header {
+      padding: 0 10px;
+      height: 40px;
+      min-height: 40px;
+    }
+  }
+}

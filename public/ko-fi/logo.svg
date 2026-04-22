@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80">
+  <rect width="320" height="80" rx="6" fill="#0a0a0a"/>
+  <text
+    x="160"
+    y="48"
+    text-anchor="middle"
+    font-family="'SFMono-Regular', 'Menlo', 'Cascadia Code', 'Consolas', monospace"
+    font-size="28"
+    font-weight="700"
+    letter-spacing="0.14em"
+    fill="#e5e5e5"
+  >PHAROS</text>
+</svg>

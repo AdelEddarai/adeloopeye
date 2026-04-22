@@ -1,0 +1,908 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ────────────────────────────────────────────────────────────────
+// Enums
+// ────────────────────────────────────────────────────────────────
+
+enum ThreatLevel {
+  CRITICAL
+  HIGH
+  ELEVATED
+  MONITORING
+}
+
+enum ConflictStatus {
+  ONGOING
+  PAUSED
+  CEASEFIRE
+  RESOLVED
+}
+
+enum ActorType {
+  STATE
+  NON_STATE
+  ORGANIZATION
+  INDIVIDUAL
+}
+
+enum ActivityLevel {
+  CRITICAL
+  HIGH
+  ELEVATED
+  MODERATE
+}
+
+enum Stance {
+  AGGRESSOR
+  DEFENDER
+  RETALIATING
+  PROXY
+  NEUTRAL
+  CONDEMNING
+}
+
+enum ActionType {
+  MILITARY
+  DIPLOMATIC
+  POLITICAL
+  ECONOMIC
+  INTELLIGENCE
+}
+
+enum ActionSignificance {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  STANDARD
+}
+
+enum EventType {
+  MILITARY
+  DIPLOMATIC
+  INTELLIGENCE
+  ECONOMIC
+  HUMANITARIAN
+  POLITICAL
+}
+
+enum ActorResponseStance {
+  SUPPORTING
+  OPPOSING
+  NEUTRAL
+  UNKNOWN
+}
+
+enum SignificanceLevel {
+  BREAKING
+  HIGH
+  STANDARD
+}
+
+enum AccountType {
+  military
+  government
+  journalist
+  analyst
+  official
+}
+
+enum PostType {
+  XPOST // Actual tweet on X/Twitter — tweetId required
+  NEWS_ARTICLE // News wire / media article / headline
+  OFFICIAL_STATEMENT // Government / military / org official statement
+  PRESS_RELEASE // Formal press release
+  ANALYSIS // Analyst commentary, thread, assessment
+}
+
+enum Perspective {
+  WESTERN
+  US_GOV
+  ISRAELI
+  IRANIAN
+  ARAB
+  RUSSIAN
+  CHINESE
+  INDEPENDENT
+  INTL_ORG
+}
+
+enum EconCategory {
+  ENERGY
+  SAFE_HAVEN
+  EQUITIES
+  VOLATILITY
+  CURRENCY
+  DEFENSE
+  SHIPPING
+}
+
+enum Affiliation {
+  FRIENDLY
+  HOSTILE
+  NEUTRAL
+}
+
+enum MapFeatureType {
+  STRIKE_ARC
+  MISSILE_TRACK
+  TARGET
+  ASSET
+  THREAT_ZONE
+  HEAT_POINT
+}
+
+enum StoryCategory {
+  STRIKE
+  RETALIATION
+  NAVAL
+  INTEL
+  DIPLOMATIC
+}
+
+enum StoryEventType {
+  STRIKE
+  RETALIATION
+  INTEL
+  NAVAL
+  POLITICAL
+}
+
+enum VerificationStatus {
+  UNVERIFIED // Not yet checked against X AI
+  VERIFIED // Confirmed real via X AI search
+  FAILED // tweetId doesn't exist or content mismatch
+  PARTIAL // Corroborating evidence found but no exact match (non-XPOST types)
+  SKIPPED // Post type doesn't need verification (e.g. ANALYSIS)
+}
+
+enum RagDocumentSourceType {
+  EVENT
+  XPOST
+  SNAPSHOT
+  ACTOR
+  STORY
+}
+
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+}
+
+// ────────────────────────────────────────────────────────────────
+// Conflict
+// ────────────────────────────────────────────────────────────────
+
+model Conflict {
+  id          String         @id
+  name        String
+  codename    Json // { us: string; il: string }
+  status      ConflictStatus
+  threatLevel ThreatLevel?
+  startDate   DateTime       @db.Date
+  region      String
+  timezone    String         @default("UTC")
+  escalation  Int
+  summary     String
+  keyFacts    String[]
+  objectives  Json // { us: string; il: string }
+  commanders  Json // { us: string[]; il: string[]; ir: string[] }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  daySnapshots ConflictDaySnapshot[]
+  actors       Actor[]
+  events       IntelEvent[]
+  xPosts       XPost[]
+  mapFeatures  MapFeature[]
+  mapStories   MapStory[]
+  collections  ConflictCollection[]
+  embeddings   DocumentEmbedding[]
+  chatSessions ChatSession[]
+  leadershipPeople        LeadershipPerson[]
+  leadershipRoles         LeadershipRole[]
+  leadershipRelations     LeadershipRoleRelation[]
+  leadershipTenures       LeadershipTenure[]
+  leadershipControlStates LeadershipControlState[]
+  leadershipEventLinks    LeadershipEventLink[]
+}
+
+model AnonymousVisitor {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastSeenAt DateTime @default(now())
+
+  chatSessions ChatSession[]
+}
+
+model ChatSession {
+  id            String    @id @default(cuid())
+  conflictId    String
+  visitorId     String
+  title         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime?
+
+  conflict Conflict             @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  visitor  AnonymousVisitor     @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  messages ChatSessionMessage[]
+
+  @@index([conflictId, visitorId, updatedAt(sort: Desc)])
+  @@index([visitorId, updatedAt(sort: Desc)])
+}
+
+model ChatSessionMessage {
+  id        String          @id @default(cuid())
+  sessionId String
+  ord       Int
+  role      ChatMessageRole
+  content   String
+  createdAt DateTime        @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, ord])
+  @@index([sessionId, createdAt])
+}
+
+model DocumentEmbedding {
+  id          String                       @id @default(cuid())
+  conflictId  String
+  sourceType  RagDocumentSourceType
+  sourceId    String
+  content     String
+  contentHash String
+  metadata    Json
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+
+  @@unique([conflictId, sourceType, sourceId])
+  @@index([conflictId, sourceType])
+  @@index([conflictId, updatedAt])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Conflict Day Snapshot (fully normalized)
+// ────────────────────────────────────────────────────────────────
+
+model ConflictDaySnapshot {
+  id                String   @id @default(cuid())
+  conflictId        String
+  day               DateTime @db.Date
+  dayLabel          String
+  summary           String
+  keyFacts          String[]
+  escalation        Int
+  economicNarrative String   @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+
+  casualties    CasualtySummary[]
+  economicChips EconomicImpactChip[]
+  scenarios     Scenario[]
+
+  @@unique([conflictId, day])
+  @@index([conflictId, day])
+}
+
+model CasualtySummary {
+  id         String @id @default(cuid())
+  snapshotId String
+  faction    String // "us", "israel", "iran", "lebanon", "uae", "kuwait", etc.
+  killed     Int    @default(0)
+  wounded    Int    @default(0)
+  civilians  Int    @default(0)
+  injured    Int    @default(0)
+
+  snapshot ConflictDaySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, faction])
+  @@index([snapshotId])
+}
+
+model EconomicImpactChip {
+  id         String @id @default(cuid())
+  snapshotId String
+  ord        Int
+
+  label String
+  val   String
+  sub   String
+  color String
+
+  snapshot ConflictDaySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, ord])
+  @@index([snapshotId])
+}
+
+model Scenario {
+  id         String @id @default(cuid())
+  snapshotId String
+  ord        Int
+
+  label    String
+  subtitle String
+  color    String
+  prob     String
+  body     String
+
+  snapshot ConflictDaySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, ord])
+  @@index([snapshotId])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Actors
+// ────────────────────────────────────────────────────────────────
+
+model Actor {
+  id          String    @id
+  conflictId  String
+  name        String
+  fullName    String
+  countryCode String?
+  type        ActorType
+
+  // Display metadata (drives map colors, labels, affiliation)
+  mapKey      String?      @unique
+  cssVar      String?
+  colorRgb    Int[]
+  affiliation Affiliation?
+  mapGroup    String?
+
+  // Current / latest snapshot fields
+  activityLevel ActivityLevel
+  activityScore Int
+  stance        Stance
+  saying        String
+  doing         String[]
+  assessment    String
+
+  keyFigures     String[]
+  linkedEventIds String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict     Conflict             @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  daySnapshots ActorDaySnapshot[]
+  actions      ActorAction[]
+  responses    EventActorResponse[]
+  xPosts       XPost[]
+  leadershipPeople        LeadershipPerson[]
+  leadershipRoles         LeadershipRole[]
+  leadershipRelations     LeadershipRoleRelation[]
+  leadershipTenures       LeadershipTenure[]
+  leadershipControlStates LeadershipControlState[]
+  leadershipEventLinks    LeadershipEventLink[]
+
+  @@index([conflictId])
+}
+
+model ActorDaySnapshot {
+  id      String   @id @default(cuid())
+  actorId String
+  day     DateTime @db.Date
+
+  activityLevel ActivityLevel
+  activityScore Int
+  stance        Stance
+  saying        String
+  doing         String[]
+  assessment    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actor Actor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, day])
+  @@index([actorId, day])
+}
+
+model ActorAction {
+  id           String             @id @default(cuid())
+  actorId      String
+  date         String // Original date string from data
+  type         ActionType
+  description  String
+  verified     Boolean            @default(false)
+  significance ActionSignificance
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actor Actor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([actorId, date(sort: Desc)])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Events
+// ────────────────────────────────────────────────────────────────
+
+model IntelEvent {
+  id          String    @id
+  conflictId  String
+  timestamp   DateTime
+  severity    Severity
+  type        EventType
+  title       String
+  location    String
+  summary     String
+  fullContent String
+  verified    Boolean   @default(false)
+  tags        String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict       Conflict             @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  sources        EventSource[]
+  actorResponses EventActorResponse[]
+  xPosts         XPost[]
+  leadershipEventLinks LeadershipEventLink[]
+
+  @@index([conflictId, timestamp])
+  @@index([severity])
+  @@index([type])
+}
+
+model EventSource {
+  id          String  @id @default(cuid())
+  eventId     String
+  name        String
+  tier        Int
+  reliability Int
+  url         String?
+
+  event IntelEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model EventActorResponse {
+  id        String              @id @default(cuid())
+  eventId   String
+  actorId   String
+  actorName String
+  stance    ActorResponseStance
+  type      String
+  statement String
+
+  event IntelEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actor Actor      @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([actorId])
+}
+
+// ────────────────────────────────────────────────────────────────
+// X Posts / Signals
+// ────────────────────────────────────────────────────────────────
+
+model XPost {
+  id           String            @id
+  conflictId   String
+  tweetId      String?           @unique // Real X/Twitter numeric ID for embeds — required when postType = XPOST
+  postType     PostType          @default(XPOST)
+  handle       String
+  displayName  String
+  avatar       String
+  avatarColor  String
+  verified     Boolean           @default(false)
+  accountType  AccountType
+  significance SignificanceLevel
+  timestamp    DateTime
+  content      String
+  images       String[]
+  videoThumb   String?
+  likes        Int               @default(0)
+  retweets     Int               @default(0)
+  replies      Int               @default(0)
+  views        Int               @default(0)
+  pharosNote   String?
+  eventId      String?
+  actorId      String?
+
+  // Verification fields — powered by X AI (Grok) API
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verificationResult Json? // { match, contentSimilarity, actualContent, discrepancies, grokResponse }
+  verifiedAt         DateTime? // When verification was performed
+  xaiCitations       String[] // URLs from Grok citations (e.g. x.com/handle/status/123)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict    @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  event    IntelEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  actor    Actor?      @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([conflictId, timestamp])
+  @@index([significance])
+  @@index([accountType])
+  @@index([eventId])
+  @@index([actorId])
+  @@index([conflictId, accountType, timestamp(sort: Desc)])
+  @@index([conflictId, significance, timestamp(sort: Desc)])
+  @@index([verificationStatus])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Map Features (generic with featureType discriminator)
+// ────────────────────────────────────────────────────────────────
+
+model MapFeature {
+  id            String         @id
+  conflictId    String
+  featureType   MapFeatureType
+  sourceEventId String?
+  actor         String
+  priority      String
+  category      String
+  type          String
+  status        String?
+  timestamp     DateTime?
+  geometry      Json // {from,to} or {position} or {coordinates}
+  properties    Json // type-specific: {label,severity} or {name,description} etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+
+  @@index([conflictId, featureType])
+  @@index([actor])
+  @@index([timestamp])
+  @@index([conflictId, timestamp])
+  @@index([conflictId, featureType, timestamp])
+  @@index([sourceEventId])
+  @@index([conflictId, sourceEventId])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Map Stories
+// ────────────────────────────────────────────────────────────────
+
+model MapStory {
+  id                  String        @id
+  conflictId          String
+  primaryEventId      String?
+  sourceEventIds      String[]
+  title               String
+  tagline             String
+  iconName            String
+  category            StoryCategory
+  narrative           String
+  highlightStrikeIds  String[]
+  highlightMissileIds String[]
+  highlightTargetIds  String[]
+  highlightAssetIds   String[]
+  viewState           Json // { longitude, latitude, zoom }
+  keyFacts            String[]
+  timestamp           DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict        @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  events   MapStoryEvent[]
+
+  @@index([conflictId, timestamp])
+  @@index([primaryEventId])
+}
+
+model MapStoryEvent {
+  id      String         @id @default(cuid())
+  storyId String
+  ord     Int
+  time    String // Original time string
+  label   String
+  type    StoryEventType
+
+  story MapStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, ord])
+  @@index([storyId])
+}
+
+// ────────────────────────────────────────────────────────────────
+// RSS Feed Sources + Conflict Collections
+// ────────────────────────────────────────────────────────────────
+
+model RssFeed {
+  id          String      @id
+  name        String
+  url         String
+  perspective Perspective
+  country     String
+  tags        String[]
+  stateFunded Boolean     @default(false)
+  tier        Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channelLinks ChannelFeed[]
+}
+
+model ConflictCollection {
+  id          String @id @default(cuid())
+  conflictId  String
+  name        String
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict          @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  channels ConflictChannel[]
+
+  @@index([conflictId])
+}
+
+model ConflictChannel {
+  id           String @id @default(cuid())
+  collectionId String
+  label        String
+  description  String
+  perspective  String
+  color        String
+  ord          Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  collection ConflictCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  feeds      ChannelFeed[]
+
+  @@unique([collectionId, ord])
+  @@index([collectionId])
+}
+
+model ChannelFeed {
+  channelId String
+  feedId    String
+  ord       Int
+
+  channel ConflictChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  feed    RssFeed         @relation(fields: [feedId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, feedId])
+  @@unique([channelId, ord])
+  @@index([feedId])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Economic Indexes (configuration)
+// ────────────────────────────────────────────────────────────────
+
+model EconomicIndex {
+  id          String       @id
+  ticker      String
+  name        String
+  shortName   String
+  category    EconCategory
+  tier        Int
+  unit        String
+  description String
+  color       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([tier])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Prediction Groups (configuration)
+// ────────────────────────────────────────────────────────────────
+
+model PredictionGroup {
+  id           String   @id
+  label        String
+  description  String
+  color        String
+  bg           String
+  border       String
+  titleMatches String[]
+  ord          Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ord])
+}
+
+// ────────────────────────────────────────────────────────────────
+// Leadership Trees
+// ────────────────────────────────────────────────────────────────
+
+model LeadershipPerson {
+  id         String
+  conflictId String
+  actorId    String
+  name       String
+  status     String
+  kind       String?
+  summary    String?
+  wikipediaQuery     String?
+  wikipediaTitle     String?
+  wikipediaPageUrl   String?
+  wikipediaImageUrl  String?
+  wikipediaResolvedAt DateTime?
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  actor    Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  tenures           LeadershipTenure[]       @relation("LeadershipTenurePerson")
+  deFactoStates     LeadershipControlState[] @relation("LeadershipDeFactoPerson")
+  deJureStates      LeadershipControlState[] @relation("LeadershipDeJurePerson")
+  eventLinks        LeadershipEventLink[]    @relation("LeadershipEventLinkPerson")
+
+  @@id([conflictId, actorId, id])
+  @@index([conflictId, actorId])
+}
+
+model LeadershipRole {
+  id          String
+  conflictId  String
+  actorId     String
+  title       String
+  level       Int
+  ord         Int      @default(0)
+  description String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  actor    Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  tenures      LeadershipTenure[]
+  outgoing     LeadershipRoleRelation[] @relation("LeadershipRelationFromRole")
+  incoming     LeadershipRoleRelation[] @relation("LeadershipRelationToRole")
+  controlState LeadershipControlState?
+  eventLinks   LeadershipEventLink[]
+
+  @@id([conflictId, actorId, id])
+  @@unique([conflictId, actorId, ord])
+  @@index([conflictId, actorId, level])
+}
+
+model LeadershipRoleRelation {
+  id           String   @id @default(cuid())
+  conflictId   String
+  actorId      String
+  fromRoleId   String
+  toRoleId     String
+  relationType String
+  ord          Int      @default(0)
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  actor    Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  fromRole LeadershipRole @relation("LeadershipRelationFromRole", fields: [conflictId, actorId, fromRoleId], references: [conflictId, actorId, id], onDelete: Cascade)
+  toRole   LeadershipRole @relation("LeadershipRelationToRole", fields: [conflictId, actorId, toRoleId], references: [conflictId, actorId, id], onDelete: Cascade)
+
+  @@unique([conflictId, actorId, fromRoleId, toRoleId, relationType])
+  @@index([conflictId, actorId, fromRoleId])
+  @@index([conflictId, actorId, toRoleId])
+}
+
+model LeadershipTenure {
+  id                 String
+  conflictId         String
+  actorId            String
+  roleId             String
+  personId           String?
+  startDate          DateTime @db.Date
+  endDate            DateTime? @db.Date
+  isActive           Boolean   @default(false)
+  isActing           Boolean   @default(false)
+  isNominee          Boolean   @default(false)
+  startReason        String?
+  endReason          String?
+  predecessorTenureId String?
+  successorTenureId   String?
+  metadata           Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  actor    Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  role     LeadershipRole   @relation(fields: [conflictId, actorId, roleId], references: [conflictId, actorId, id], onDelete: Cascade)
+  person   LeadershipPerson? @relation("LeadershipTenurePerson", fields: [conflictId, actorId, personId], references: [conflictId, actorId, id], onDelete: NoAction)
+
+  eventLinks LeadershipEventLink[]
+
+  @@id([conflictId, actorId, id])
+  @@index([conflictId, actorId, roleId])
+  @@index([conflictId, actorId, personId])
+  @@index([conflictId, actorId, isActive])
+}
+
+model LeadershipControlState {
+  id             String   @id @default(cuid())
+  conflictId     String
+  actorId        String
+  roleId         String
+  deFactoPersonId String?
+  deJurePersonId  String?
+  status         String
+  contested      Boolean  @default(false)
+  note           String?
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  actor    Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  role     LeadershipRole   @relation(fields: [conflictId, actorId, roleId], references: [conflictId, actorId, id], onDelete: Cascade)
+  deFactoPerson LeadershipPerson? @relation("LeadershipDeFactoPerson", fields: [conflictId, actorId, deFactoPersonId], references: [conflictId, actorId, id], onDelete: NoAction)
+  deJurePerson  LeadershipPerson? @relation("LeadershipDeJurePerson", fields: [conflictId, actorId, deJurePersonId], references: [conflictId, actorId, id], onDelete: NoAction)
+
+  @@unique([conflictId, actorId, roleId])
+  @@index([conflictId, actorId])
+}
+
+model LeadershipEventLink {
+  id         String   @id @default(cuid())
+  conflictId String
+  actorId    String
+  eventId    String
+  roleId     String?
+  personId   String?
+  tenureId   String?
+  kind       String
+  ord        Int      @default(0)
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conflict Conflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  actor    Actor    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  event    IntelEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  role     LeadershipRole? @relation(fields: [conflictId, actorId, roleId], references: [conflictId, actorId, id], onDelete: NoAction)
+  person   LeadershipPerson? @relation("LeadershipEventLinkPerson", fields: [conflictId, actorId, personId], references: [conflictId, actorId, id], onDelete: NoAction)
+  tenure   LeadershipTenure? @relation(fields: [conflictId, actorId, tenureId], references: [conflictId, actorId, id], onDelete: NoAction)
+
+  @@index([conflictId, actorId])
+  @@index([eventId])
+}

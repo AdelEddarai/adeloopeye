@@ -1,0 +1,110 @@
+# dependencies
+node_modules/
+package-lock.json
+
+# build output
+.next/
+dist/
+out/
+build/
+
+# shadcn/radix ui primitives
+src/components/ui/
+
+# electron
+electron/
+
+# public assets
+public/
+
+# static data files
+src/data/
+
+# generated code (auto-generated, not hand-written)
+src/generated/
+
+# styling / layout (not relevant for API planning)
+src/app/globals.css
+src/app/layout.tsx
+src/app/page.tsx
+src/app/dashboard/layout.tsx
+
+# hooks (React internals, not API shape)
+src/hooks/
+
+# store / redux (client-side state)
+src/store/
+
+# lib helpers (not DB or API related)
+src/lib/client-cache.ts
+src/lib/deckgl-device.ts
+src/lib/format.ts
+src/lib/map-filter-engine.ts
+src/lib/map-tooltip.ts
+src/lib/news-colors.ts
+src/lib/severity-colors.ts
+src/lib/utils.ts
+src/lib/day-filter.ts
+
+# shared UI components (presentational)
+src/components/shared/
+src/components/layout/
+
+# heavy UI layout (render logic, not data shape)
+src/components/dashboard/WorkspaceDashboard.tsx
+src/components/news/NewsTimeline.tsx
+src/components/map/MapDetailContent.tsx
+
+# chart rendering (heavy on visuals, light on data shape)
+src/components/economics/FocusedChart.tsx
+src/components/economics/MiniChart.tsx
+src/components/predictions/PriceChart.tsx
+src/components/predictions/ProbChart.tsx
+
+# config (not relevant for API)
+package.json
+next.config.ts
+docker-compose.yml
+prisma.config.ts
+
+# map rendering details (not data shape)
+src/components/map/ActorBadge.tsx
+src/components/map/FilterRow.tsx
+src/components/map/FilterSection.tsx
+src/components/map/IntelMap.tsx
+src/components/map/MapControls.tsx
+src/components/map/MapErrorBoundary.tsx
+src/components/map/MapFilterPanel.tsx
+src/components/map/MapLegend.tsx
+src/components/map/MapOverlays.tsx
+src/components/map/MapSidebar.tsx
+src/components/map/MapTimeline.tsx
+src/components/map/StoryIcon.tsx
+src/components/map/StoryTimeline.tsx
+src/components/map/TimelineTrack.tsx
+
+# docs & config
+CODEX.md
+README.md
+eslint.config.mjs
+postcss.config.mjs
+tsconfig.json
+components.json
+
+# env & config
+.env*
+*.tsbuildinfo
+next-env.d.ts
+
+# temp / scratch
+temp.txt
+
+# misc
+.DS_Store
+*.svg
+*.ico
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
