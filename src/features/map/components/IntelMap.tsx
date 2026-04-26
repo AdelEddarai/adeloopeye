@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Target, MapPin } from 'lucide-react';
 
 import { useMapData } from '@/features/map/queries';
+import { useFlightTracking } from '../hooks/use-flight-tracking';
 
 import { type LayerVisibility, type TooltipObject, useMapLayers } from './intel-map-layers';
 import { getMapTooltip } from './intel-map-tooltip';
@@ -60,7 +61,27 @@ export function IntelMap() {
   const toggleLayer = (key: keyof LayerVisibility) =>
     setVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const layers = useMapLayers(visibility, mapData);
+  // Animation loop for maritime lanes dashed offset
+  const [time, setTime] = useState(0);
+  useEffect(() => {
+    let animationFrame: number;
+    let lastTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const dt = currentTime - lastTime;
+      lastTime = currentTime;
+      
+      // Update time (speed multiplier)
+      setTime(t => (t + dt * 0.02) % 100);
+      animationFrame = requestAnimationFrame(animate);
+    };
+    
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, []);
+
+  const { flights } = useFlightTracking('global');
+  const layers = useMapLayers(visibility, mapData, flights, time);
   const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, object: any, html: string } | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

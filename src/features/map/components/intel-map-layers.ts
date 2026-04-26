@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { ArcLayer, PolygonLayer,ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import { ArcLayer, PolygonLayer, ScatterplotLayer, TextLayer, PathLayer } from '@deck.gl/layers';
+import { PathStyleExtension } from '@deck.gl/extensions';
 
 import type { MapDataResult } from '@/features/map/queries';
 
@@ -34,7 +35,47 @@ function textToken(name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult | undefined) {
+// Catmull-Rom Spline interpolation for curvy paths
+function catmullRomSpline(points: [number, number][], numSegments = 10): [number, number][] {
+  if (points.length < 3) return points; 
+  
+  const result: [number, number][] = [];
+  const pts = [points[0], ...points, points[points.length - 1]];
+  
+  for (let i = 1; i < pts.length - 2; i++) {
+    const p0 = pts[i - 1];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2];
+    
+    for (let t = 0; t < numSegments; t++) {
+      const t1 = t / numSegments;
+      const t2 = t1 * t1;
+      const t3 = t2 * t1;
+      
+      const x = 0.5 * (
+        (2 * p1[0]) +
+        (-p0[0] + p2[0]) * t1 +
+        (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+        (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3
+      );
+      
+      const y = 0.5 * (
+        (2 * p1[1]) +
+        (-p0[1] + p2[1]) * t1 +
+        (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+        (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3
+      );
+      
+      result.push([x, y]);
+    }
+  }
+  
+  result.push(points[points.length - 1]);
+  return result;
+}
+
+export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult | undefined, flights: Asset[] = [], time: number = 0) {
   return useMemo(() => {
     const strikes = mapData?.strikes ?? [];
     const missiles = mapData?.missiles ?? [];
@@ -42,6 +83,9 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
     const assets = mapData?.assets ?? [];
     const zones = mapData?.zones ?? [];
     const heatPts = mapData?.heat ?? [];
+    const maritimeLanes = mapData?.maritimeLanes ?? [];
+
+    const pathStyleExtension = new PathStyleExtension({dash: true});
 
     return [
     visibility.heat && heatPts.length > 0 &&
@@ -191,6 +235,61 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       }),
 
+    visibility.assets && flights.length > 0 &&
+      new TextLayer<Asset>({
+        id: 'flights-icons',
+        data: flights,
+        getPosition: (d: Asset): [number, number] => d.position,
+        getText: (): string => '✈',
+        getSize: textToken('--text-h3', 20),
+        getAngle: (d: Asset): number => -(d.heading || 0) + 45, // Emoji points 45deg by default
+        getColor: (d: Asset): [number, number, number, number] =>
+          d.actor === 'us' ? [100, 180, 255, 255] : [255, 100, 100, 255],
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        pickable: true,
+        autoHighlight: true,
+        updateTriggers: {
+          getAngle: [],
+          getPosition: [],
+        },
+      }),
+
+    visibility.assets && flights.length > 0 &&
+      new TextLayer<Asset>({
+        id: 'flights-labels',
+        data: flights,
+        getPosition: (d: Asset): [number, number] => d.position,
+        getText: (d: Asset): string => d.name,
+        getSize: textToken('--text-tiny', 9),
+        getColor: (): [number, number, number, number] => [255, 255, 255, 200],
+        getPixelOffset: (): [number, number] => [0, 18],
+        fontFamily: 'SFMono-Regular, Menlo, monospace',
+        background: true,
+        getBackgroundColor: (): [number, number, number, number] => [28, 33, 39, 180],
+        backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+        updateTriggers: {
+          getPosition: [],
+        },
+      }),
+
+    maritimeLanes.length > 0 &&
+      new PathLayer({
+        id: 'maritime-lanes',
+        data: maritimeLanes,
+        getPath: (d: any) => catmullRomSpline(d.path, 15), // Interpolate to make curvy!
+        getColor: (): [number, number, number, number] => [100, 150, 255, 140],
+        getWidth: 3,
+        widthUnits: 'pixels',
+        getDashArray: [12, 8], // 12px solid, 8px gap
+        dashJustified: true,
+        dashOffset: time, // use time for animation
+        extensions: [pathStyleExtension],
+        pickable: true,
+        updateTriggers: {
+          dashOffset: [time]
+        }
+      }),
+
     ].filter(Boolean);
-  }, [visibility, mapData]);
+  }, [visibility, mapData, flights, time]);
 }

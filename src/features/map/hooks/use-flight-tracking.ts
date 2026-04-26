@@ -29,7 +29,8 @@ export function useFlightTracking(conflictId: string) {
   // Fetch flights from API
   const fetchFlights = useCallback(async () => {
     try {
-      const response = await fetch(`/api/v1/conflicts/${conflictId}/map/data`);
+      // Use the dedicated flights endpoint instead of heavy conflict data
+      const response = await fetch('/api/v1/flights');
       if (!response.ok) throw new Error('Failed to fetch flights');
       
       const data = await response.json();
@@ -40,16 +41,16 @@ export function useFlightTracking(conflictId: string) {
       console.error('Failed to fetch flights:', error);
       setIsLoading(false);
     }
-  }, [conflictId]);
+  }, []);
 
   // Start polling
   useEffect(() => {
     fetchFlights(); // Initial fetch
 
-    // Poll every 10 seconds
+    // Poll every 2 seconds for smooth movement
     intervalRef.current = setInterval(() => {
       fetchFlights();
-    }, 10000);
+    }, 2000);
 
     return () => {
       if (intervalRef.current) {

@@ -106,11 +106,18 @@ async function fetchTicker(ticker: string, range: string, interval: string): Pro
     // Generate a beautiful sine-wave chart shape for the sparkline
     const mockChart = [];
     const now = Math.floor(Date.now() / 1000);
-    for (let i = 0; i < 20; i++) {
+    let lastClose = mockPrice - mockChange;
+    for (let i = 0; i < 40; i++) {
+        const val = mockPrice - mockChange + (Math.sin(i * 0.5 + seed) * Math.abs(mockChange));
+        const variance = Math.abs(mockChange) * 0.2 + (basePrice * 0.001);
         mockChart.push({
-            time: now - ((20 - i) * 300),
-            value: mockPrice - mockChange + (Math.sin(i * 0.5 + seed) * Math.abs(mockChange))
+            time: now - ((40 - i) * 300),
+            open: lastClose,
+            close: val,
+            low: Math.min(lastClose, val) - variance,
+            high: Math.max(lastClose, val) + variance
         });
+        lastClose = val;
     }
 
     return { 

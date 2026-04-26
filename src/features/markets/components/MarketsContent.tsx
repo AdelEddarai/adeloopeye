@@ -16,25 +16,37 @@ import { useLandscapeScrollEmitter } from '@/shared/hooks/use-landscape-scroll-e
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
 function Sparkline({ data, isPositive }: { data: {time: number, close: number}[], isPositive: boolean }) {
-  if (!data || data.length === 0) return <div className="w-16 h-6 bg-[var(--bg-3)] rounded opacity-50" />;
+  if (!data || data.length === 0) return <div className="w-16 h-6 bg-[var(--bg-3)] rounded opacity-50 ml-auto" />;
   
-  const values = data.map(d => d.close);
+  const values = data.map(d => d.close).filter(v => typeof v === 'number');
+  if (values.length < 2) return <div className="w-16 h-6 bg-[var(--bg-3)] rounded opacity-50 ml-auto" />;
+  
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
   
   const pts = values.map((val, i) => {
-    const x = (i / (values.length - 1)) * 60; // width 60
-    const y = 24 - ((val - min) / range) * 24; // height 24
+    const x = (i / (values.length - 1)) * 60;
+    const y = 22 - ((val - min) / range) * 20; // Leave 2px top/bottom padding
     return `${x},${y}`;
   }).join(' ');
   
+  const fillPts = `0,24 ${pts} 60,24`;
+  const color = isPositive ? '#10b981' : '#ef4444';
+  
   return (
     <svg width="60" height="24" className="overflow-visible ml-auto">
+      <defs>
+        <linearGradient id={`spark-grad-${isPositive}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={fillPts} fill={`url(#spark-grad-${isPositive})`} />
       <polyline
         points={pts}
         fill="none"
-        stroke={isPositive ? 'var(--success)' : 'var(--danger)'}
+        stroke={color}
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -338,7 +350,11 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
                             </td>
 
                             <td className={`py-2 px-3 text-right mono text-[length:var(--text-body-sm)] font-semibold text-[var(--t1)] ${flashClass}`}>
-                              <div>{result.currency} {result.price.toFixed(2)}</div>
+                              <div>
+                                {result.currency === 'USD' ? '$' : ''}
+                                {result.price.toFixed(2)}
+                                {result.currency === 'MAD' ? ' MAD' : ''}
+                              </div>
                               {!isWidget && <div className="text-[9px] text-[var(--t4)]">tick {lastPointTime}</div>}
                             </td>
 
@@ -446,10 +462,32 @@ function MarketChart({ data }: { data: any }) {
       min: minVal,
       max: maxVal,
       axisLine: { show: false },
-      axisLabel: { color: '#71717a', fontSize: 9 },
+      axisLabel: { 
+        color: '#71717a', 
+        fontSize: 9,
+        formatter: (val: number) => {
+          if (val >= 1000) return (val / 1000).toFixed(1) + 'k';
+          if (val < 10) return val.toFixed(2);
+          return val.toFixed(1);
+        }
+      },
       splitLine: { lineStyle: { color: '#27272a', type: 'dashed' } },
       scale: true
     },
+    dataZoom: [
+      {
+        type: 'inside',
+        xAxisIndex: [0],
+        start: 0,
+        end: 100
+      },
+      {
+        show: false, // hidden scrollbar
+        type: 'slider',
+        xAxisIndex: [0],
+        bottom: 0
+      }
+    ],
     series: [
       {
         type: 'candlestick',
@@ -481,7 +519,10 @@ function MarketChart({ data }: { data: any }) {
           </div>
           <div className="text-right">
             <div className="text-lg font-bold mono text-[var(--t1)]">
-              {data.currency} {data.price.toFixed(2)}
+              {data.currency !== 'USD' && data.currency !== 'MAD' ? data.currency + ' ' : ''}
+              {data.currency === 'USD' ? '$' : ''}
+              {data.price.toFixed(2)}
+              {data.currency === 'MAD' ? ' MAD' : ''}
             </div>
             <div className={`flex items-center gap-1 justify-end ${
               isPositive ? 'text-[var(--success)]' : 'text-[var(--danger)]'
