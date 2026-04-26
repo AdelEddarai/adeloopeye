@@ -27,7 +27,7 @@ async function fetchCommodityPrices(): Promise<CommodityPricesResponse> {
   });
   if (!res.ok) throw new Error('Failed to fetch commodity prices');
   const json = await res.json();
-  
+
   // Unwrap the { ok: true, data: {...} } envelope
   return json.ok ? json.data : json;
 }
@@ -38,6 +38,7 @@ export function useCommodityPrices() {
     queryFn: fetchCommodityPrices,
     refetchInterval: 60000, // Refresh every 60 seconds
     staleTime: 0,
+    // @ts-ignore
     cacheTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,

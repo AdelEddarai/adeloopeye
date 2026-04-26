@@ -41,7 +41,7 @@ export function IntelAnalyticsWidget() {
   const dayIndex = allDays.indexOf(day);
   const prevDayEvents = dayIndex > 0 ? getEventsForDay(allEvents, allDays, allDays[dayIndex - 1]) : [];
   const eventTrend = dayEvents.length - prevDayEvents.length;
-  const trendPercent = prevDayEvents.length > 0 
+  const trendPercent = prevDayEvents.length > 0
     ? ((eventTrend / prevDayEvents.length) * 100).toFixed(1)
     : '0';
 
@@ -127,7 +127,7 @@ export function IntelAnalyticsWidget() {
             <div className="text-xl font-mono font-bold text-red-400 tracking-tighter leading-none mb-1">
               {snap.escalation}%
             </div>
-            <Progress value={snap.escalation} className="h-[2px] bg-zinc-800 mt-1.5" indicatorClassName="bg-red-500" />
+            <Progress value={snap.escalation} className="h-[2px] bg-zinc-800 mt-1.5" />
           </CardContent>
         </Card>
       </div>
@@ -142,14 +142,14 @@ export function IntelAnalyticsWidget() {
         </CardHeader>
         <CardContent className="p-2.5 space-y-2">
           {Object.entries(severityBreakdown).map(([severity, count]) => {
-            const colorClass = severity === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' 
-              : severity === 'HIGH' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' 
-              : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]';
-            const textColorClass = severity === 'CRITICAL' ? 'text-red-400' 
-              : severity === 'HIGH' ? 'text-amber-400' 
-              : 'text-blue-400';
+            const colorClass = severity === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+              : severity === 'HIGH' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]';
+            const textColorClass = severity === 'CRITICAL' ? 'text-red-400'
+              : severity === 'HIGH' ? 'text-amber-400'
+                : 'text-blue-400';
             const percent = dayEvents.length > 0 ? (count / dayEvents.length) * 100 : 0;
-            
+
             return (
               <div key={severity} className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -160,7 +160,7 @@ export function IntelAnalyticsWidget() {
                     {count} <span className="text-zinc-600 text-[8px]">({percent.toFixed(0)}%)</span>
                   </span>
                 </div>
-                <Progress value={percent} className="h-[2px] bg-zinc-800/50" indicatorClassName={colorClass} />
+                <Progress value={percent} className="h-[2px] bg-zinc-800/50" />
               </div>
             );
           })}
@@ -186,7 +186,7 @@ export function IntelAnalyticsWidget() {
                   </span>
                   <span className="text-[9px] text-blue-400/80 font-mono">{count}</span>
                 </div>
-                <Progress value={percent} className="h-[2px] bg-zinc-800/50" indicatorClassName="bg-blue-500/60 shadow-[0_0_4px_rgba(59,130,246,0.5)]" />
+                <Progress value={percent} className="h-[2px] bg-zinc-800/50" />
               </div>
             );
           })}

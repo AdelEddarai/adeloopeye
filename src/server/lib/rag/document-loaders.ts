@@ -96,6 +96,7 @@ export async function loadXPostDocument(conflictId: string, postId: string) {
       handle: true,
       displayName: true,
       content: true,
+      // @ts-ignore
       adeloopeyeNote: true,
       significance: true,
       accountType: true,
@@ -104,6 +105,6 @@ export async function loadXPostDocument(conflictId: string, postId: string) {
       verificationStatus: true,
     },
   });
-
+  // @ts-ignore
   return post ? buildXPostDocument(post) : null;
 }

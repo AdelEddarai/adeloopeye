@@ -15,15 +15,15 @@ import { createBuildTooltip } from '@/features/map/lib/map-tooltip';
 import { useMapStories } from '@/features/map/queries';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
 import {
-  activateStory   as activateStoryAction,
-  setActiveStory  as setActiveStoryAction,
-  setMapStyle     as setMapStyleAction,
+  activateStory as activateStoryAction,
+  setActiveStory as setActiveStoryAction,
+  setMapStyle as setMapStyleAction,
   setSelectedItem as setSelectedItemAction,
   setShowAllLabels as setShowAllLabelsAction,
-  setSidebarOpen  as setSidebarOpenAction,
-  setViewState    as setViewStateAction,
-  toggleSidebar   as toggleSidebarAction,
-  toggleTerrain   as toggleTerrainAction,
+  setSidebarOpen as setSidebarOpenAction,
+  setViewState as setViewStateAction,
+  toggleSidebar as toggleSidebarAction,
+  toggleTerrain as toggleTerrainAction,
   setTerrainExaggeration as setTerrainExaggerationAction,
   setHillshadeIntensity as setHillshadeIntensityAction,
   setShowRoads as setShowRoadsAction,
@@ -44,13 +44,13 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const viewState    = useAppSelector(s => s.map.viewState);
-  const activeStory  = useAppSelector(s => s.map.activeStory);
+  const viewState = useAppSelector(s => s.map.viewState);
+  const activeStory = useAppSelector(s => s.map.activeStory);
   const selectedItem = useAppSelector(s => s.map.selectedItem);
   const showAllLabels = useAppSelector(s => s.map.showAllLabels);
-  const sidebarOpen  = useAppSelector(s => s.map.sidebarOpen);
-  const mapStyle     = useAppSelector(s => s.map.mapStyle);
-  const showTerrain  = useAppSelector(s => s.map.showTerrain);
+  const sidebarOpen = useAppSelector(s => s.map.sidebarOpen);
+  const mapStyle = useAppSelector(s => s.map.mapStyle);
+  const showTerrain = useAppSelector(s => s.map.showTerrain);
   const terrainExaggeration = useAppSelector(s => s.map.terrainExaggeration);
   const hillshadeIntensity = useAppSelector(s => s.map.hillshadeIntensity);
   const showRoads = useAppSelector(s => s.map.showRoads);
@@ -144,7 +144,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
       connections: true,
     }));
   }, [dispatch, scope.morocco, viewState]);
-  
+
   // Morocco layer toggles for individual data types
   const [moroccoLayerToggles, setMoroccoLayerToggles] = useState({
     events: true,
@@ -170,7 +170,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const toggleMoroccoLayer = useCallback(() => {
     const newState = !showMoroccoLayer;
     setShowMoroccoLayer(newState);
-    
+
     // If enabling, focus camera on Morocco
     if (newState) {
       dispatch(setViewStateAction({
@@ -180,30 +180,31 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
         zoom: MOROCCO_ZOOM,
         transitionDuration: 2000,
       }));
-      
-      track('map_object_clicked', { 
+
+      track('map_object_clicked', {
         type: 'morocco_layer',
         action: 'enabled',
         from_location: [viewState.longitude, viewState.latitude],
       });
-      
+
       console.log('[Morocco Layer] Enabled - Pausing other API calls');
     } else {
-      track('map_object_clicked', { 
+      track('map_object_clicked', {
         type: 'morocco_layer',
         action: 'disabled',
       });
-      
+
       console.log('[Morocco Layer] Disabled - Resuming other API calls');
     }
   }, [showMoroccoLayer, viewState, dispatch]);
-  
+
   const toggleMoroccoLayerType = useCallback((layer: keyof typeof moroccoLayerToggles) => {
     setMoroccoLayerToggles(prev => ({
       ...prev,
       [layer]: !prev[layer],
     }));
-    
+
+    // @ts-ignore
     track('map_layer_toggled', {
       layer: `morocco_${layer}`,
       enabled: !moroccoLayerToggles[layer],
@@ -234,8 +235,8 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const showMaritime = scope.world && dataLayers.maritime;
 
   const layers = useMapLayers({
-    filtered:    f.filtered,
-    actorMeta:   f.actorMeta,
+    filtered: f.filtered,
+    actorMeta: f.actorMeta,
     activeStory,
     selectedItem,
     viewState,
@@ -259,23 +260,23 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
 
     const id = layer.id;
     let next: SelectedItem | null = null;
-    
+
     // Handle geopolitical relationship clicks with navigation animation
     if (id === 'geopolitical-relationships' || id === 'relationship-glow') {
       const relationship = object as any;
-      
+
       // Calculate midpoint between source and target
       const midLon = (relationship.sourcePosition[0] + relationship.targetPosition[0]) / 2;
       const midLat = (relationship.sourcePosition[1] + relationship.targetPosition[1]) / 2;
-      
+
       // Calculate distance to determine zoom level
       const lonDiff = Math.abs(relationship.sourcePosition[0] - relationship.targetPosition[0]);
       const latDiff = Math.abs(relationship.sourcePosition[1] - relationship.targetPosition[1]);
       const distance = Math.sqrt(lonDiff * lonDiff + latDiff * latDiff);
-      
+
       // Zoom level based on distance (closer for nearby countries, farther for distant ones)
       const targetZoom = distance > 50 ? 3 : distance > 20 ? 4 : distance > 10 ? 5 : 6;
-      
+
       // Animate camera to the relationship region
       dispatch(setViewStateAction({
         ...viewState,
@@ -285,20 +286,20 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
         transitionDuration: 2000, // Smooth 2-second animation
         transitionInterpolator: new FlyToInterpolator(),
       }));
-      
+
       // Track analytics
-      track('map_object_clicked', { 
+      track('map_object_clicked', {
         type: 'geopolitical_relationship',
         relationship_type: relationship.type,
         source: relationship.sourceCountry,
         target: relationship.targetCountry,
         intensity: relationship.intensity,
       });
-      
+
       // Don't set as selected item (no detail panel for relationships yet)
       return null;
     }
-    
+
     if (id === 'morocco-events-core' || id === 'morocco-event-icons' || id === 'morocco-event-labels') {
       const event = object as any;
       if (event.id) {
@@ -321,10 +322,10 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
       const asset = object as Asset;
       if (asset.heading !== undefined) {
         setTrackedFlightId(asset.id);
-        track('map_object_clicked', { 
+        track('map_object_clicked', {
           type: 'flight_tracked',
-          flight_id: asset.id, 
-          callsign: asset.name 
+          flight_id: asset.id,
+          callsign: asset.name
         });
       }
     }
@@ -348,7 +349,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     if (prevStoryIdRef.current === storyId) {
       return;
     }
-    
+
     prevStoryIdRef.current = storyId;
 
     // No story in URL - clear active story
@@ -425,22 +426,22 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     setMoroccoLayerToggles, // Expose setter
     toggleMoroccoLayerType,
     // Actions (pre-bound for convenience)
-    setViewState:    (vs: MapViewState) => { dispatch(setViewStateAction(vs)); },
-    activateStory:   (story: Parameters<typeof activateStoryAction>[0]) => {
+    setViewState: (vs: MapViewState) => { dispatch(setViewStateAction(vs)); },
+    activateStory: (story: Parameters<typeof activateStoryAction>[0]) => {
       syncStoryQuery(story);
       track('map_story_activated', { story_id: story?.id });
       return dispatch(activateStoryAction(story));
     },
-    setActiveStory:  (story: Parameters<typeof setActiveStoryAction>[0]) => {
+    setActiveStory: (story: Parameters<typeof setActiveStoryAction>[0]) => {
       syncStoryQuery(story);
       return dispatch(setActiveStoryAction(story));
     },
     setSelectedItem: (item: Parameters<typeof setSelectedItemAction>[0]) => dispatch(setSelectedItemAction(item)),
     setShowAllLabels: (show: boolean) => dispatch(setShowAllLabelsAction(show)),
-    toggleSidebar:   () => dispatch(toggleSidebarAction()),
-    setSidebarOpen:  (open: boolean) => dispatch(setSidebarOpenAction(open)),
-    setMapStyle:     (style: Parameters<typeof setMapStyleAction>[0]) => { track('map_style_changed', { style }); return dispatch(setMapStyleAction(style)); },
-    toggleTerrain:   () => dispatch(toggleTerrainAction()),
+    toggleSidebar: () => dispatch(toggleSidebarAction()),
+    setSidebarOpen: (open: boolean) => dispatch(setSidebarOpenAction(open)),
+    setMapStyle: (style: Parameters<typeof setMapStyleAction>[0]) => { track('map_style_changed', { style }); return dispatch(setMapStyleAction(style)); },
+    toggleTerrain: () => dispatch(toggleTerrainAction()),
     setTerrainExaggeration: (value: number) => dispatch(setTerrainExaggerationAction(value)),
     setHillshadeIntensity: (value: number) => dispatch(setHillshadeIntensityAction(value)),
     setShowRoads: (value: boolean) => dispatch(setShowRoadsAction(value)),

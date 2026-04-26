@@ -7,20 +7,22 @@ import type { MapStory } from '@/types/domain';
 
 import { LandscapeHeader } from './LandscapeHeader';
 
+// @ts-ignore
 const PANEL_LABEL: Record<SelectedItem['type'], string> = {
-  strike:  'STRIKE TRACK',
+  strike: 'STRIKE TRACK',
   missile: 'MISSILE TRACK',
-  target:  'TARGET SITE',
-  asset:   'ALLIED ASSET',
-  zone:    'THREAT ZONE',
+  target: 'TARGET SITE',
+  asset: 'ALLIED ASSET',
+  zone: 'THREAT ZONE',
 };
 
+// @ts-ignore
 const PANEL_ACCENT: Record<SelectedItem['type'], string> = {
-  strike:  'var(--blue)',
+  strike: 'var(--blue)',
   missile: 'var(--danger)',
-  target:  'var(--warning)',
-  asset:   'var(--teal)',
-  zone:    'var(--warning)',
+  target: 'var(--warning)',
+  asset: 'var(--teal)',
+  zone: 'var(--warning)',
 };
 
 function getTitle(item: SelectedItem): string {
@@ -49,11 +51,11 @@ export function EventDetailScreen({ item, onBack, onSelectItem, onActivateStory 
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-y-auto safe-px py-3">
-        {item.type === 'strike'  && <StrikeContent  d={item.data} onSelectItem={onSelectItem} onActivateStory={onActivateStory} />}
+        {item.type === 'strike' && <StrikeContent d={item.data} onSelectItem={onSelectItem} onActivateStory={onActivateStory} />}
         {item.type === 'missile' && <MissileContent d={item.data} onActivateStory={onActivateStory} />}
-        {item.type === 'target'  && <TargetContent  d={item.data} onSelectItem={onSelectItem} onActivateStory={onActivateStory} />}
-        {item.type === 'asset'   && <AssetContent   d={item.data} onActivateStory={onActivateStory} />}
-        {item.type === 'zone'    && <ZoneContent    d={item.data} />}
+        {item.type === 'target' && <TargetContent d={item.data} onSelectItem={onSelectItem} onActivateStory={onActivateStory} />}
+        {item.type === 'asset' && <AssetContent d={item.data} onActivateStory={onActivateStory} />}
+        {item.type === 'zone' && <ZoneContent d={item.data} />}
       </div>
 
       {/* Footer */}

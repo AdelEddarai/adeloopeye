@@ -8,7 +8,6 @@ import { err, ok } from '@/server/lib/api-utils';
 import { prisma } from '@/server/lib/db';
 import {
   chooseCycleMode,
-  PHAROS_RUNTIME_POLICY,
   SOFT_COVERAGE_GUIDANCE,
 } from '@/server/lib/adeloopeye-doctrine';
 import {
@@ -492,14 +491,12 @@ export async function GET(
     localNow: localNow.label,
     phaseOfDay: localNow.phase,
     runtimePolicy: {
-      ...PHAROS_RUNTIME_POLICY,
       timezone,
     },
     cycle: {
       cycleMode,
       recommendedAction,
       rationale,
-      noOpAllowed: PHAROS_RUNTIME_POLICY.noOpAllowed,
     },
     overview: {
       today,

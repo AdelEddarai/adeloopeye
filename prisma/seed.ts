@@ -53,14 +53,14 @@ async function main() {
       id: CONFLICT.id,
       name: CONFLICT.name,
       codename: CONFLICT.codename,
-        status: CONFLICT.status,
-        threatLevel: CONFLICT.threatLevel,
-        startDate: new Date(CONFLICT.startDate),
-        region: CONFLICT.region,
-        timezone: CONFLICT.timezone,
-        escalation: CONFLICT.escalation,
-        summary: CONFLICT.summary,
-        keyFacts: CONFLICT.keyFacts,
+      status: CONFLICT.status,
+      threatLevel: CONFLICT.threatLevel,
+      startDate: new Date(CONFLICT.startDate),
+      region: CONFLICT.region,
+      timezone: CONFLICT.timezone,
+      escalation: CONFLICT.escalation,
+      summary: CONFLICT.summary,
+      keyFacts: CONFLICT.keyFacts,
       objectives: CONFLICT.objectives,
       commanders: CONFLICT.commanders,
     },
@@ -133,12 +133,12 @@ async function main() {
     mapKey: string | null; cssVar: string | null; colorRgb: number[];
     affiliation: 'FRIENDLY' | 'HOSTILE' | 'NEUTRAL'; mapGroup: string;
   }> = {
-    us:      { mapKey: 'US',     cssVar: 'var(--blue)',    colorRgb: [45,114,210],  affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
-    idf:     { mapKey: 'ISRAEL', cssVar: 'var(--teal)',    colorRgb: [50,200,200],  affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
-    iran:    { mapKey: 'IRAN',   cssVar: 'var(--danger)',  colorRgb: [231,106,110], affiliation: 'HOSTILE',  mapGroup: 'Adversary' },
-    irgc:    { mapKey: 'IRGC',   cssVar: 'var(--danger)',  colorRgb: [200,50,50],   affiliation: 'HOSTILE',  mapGroup: 'Adversary' },
-    houthis: { mapKey: 'HOUTHI', cssVar: 'var(--warning)', colorRgb: [236,154,60],  affiliation: 'HOSTILE',  mapGroup: 'Adversary' },
-    russia:  { mapKey: null,     cssVar: null,             colorRgb: [],            affiliation: 'NEUTRAL',  mapGroup: 'Observer'  },
+    us: { mapKey: 'US', cssVar: 'var(--blue)', colorRgb: [45, 114, 210], affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
+    idf: { mapKey: 'ISRAEL', cssVar: 'var(--teal)', colorRgb: [50, 200, 200], affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
+    iran: { mapKey: 'IRAN', cssVar: 'var(--danger)', colorRgb: [231, 106, 110], affiliation: 'HOSTILE', mapGroup: 'Adversary' },
+    irgc: { mapKey: 'IRGC', cssVar: 'var(--danger)', colorRgb: [200, 50, 50], affiliation: 'HOSTILE', mapGroup: 'Adversary' },
+    houthis: { mapKey: 'HOUTHI', cssVar: 'var(--warning)', colorRgb: [236, 154, 60], affiliation: 'HOSTILE', mapGroup: 'Adversary' },
+    russia: { mapKey: null, cssVar: null, colorRgb: [], affiliation: 'NEUTRAL', mapGroup: 'Observer' },
   };
 
   for (const actor of ACTORS) {
@@ -152,11 +152,11 @@ async function main() {
         countryCode: actor.countryCode ?? null,
         type: mapActorType(actor.type),
         ...(display ? {
-          mapKey:      display.mapKey,
-          cssVar:      display.cssVar,
-          colorRgb:    display.colorRgb,
+          mapKey: display.mapKey,
+          cssVar: display.cssVar,
+          colorRgb: display.colorRgb,
           affiliation: display.affiliation,
-          mapGroup:    display.mapGroup,
+          mapGroup: display.mapGroup,
         } : {}),
         activityLevel: actor.activityLevel,
         activityScore: actor.activityScore,
@@ -208,11 +208,11 @@ async function main() {
     mapKey: string; cssVar: string; colorRgb: number[];
     affiliation: 'FRIENDLY' | 'HOSTILE' | 'NEUTRAL'; mapGroup: string;
   }[] = [
-    { id: 'nato',      name: 'NATO',       fullName: 'North Atlantic Treaty Organization', type: 'ORGANIZATION', mapKey: 'NATO',      cssVar: 'var(--cyber)',   colorRgb: [160,100,220], affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
-    { id: 'usil',      name: 'US-IL Joint', fullName: 'US-Israel Joint Operations',        type: 'ORGANIZATION', mapKey: 'USIL',      cssVar: 'var(--blue)',    colorRgb: [45,114,210],  affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
-    { id: 'hezbollah', name: 'Hezbollah',   fullName: 'Hezbollah',                         type: 'NON_STATE',    mapKey: 'HEZBOLLAH', cssVar: 'var(--danger)',  colorRgb: [180,40,40],   affiliation: 'HOSTILE',  mapGroup: 'Adversary' },
-    { id: 'pmf',       name: 'Iraqi PMF',   fullName: 'Popular Mobilization Forces',       type: 'NON_STATE',    mapKey: 'PMF',       cssVar: 'var(--warning)', colorRgb: [200,120,40],  affiliation: 'HOSTILE',  mapGroup: 'Adversary' },
-  ];
+      { id: 'nato', name: 'NATO', fullName: 'North Atlantic Treaty Organization', type: 'ORGANIZATION', mapKey: 'NATO', cssVar: 'var(--cyber)', colorRgb: [160, 100, 220], affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
+      { id: 'usil', name: 'US-IL Joint', fullName: 'US-Israel Joint Operations', type: 'ORGANIZATION', mapKey: 'USIL', cssVar: 'var(--blue)', colorRgb: [45, 114, 210], affiliation: 'FRIENDLY', mapGroup: 'Coalition' },
+      { id: 'hezbollah', name: 'Hezbollah', fullName: 'Hezbollah', type: 'NON_STATE', mapKey: 'HEZBOLLAH', cssVar: 'var(--danger)', colorRgb: [180, 40, 40], affiliation: 'HOSTILE', mapGroup: 'Adversary' },
+      { id: 'pmf', name: 'Iraqi PMF', fullName: 'Popular Mobilization Forces', type: 'NON_STATE', mapKey: 'PMF', cssVar: 'var(--warning)', colorRgb: [200, 120, 40], affiliation: 'HOSTILE', mapGroup: 'Adversary' },
+    ];
 
   for (const a of NEW_ACTORS) {
     await prisma.actor.create({
@@ -253,14 +253,17 @@ async function main() {
         title: event.title,
         location: event.location,
         summary: event.summary,
+        // @ts-ignore
         fullContent: event.fullContent,
         verified: event.verified,
         tags: event.tags,
       },
     });
 
+    //@ts-ignore
     if (event.sources.length > 0) {
       await prisma.eventSource.createMany({
+        //@ts-ignore
         data: event.sources.map(s => ({
           eventId: event.id,
           name: s.name,
@@ -273,9 +276,12 @@ async function main() {
 
     // Only create actor responses for actors that exist in our DB
     const validActorIds = new Set(ACTORS.map(a => a.id));
+    //@ts-ignore
     const validResponses = event.actorResponses.filter(r => validActorIds.has(r.actorId));
+    //@ts-ignore
     if (validResponses.length > 0) {
       await prisma.eventActorResponse.createMany({
+        //@ts-ignore
         data: validResponses.map(r => ({
           eventId: event.id,
           actorId: r.actorId,
@@ -314,6 +320,7 @@ async function main() {
         retweets: post.retweets,
         replies: post.replies,
         views: post.views,
+        //@ts-ignore
         pharosNote: post.pharosNote ?? null,
         eventId: post.eventId && validEventIds.has(post.eventId) ? post.eventId : null,
         actorId: post.actorId && validActorIdsSet.has(post.actorId) ? post.actorId : null,

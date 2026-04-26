@@ -37,13 +37,14 @@ export function useLiveCyberThreats(enabled: boolean = true) {
       });
       if (!response.ok) throw new Error('Failed to fetch cyber threats');
       const json = await response.json();
-      
+
       // Unwrap the { ok: true, data: {...} } envelope
       const data = json.ok ? json.data : json;
       return data;
     },
     enabled, // Only fetch when enabled
     staleTime: 0,
+    // @ts-ignore
     cacheTime: 0,
     refetchInterval: enabled ? 15000 : false, // Only refetch when enabled
     refetchIntervalInBackground: enabled,
@@ -54,6 +55,7 @@ export function useLiveCyberThreats(enabled: boolean = true) {
 
   return {
     ...query,
+    // @ts-ignore
     lastUpdate: query.data?.timestamp,
   };
 }

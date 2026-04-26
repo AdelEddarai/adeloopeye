@@ -3,6 +3,8 @@
  * Fetches major highways, roads, and route conditions in Morocco
  */
 
+import type { NewsArticle } from './newsapi-client';
+
 export type MoroccoRoute = {
   id: string;
   name: string;
@@ -75,174 +77,73 @@ function generateRoutePath(from: [number, number], to: [number, number], waypoin
 /**
  * Fetch Morocco routes from news and traffic sources
  */
-export async function fetchMoroccoRoutes(articles: any[]): Promise<MoroccoRoute[]> {
+export async function fetchMoroccoRoutes(articles: NewsArticle[]): Promise<MoroccoRoute[]> {
   console.log('[Morocco Routes] Analyzing routes from', articles.length, 'articles...');
   
   const routes: MoroccoRoute[] = [];
   
+  type RouteConfig = {
+    id: string;
+    name: string;
+    type: MoroccoRoute['type'];
+    from: keyof typeof CITIES;
+    to: keyof typeof CITIES;
+    via?: (keyof typeof CITIES)[];
+    length: number;
+    tollCost?: number;
+  };
+
   // Define major routes in Morocco
-  const majorRoutes = [
+  const majorRoutes: RouteConfig[] = [
     // A1 - Tangier to Rabat (Toll Highway)
     {
       id: 'A1',
-      name: 'A1 Tangier-Rabat Highway',
-      type: 'HIGHWAY' as const,
+      name: 'Autoroute du Nord',
+      type: 'TOLL_ROAD',
       from: 'Tangier',
       to: 'Rabat',
       via: ['Kenitra'],
       length: 250,
-      tollCost: 85,
+      tollCost: 90,
     },
-    
-    // A3 - Rabat to Casablanca (Toll Highway)
-    {
-      id: 'A3',
-      name: 'A3 Rabat-Casablanca Highway',
-      type: 'HIGHWAY' as const,
-      from: 'Rabat',
-      to: 'Casablanca',
-      via: [],
-      length: 90,
-      tollCost: 30,
-    },
-    
-    // A7 - Casablanca to Marrakech (Toll Highway)
-    {
-      id: 'A7',
-      name: 'A7 Casablanca-Marrakech Highway',
-      type: 'HIGHWAY' as const,
-      from: 'Casablanca',
-      to: 'Marrakech',
-      via: ['El Jadida', 'Safi'],
-      length: 240,
-      tollCost: 75,
-    },
-    
-    // A2 - Rabat to Fes (Toll Highway)
+    // A2 - Rabat to Oujda (Toll Highway)
     {
       id: 'A2',
-      name: 'A2 Rabat-Fes Highway',
-      type: 'HIGHWAY' as const,
+      name: 'Autoroute de l\'Est',
+      type: 'TOLL_ROAD',
       from: 'Rabat',
-      to: 'Fes',
-      via: ['Meknes'],
-      length: 200,
-      tollCost: 60,
+      to: 'Oujda',
+      via: ['Meknes', 'Fes', 'Taza'],
+      length: 496,
+      tollCost: 170,
     },
-    
-    // N1 - Tangier to Tetouan
+    // A3 - Casablanca to Agadir (Toll Highway)
+    {
+      id: 'A3',
+      name: 'Autoroute du Sud',
+      type: 'TOLL_ROAD',
+      from: 'Casablanca',
+      to: 'Agadir',
+      via: ['Marrakech'],
+      length: 429,
+      tollCost: 140,
+    },
+    // N1 - Tangier to Laayoune (National Road)
     {
       id: 'N1',
-      name: 'N1 Tangier-Tetouan Road',
-      type: 'NATIONAL_ROAD' as const,
+      name: 'Route Nationale 1',
+      type: 'NATIONAL_ROAD',
       from: 'Tangier',
-      to: 'Tetouan',
-      via: [],
-      length: 60,
-    },
-    
-    // N2 - Fes to Oujda
-    {
-      id: 'N2',
-      name: 'N2 Fes-Oujda Road',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Fes',
-      to: 'Oujda',
-      via: ['Taza'],
-      length: 320,
-    },
-    
-    // N8 - Marrakech to Agadir
-    {
-      id: 'N8',
-      name: 'N8 Marrakech-Agadir Road',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Marrakech',
-      to: 'Agadir',
-      via: [],
-      length: 250,
-    },
-    
-    // N9 - Marrakech to Ouarzazate (Atlas Mountains)
-    {
-      id: 'N9',
-      name: 'N9 Marrakech-Ouarzazate Road',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Marrakech',
-      to: 'Ouarzazate',
-      via: [],
-      length: 200,
-    },
-    
-    // N10 - Agadir to Essaouira (Coastal)
-    {
-      id: 'N10',
-      name: 'N10 Agadir-Essaouira Coastal Road',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Agadir',
-      to: 'Essaouira',
-      via: [],
-      length: 175,
-    },
-    
-    // N13 - Fes to Errachidia (Sahara Route)
-    {
-      id: 'N13',
-      name: 'N13 Fes-Errachidia Road',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Fes',
-      to: 'Errachidia',
-      via: [],
-      length: 380,
-    },
-    // A5 - Rabat bypass / regional logistics
-    {
-      id: 'A5',
-      name: 'A5 Rabat Ring Highway',
-      type: 'HIGHWAY' as const,
-      from: 'Rabat',
-      to: 'Kenitra',
-      via: [],
-      length: 45,
-      tollCost: 15,
-    },
-    // A1 extension to Casablanca port corridors
-    {
-      id: 'A1-CORRIDOR',
-      name: 'A1 Logistics Corridor Casablanca-Port',
-      type: 'TOLL_ROAD' as const,
-      from: 'Casablanca',
-      to: 'El Jadida',
-      via: [],
-      length: 95,
-      tollCost: 28,
-    },
-    // N6 strategic inland corridor
-    {
-      id: 'N6',
-      name: 'N6 Rabat-Meknes Inland Corridor',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Rabat',
-      to: 'Meknes',
-      via: [],
-      length: 150,
-    },
-    // N16 Mediterranean corridor
-    {
-      id: 'N16',
-      name: 'N16 Tangier-Nador Mediterranean Corridor',
-      type: 'NATIONAL_ROAD' as const,
-      from: 'Tangier',
-      to: 'Nador',
-      via: ['Tetouan'],
-      length: 420,
+      to: 'Laayoune',
+      via: ['Rabat', 'Casablanca', 'Agadir'],
+      length: 1500,
     },
   ];
   
   // Build routes with paths and detect incidents from news
   for (const routeConfig of majorRoutes) {
-    const fromCoords = CITIES[routeConfig.from as keyof typeof CITIES];
-    const toCoords = CITIES[routeConfig.to as keyof typeof CITIES];
+    const fromCoords = CITIES[routeConfig.from] as [number, number];
+    const toCoords = CITIES[routeConfig.to] as [number, number];
     
     if (!fromCoords || !toCoords) continue;
     
@@ -252,7 +153,7 @@ export async function fetchMoroccoRoutes(articles: any[]): Promise<MoroccoRoute[
     // Add waypoints if via cities exist
     if (routeConfig.via && routeConfig.via.length > 0) {
       for (const viaCity of routeConfig.via) {
-        const viaCoords = CITIES[viaCity as keyof typeof CITIES];
+        const viaCoords = CITIES[viaCity] as [number, number];
         if (viaCoords) {
           const segment = generateRoutePath(path[path.length - 1], viaCoords, 3);
           path = [...path, ...segment.slice(1)];

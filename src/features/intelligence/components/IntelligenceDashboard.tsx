@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 
-import { useQuery } from '@tantml:invoke>
-<parameter name="Activity, AlertTriangle, ArrowDown, ArrowUp, Loader2, Minus, RefreshCw, Shield, TrendingDown, TrendingUp } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Activity, AlertTriangle, ArrowDown, ArrowUp, Loader2, Minus, RefreshCw, Shield, TrendingDown, TrendingUp } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 

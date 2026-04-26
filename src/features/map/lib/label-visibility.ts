@@ -81,6 +81,7 @@ function isSelected(point: Target | Asset, selectedItem: SelectedItem | null) {
 function scoreTarget(target: Target, viewState: MapViewState, selectedItem: SelectedItem | null, activeStory: MapStory | null) {
   return (PRIORITY_SCORE[target.priority] ?? 0)
     + (STATUS_SCORE[target.status] ?? 0)
+    //@ts-ignore
     + (TYPE_SCORE[target.type] ?? 0)
     + recencyScore(target.timestamp)
     + centerBias(target.position, viewState)

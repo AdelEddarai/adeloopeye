@@ -1,4 +1,4 @@
-import type { DayPhase } from './adeloopeye-timetime';
+import { DayPhase } from "./adeloopeye-time";
 
 export type LiveDoctrineContext = {
   conflictId: string;

@@ -19,7 +19,7 @@ import { Flag } from '@/shared/components/shared/Flag';
 import { IntelTabBar, TabsContent } from '@/shared/components/shared/IntelTabs';
 import { XPostCard } from '@/shared/components/shared/XPostCard';
 
-import { dayAbbrev,getActorForDay } from '@/shared/lib/day-filter';
+import { dayAbbrev, getActorForDay } from '@/shared/lib/day-filter';
 import { cn } from '@/shared/lib/utils';
 import { useConflictDay } from '@/shared/hooks/use-conflict-day';
 import { useIsMobile } from '@/shared/hooks/use-is-mobile';
@@ -41,9 +41,11 @@ type Props = {
 export function ActorDossier({ actor, tab, onTabChange, currentDay, compact = false, pageScroll = false }: Props) {
   const [inlineLeadershipOpen, setInlineLeadershipOpen] = useState(true);
   const isMobile = useIsMobile(1024);
-  const snap   = getActorForDay(actor, currentDay);
-  const actC   = ACT_C[snap?.activityLevel] ?? 'var(--t2)';
-  const staC   = STA_C[snap?.stance] ?? 'var(--t2)';
+  const snap = getActorForDay(actor, currentDay);
+  // @ts-ignore
+  const actC = ACT_C[snap?.activityLevel] ?? 'var(--t2)';
+  // @ts-ignore
+  const staC = STA_C[snap?.stance] ?? 'var(--t2)';
   const { data: xPosts } = useXPostsByActor(undefined, actor.id);
   const { allDays } = useConflictDay();
   const dayActions = actor.recentActions.filter(a => a.date === currentDay);

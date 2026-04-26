@@ -11,13 +11,13 @@ import type { MapStory } from '@/types/domain';
 // Types
 
 export type SerializableFilterState = {
-  datasets:   string[];
-  types:      string[];
-  actors:     string[];
-  statuses:   string[];
+  datasets: string[];
+  types: string[];
+  actors: string[];
+  statuses: string[];
   priorities: string[];
-  heat:       boolean;
-  timeRange:  [number, number] | null;
+  heat: boolean;
+  timeRange: [number, number] | null;
 };
 
 export type MapState = {
@@ -38,14 +38,14 @@ export type MapState = {
   showAllLabels: boolean;
   sidebarOpen: boolean;
   mapStyle: 'dark' | 'satellite';
-  
+
   // Terrain controls (NASA-level visualization)
   showTerrain: boolean;
   terrainExaggeration: number;
   hillshadeIntensity: number;
   showRoads: boolean;
   show3DBuildings: boolean;
-  
+
   // Data layer toggles
   dataLayers: {
     flights: boolean;
@@ -108,7 +108,7 @@ export function persistMapPrefs(state: MapState): void {
     const persisted: PersistedMapPrefs = {
       showAllLabels: state.showAllLabels,
       sidebarOpen: state.sidebarOpen,
-      mapStyle:    state.mapStyle,
+      mapStyle: state.mapStyle,
       showTerrain: state.showTerrain,
       terrainExaggeration: state.terrainExaggeration,
       hillshadeIntensity: state.hillshadeIntensity,
@@ -125,13 +125,13 @@ export function persistMapPrefs(state: MapState): void {
 
 export function toSerializable(fs: ReturnType<typeof extractInitialState>): SerializableFilterState {
   return {
-    datasets:   [...fs.datasets],
-    types:      [...fs.types],
-    actors:     [...fs.actors],
-    statuses:   [...fs.statuses],
+    datasets: [...fs.datasets],
+    types: [...fs.types],
+    actors: [...fs.actors],
+    statuses: [...fs.statuses],
     priorities: [...fs.priorities],
-    heat:       fs.heat,
-    timeRange:  fs.timeRange,
+    heat: fs.heat,
+    timeRange: fs.timeRange,
   };
 }
 
@@ -165,16 +165,16 @@ const DEFAULT_DATA_LAYERS: MapState['dataLayers'] = {
 function buildInitialState(): MapState {
   const persisted = loadPersistedMapPrefs();
   return {
-    viewState:      INITIAL_VIEW,
-    filters:        EMPTY_FILTERS,
+    viewState: INITIAL_VIEW,
+    filters: EMPTY_FILTERS,
     initialFilters: EMPTY_FILTERS,
-    dataExtent:     [0, 0],
-    viewExtent:     [0, 0],
-    activeStory:  null,
+    dataExtent: [0, 0],
+    viewExtent: [0, 0],
+    activeStory: null,
     selectedItem: null,
     showAllLabels: persisted?.showAllLabels ?? false,
     sidebarOpen: persisted?.sidebarOpen ?? true,
-    mapStyle:    persisted?.mapStyle    ?? 'dark',
+    mapStyle: persisted?.mapStyle ?? 'dark',
     showTerrain: persisted?.showTerrain ?? false,
     terrainExaggeration: persisted?.terrainExaggeration ?? 1.5,
     hillshadeIntensity: persisted?.hillshadeIntensity ?? 0.8,
@@ -211,7 +211,7 @@ const mapSlice = createSlice({
       state.dataExtent = dataExtent;
 
       // Compute view extent (last 3 days or full span)
-      const span      = dataExtent[1] - dataExtent[0];
+      const span = dataExtent[1] - dataExtent[0];
       const threeDays = 3 * 86400_000;
       state.viewExtent = span <= threeDays
         ? dataExtent
@@ -271,17 +271,19 @@ const mapSlice = createSlice({
       state.activeStory = story;
       state.sidebarOpen = true;
       state.selectedItem = null;
-      
+
       // Safely merge viewState, ensuring all required properties are defined
       const newViewState: MapViewState = {
         longitude: story.viewState?.longitude ?? state.viewState.longitude,
         latitude: story.viewState?.latitude ?? state.viewState.latitude,
         zoom: story.viewState?.zoom ?? state.viewState.zoom,
+        // @ts-ignore
         pitch: story.viewState?.pitch ?? state.viewState.pitch ?? 0,
+        // @ts-ignore
         bearing: story.viewState?.bearing ?? state.viewState.bearing ?? 0,
         transitionDuration: 1200,
       };
-      
+
       state.viewState = newViewState;
 
       // Auto-fit timeline to story's events
@@ -335,7 +337,7 @@ const mapSlice = createSlice({
     setMapStyle(state, action: PayloadAction<'dark' | 'satellite'>) {
       state.mapStyle = action.payload;
     },
-    
+
     // Terrain controls
     toggleTerrain(state) {
       state.showTerrain = !state.showTerrain;
@@ -352,7 +354,7 @@ const mapSlice = createSlice({
     setShow3DBuildings(state, action: PayloadAction<boolean>) {
       state.show3DBuildings = action.payload;
     },
-    
+
     // Data layer controls
     toggleDataLayer(state, action: PayloadAction<keyof MapState['dataLayers']>) {
       state.dataLayers[action.payload] = !state.dataLayers[action.payload];

@@ -24,8 +24,8 @@ function fmtTs(ts: string | undefined): string {
   if (!ts) return '';
   const d = new Date(ts);
   const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }).toUpperCase();
-  const day   = String(d.getUTCDate()).padStart(2, '0');
-  const time  = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
   return `${month} ${day} · ${time} UTC`;
 }
 
@@ -81,18 +81,21 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     const m = meta(d.actor);
     const sm = safeStatus(d.status);
     const ts = fmtTs(d.timestamp);
-    
+
     // Check if this is a critical event (fire, explosion, attack, etc.)
     const isCriticalEvent = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE', 'INCIDENT'].includes(d.type);
-    
+
     // Check if this is Middle East infrastructure
+    // @ts-ignore
     const isInfrastructure = d.type === 'INFRASTRUCTURE' || d.type === 'NAVAL_BASE' || d.type === 'OIL_TERMINAL';
-    
+
     if (isInfrastructure) {
       // Infrastructure tooltip with special styling
+      // @ts-ignore
       const infraIcon = d.type === 'NAVAL_BASE' ? '⚓' : d.type === 'OIL_TERMINAL' ? '🛢️' : '🏭';
+      // @ts-ignore
       const infraColor = d.type === 'NAVAL_BASE' ? 'var(--info)' : d.type === 'OIL_TERMINAL' ? 'var(--warning)' : 'var(--teal)';
-      
+
       return `
         <div style="font-weight:700;font-size:12px;color:${infraColor};margin-bottom:5px">${infraIcon} ${d.name}</div>
         <div style="margin-bottom:6px">${pill(d.type.replace('_', ' '), infraColor)}${pill(sm.label, sm.cssVar)}</div>
@@ -100,12 +103,12 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         <div style="color:${infraColor};font-size:9px;margin-top:4px;font-weight:700">▶ STRATEGIC INFRASTRUCTURE</div>
       `;
     }
-    
+
     if (isCriticalEvent) {
       // Critical event tooltip with special styling
       const eventColor = d.type === 'FIRE' ? 'var(--warning)' : d.type === 'EXPLOSION' ? 'var(--danger)' : 'var(--danger)';
       const eventIcon = d.type === 'FIRE' ? '🔥' : d.type === 'EXPLOSION' ? '💥' : d.type === 'ATTACK' ? '⚔️' : d.type === 'STRIKE' ? '🎯' : '⚠️';
-      
+
       return `
         <div style="font-weight:700;font-size:12px;color:${eventColor};margin-bottom:5px">${eventIcon} ${d.name}</div>
         ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -114,7 +117,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         <div style="color:${eventColor};font-size:9px;margin-top:4px;font-weight:700">▶ REAL-TIME EVENT</div>
       `;
     }
-    
+
     // Regular target tooltip
     return `
       <div style="font-weight:700;font-size:12px;color:var(--t1);margin-bottom:5px">${d.name}</div>
@@ -127,10 +130,10 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
   function assetTooltip(d: Asset): string {
     const m = meta(d.actor);
     const sm = safeStatus(d.status);
-    
+
     // Check if this is a flight (has properties from OpenSky)
     const isFlightData = d.name && (d.name.startsWith('flight-') || d.description?.includes('Alt:'));
-    
+
     if (isFlightData) {
       // Flight-specific tooltip
       const ts = fmtTs(d.timestamp);
@@ -142,7 +145,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         <div style="color:var(--info);font-size:9px;margin-top:4px;font-weight:700">▶ REAL-TIME TRACKING</div>
       `;
     }
-    
+
     // Regular asset tooltip
     const extra = d.type === 'CARRIER'
       ? `<div style="color:var(--warning);font-size:10px;margin-top:4px;font-weight:700">▶ CARRIER STRIKE GROUP</div>`
@@ -157,11 +160,12 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
 
   function zoneTooltip(d: ThreatZone): string {
     const m = meta(d.actor);
-    
+
     // Enhanced tooltips for chokepoints and conflict zones
     const isChokepoint = d.name.includes('Strait') || d.name.includes('Canal') || d.name.includes('Chokepoint');
+    // @ts-ignore
     const isConflict = d.type === 'CONFLICT';
-    
+
     if (isChokepoint) {
       const chokepointIcon = '🚢';
       const chokepointColor = 'var(--danger)';
@@ -172,7 +176,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         <div style="color:${chokepointColor};font-size:9px;margin-top:4px;font-weight:700">▶ SHIPPING DISRUPTION RISK</div>
       `;
     }
-    
+
     if (isConflict) {
       const conflictIcon = '⚔️';
       const conflictColor = 'var(--danger)';
@@ -183,7 +187,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         <div style="color:${conflictColor};font-size:9px;margin-top:4px;font-weight:700">▶ DANGER AREA</div>
       `;
     }
-    
+
     return `
       <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:4px">${d.name}</div>
       <div>${pill(m.label, m.cssVar)}${pill(d.type.replace('_', ' '), 'var(--warning)')}</div>
@@ -219,10 +223,10 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         typeColor = 'var(--t3)';
         typeIcon = '⚠️';
     }
-    
+
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : 'var(--info)';
     const ts = fmtTs(d.timestamp);
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${typeColor};margin-bottom:5px">${typeIcon} ${d.type} ATTACK</div>
       ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -258,11 +262,11 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'MIGRATION_FLOW': { color: 'var(--info)', icon: '👥', label: 'MIGRATION FLOW' },
       'ECONOMIC_PARTNERSHIP': { color: 'var(--teal)', icon: '💼', label: 'ECONOMIC PARTNERSHIP' },
     };
-    
+
     const config = typeConfig[d.type] || { color: 'var(--t3)', icon: '🔗', label: d.type };
     const ts = fmtTs(d.timestamp);
     const directionArrow = d.bidirectional ? '↔' : '→';
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${config.color};margin-bottom:5px">${config.icon} ${config.label}</div>
       ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -308,12 +312,12 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'HEALTH': 'var(--info)',
       'EDUCATION': 'var(--blue)',
     };
-    
+
     const color = typeColors[d.type] || 'var(--t3)';
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : 'var(--info)';
     const ts = fmtTs(d.timestamp);
     const sourceUrl = typeof d.source === 'string' && /^https?:\/\//.test(d.source) ? d.source : null;
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${color};margin-bottom:5px">🇲🇦 ${d.title}</div>
       ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -352,9 +356,9 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'CLOSED': 'var(--danger)',
       'UNDER_CONSTRUCTION': 'var(--info)',
     };
-    
+
     const color = statusColors[d.status] || 'var(--t3)';
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${color};margin-bottom:5px">🏗️ ${d.name}</div>
       <div style="margin-bottom:6px">${pill(d.type.replace(/_/g, ' '), color)}${pill(d.status, color)}</div>
@@ -373,10 +377,10 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'ENERGY': 'var(--gold)',
       'MIGRATION': 'var(--teal)',
     };
-    
+
     const color = typeColors[d.type] || 'var(--t3)';
     const statusColor = d.status === 'ACTIVE' ? 'var(--success)' : d.status === 'DISRUPTED' ? 'var(--warning)' : 'var(--danger)';
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${color};margin-bottom:5px">🔗 ${d.type.replace(/_/g, ' ')}</div>
       <div style="margin-bottom:6px">${pill(d.type.replace(/_/g, ' '), color)}${pill(d.status, statusColor)}</div>
@@ -393,7 +397,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
 
   function moroccoWeatherTooltip(d: any): string {
     const tempColor = d.temperature > 35 ? 'var(--danger)' : d.temperature > 25 ? 'var(--warning)' : 'var(--info)';
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${tempColor};margin-bottom:5px">🌤️ ${d.city} Weather</div>
       <div style="margin-bottom:6px">${pill(d.condition, tempColor)}${d.alert ? pill(d.alert.type, 'var(--danger)') : ''}</div>
@@ -420,7 +424,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : 'var(--info)';
     const statusColor = d.status === 'ACTIVE' ? 'var(--danger)' : d.status === 'CONTAINED' ? 'var(--warning)' : 'var(--success)';
     const ts = fmtTs(d.timestamp);
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:var(--danger);margin-bottom:5px">🔥 Fire in ${d.location}</div>
       ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -451,11 +455,11 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'CONSTRUCTION': 'var(--info)',
       'INCIDENT': 'var(--warning)',
     };
-    
+
     const color = typeColors[d.type] || 'var(--warning)';
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : 'var(--info)';
     const ts = fmtTs(d.timestamp);
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${color};margin-bottom:5px">🚧 ${d.type.replace(/_/g, ' ')}</div>
       ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -477,18 +481,18 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'CLOSED': 'var(--danger)',
       'CONSTRUCTION': 'var(--info)',
     };
-    
+
     const conditionColors: Record<string, string> = {
       'EXCELLENT': 'var(--success)',
       'GOOD': 'var(--info)',
       'FAIR': 'var(--warning)',
       'POOR': 'var(--danger)',
     };
-    
+
     const statusColor = statusColors[d.status] || 'var(--t3)';
     const conditionColor = conditionColors[d.condition] || 'var(--t3)';
     const ts = fmtTs(d.lastUpdated);
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${statusColor};margin-bottom:5px">🛣️ ${d.name}</div>
       ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
@@ -523,10 +527,10 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       'CONGESTION': 'var(--warning)',
       'WEATHER': 'var(--info)',
     };
-    
+
     const color = typeColors[d.type] || 'var(--warning)';
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : 'var(--info)';
-    
+
     return `
       <div style="font-weight:700;font-size:12px;color:${color};margin-bottom:5px">🚨 Route Incident</div>
       <div style="margin-bottom:6px">${pill(d.type, color)}${pill(d.severity, sevColor)}</div>
@@ -546,10 +550,10 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     const isHormuz = d.name.includes('Hormuz');
     const isTanker = d.kind === 'TANKER';
     const isChokepoint = d.kind === 'CHOKEPOINT';
-    
+
     let extraInfo = '';
     let laneColor = 'var(--teal)';
-    
+
     if (isHormuz) {
       laneColor = 'var(--warning)';
       extraInfo = '<div style="color:var(--warning);font-size:9px;margin-top:4px;font-weight:700">⚠️ 21M barrels/day - 30% of seaborne oil</div>';
@@ -560,7 +564,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       laneColor = 'var(--danger)';
       extraInfo = '<div style="color:var(--danger);font-size:9px;margin-top:4px;font-weight:700">⚠️ CRITICAL CHOKEPOINT</div>';
     }
-    
+
     return `
       <div style="font-weight:700;font-size:11px;color:${laneColor};margin-bottom:4px">🛳 ${d.name}</div>
       <div style="margin-bottom:4px">${pill(d.kind.replace(/_/g, ' '), 'var(--info)')}${pill('SEA LANE', laneColor)}</div>
@@ -592,11 +596,11 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     if (!object || !layer) return null;
 
     const id = layer.id;
-    if (id === 'strikes')      return wrap(strikeTooltip(object as StrikeArc));
-    if (id === 'missiles')     return wrap(missileTooltip(object as MissileTrack));
+    if (id === 'strikes') return wrap(strikeTooltip(object as StrikeArc));
+    if (id === 'missiles') return wrap(missileTooltip(object as MissileTrack));
     if (id === 'targets' || id === 'target-labels' || id === 'fire-icons') return wrap(targetTooltip(object as Target));
-    if (id === 'assets'  || id === 'asset-labels')  return wrap(assetTooltip(object as Asset));
-    if (id === 'zones')        return wrap(zoneTooltip(object as ThreatZone));
+    if (id === 'assets' || id === 'asset-labels') return wrap(assetTooltip(object as Asset));
+    if (id === 'zones') return wrap(zoneTooltip(object as ThreatZone));
     if (id === 'cyber-threats') return wrap(cyberThreatTooltip(object as CyberThreat));
     if (id === 'geopolitical-relationships' || id === 'relationship-country-labels') return wrap(conflictRelationshipTooltip(object));
     if (id === 'cities' || id === 'city-labels') return wrap(cityTooltip(object));
@@ -612,7 +616,7 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     if (id === 'morocco-traffic' || id === 'morocco-traffic-labels') return wrap(moroccoTrafficTooltip(object));
     if (id === 'morocco-routes' || id === 'morocco-routes-core' || id === 'morocco-routes-halo' || id === 'morocco-route-risk-segments' || id === 'morocco-route-labels') return wrap(moroccoRouteTooltip(object));
     if (id === 'morocco-route-incidents' || id === 'morocco-route-incident-labels') return wrap(moroccoRouteIncidentTooltip(object));
-    
+
     return null;
   };
 }

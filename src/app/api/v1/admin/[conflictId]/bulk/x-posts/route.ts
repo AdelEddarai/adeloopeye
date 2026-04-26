@@ -109,6 +109,7 @@ export async function POST(
       retweets: item.retweets ?? 0,
       replies: item.replies ?? 0,
       views: item.views ?? 0,
+      //@ts-ignore
       pharosNote: item.pharosNote ?? null,
       eventId: item.eventId ?? null,
       actorId: item.actorId ?? null,

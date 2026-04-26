@@ -3,6 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, TrendingDown, DollarSign, Users, Building2, ExternalLink } from 'lucide-react';
 import { api } from '@/shared/lib/query/client';
+import type { CountryIntelligence } from '@/server/lib/api-clients/country-intelligence-client';
+import type { NewsArticle } from '@/server/lib/api-clients/newsapi-client';
 
 type Props = {
   countryCode: string;
@@ -12,7 +14,7 @@ type Props = {
 export function CountryIntelligencePanel({ countryCode, countryName }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ['country-intelligence', countryCode],
-    queryFn: () => api.get(`/live/country-intelligence?code=${countryCode}`),
+    queryFn: () => api.get<CountryIntelligence>(`/live/country-intelligence?code=${countryCode}`),
     staleTime: 3600000, // 1 hour
   });
 
@@ -155,7 +157,7 @@ export function CountryIntelligencePanel({ countryCode, countryName }: Props) {
         <div>
           <div className="text-[9px] text-[var(--t4)] mono mb-2">RECENT NEWS ({data.news.total})</div>
           <div className="space-y-2">
-            {data.news.recent.slice(0, 3).map((article: any, i: number) => (
+            {data.news.recent.slice(0, 3).map((article: NewsArticle, i: number) => (
               <a
                 key={i}
                 href={article.url}

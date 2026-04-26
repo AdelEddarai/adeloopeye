@@ -13,10 +13,6 @@ import {
 } from '@/server/lib/admin-validate';
 import { err, ok } from '@/server/lib/api-utils';
 import { prisma } from '@/server/lib/db';
-import {
-  buildPharosInstructionsMarkdown,
-  PHAROS_RUNTIME_POLICY,
-} from '@/server/lib/adeloopeye-doctrine';
 import { getConflictDayRange, getConflictLocalNow, getConflictTimezone } from '@/server/lib/adeloopeye-time';
 
 export async function GET(
@@ -70,56 +66,4 @@ export async function GET(
   const adminBaseUrl = `${baseUrl}/api/v1/admin`;
   const dashboardUrl = 'https://www.conflicts.app/dashboard';
 
-  const markdown = buildPharosInstructionsMarkdown({
-    conflictId,
-    adminBaseUrl,
-    dashboardUrl,
-    timezone,
-    today,
-    generatedAt,
-    currentState: {
-      eventCount,
-      storyCount,
-      actorCount: actors.length,
-      hasTodaySnapshot: !!todaySnapshot,
-      escalation: todaySnapshot?.escalation ?? conflict.escalation ?? null,
-      lastEventAt: lastEvent?.timestamp.toISOString() ?? null,
-    },
-  });
-
-  return ok({
-    runtimePolicy: {
-      ...PHAROS_RUNTIME_POLICY,
-      timezone,
-      conflictId,
-      dashboardUrl,
-      adminBaseUrl: `${adminBaseUrl}/${conflictId}`,
-      localNow: localNow.label,
-    },
-    markdown,
-    meta: {
-      conflictId,
-      generatedAt,
-      timezone,
-      currentState: {
-        eventCount,
-        storyCount,
-        actorCount: actors.length,
-        hasTodaySnapshot: !!todaySnapshot,
-        escalation: todaySnapshot?.escalation ?? conflict.escalation ?? null,
-        lastEventAt: lastEvent?.timestamp.toISOString() ?? null,
-        today,
-      },
-    },
-    validValues: {
-      mapActorKeys: [...MAP_ACTOR_KEYS],
-      mapPriorities: [...MAP_PRIORITIES],
-      kineticTypes: [...KINETIC_TYPES],
-      installationTypes: [...INSTALLATION_TYPES],
-      zoneTypes: [...ZONE_TYPES],
-      kineticStatuses: [...KINETIC_STATUSES],
-      installationStatuses: [...INSTALLATION_STATUSES],
-      storyIconNames: [...STORY_ICON_NAMES],
-    },
-  });
 }

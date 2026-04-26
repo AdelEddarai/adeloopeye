@@ -229,18 +229,18 @@ export function NewsNetwork({ data, onNavigate }: NewsNetworkProps) {
               params.data.category === 0
                 ? 'CRITICAL'
                 : params.data.category === 1
-                ? 'HIGH'
-                : params.data.category === 2
-                ? 'STANDARD'
-                : 'LOCATION';
+                  ? 'HIGH'
+                  : params.data.category === 2
+                    ? 'STANDARD'
+                    : 'LOCATION';
             const categoryColor =
               params.data.category === 0
                 ? '#ef4444'
                 : params.data.category === 1
-                ? '#f59e0b'
-                : params.data.category === 2
-                ? '#3b82f6'
-                : '#10b981';
+                  ? '#f59e0b'
+                  : params.data.category === 2
+                    ? '#3b82f6'
+                    : '#10b981';
 
             const clickHint = location
               ? '<div style="margin-top:6px; padding-top:6px; border-top:1px solid #3f3f46; color:#60a5fa; font-size:9px;">💡 Click to select • Double-click for map</div>'
@@ -288,8 +288,8 @@ export function NewsNetwork({ data, onNavigate }: NewsNetworkProps) {
                 selection.selectedEventId === node.id
                   ? 1
                   : neighborIds.includes(node.id) || selection.highlightedEvents.includes(node.id)
-                  ? 0.9
-                  : 0.7,
+                    ? 0.9
+                    : 0.7,
               shadowBlur:
                 selection.selectedEventId === node.id ? 25 : node.itemStyle.shadowBlur,
               shadowColor:
@@ -375,6 +375,7 @@ export function NewsNetwork({ data, onNavigate }: NewsNetworkProps) {
       </CardHeader>
       <CardContent className="p-3 pt-0">
         <ReactECharts
+          // @ts-ignore
           ref={chartRef}
           option={option}
           style={{ height: '320px' }}

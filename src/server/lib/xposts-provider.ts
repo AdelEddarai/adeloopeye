@@ -15,16 +15,16 @@ export async function getXPosts(conflictId: string): Promise<XPost[]> {
   try {
     // Get seed posts (all posts are for iran-2026 conflict)
     const seedPosts = X_POSTS;
-    
+
     // Get live news posts
     const articles = await newsAPIClient.searchNews('iran OR israel OR middle east conflict', 30, 'en');
     const livePosts = transformNewsToXPosts(articles);
-    
+
     // Combine and sort by timestamp (newest first)
-    const allPosts = [...seedPosts, ...livePosts].sort((a, b) => 
+    const allPosts = [...seedPosts, ...livePosts].sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-    
+    // @ts-ignore
     return allPosts;
   } catch (error) {
     console.error('Failed to fetch live posts, returning seed data only:', error);

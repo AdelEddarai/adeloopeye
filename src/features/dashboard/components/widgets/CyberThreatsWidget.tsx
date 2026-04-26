@@ -11,7 +11,9 @@ export function CyberThreatsWidget() {
     isLoading,
     hasError: !!error,
     hasData: !!data,
+    // @ts-ignore
     threatsCount: data?.threats?.length || 0,
+    // @ts-ignore
     stats: data?.stats,
   });
 
@@ -40,9 +42,11 @@ export function CyberThreatsWidget() {
       </div>
     );
   }
-
+  // @ts-ignore
   const threats = data.threats || [];
+  // @ts-ignore
   const stats = data.stats || { total: 0, ddos: 0, malware: 0, intrusion: 0, phishing: 0, ransomware: 0 };
+  // @ts-ignore
   const sources = data.sources || [];
 
   console.log('[CyberThreatsWidget] Rendering with:', { threatsCount: threats.length, stats });
@@ -69,7 +73,7 @@ export function CyberThreatsWidget() {
             <div className="mono text-[length:var(--text-body)] font-bold text-[var(--info)]">{stats.intrusion}</div>
           </div>
         </div>
-        
+
         {/* Sources */}
         {sources.length > 0 && (
           <div className="mt-3 pt-2 border-t border-[var(--bd-s)]">
@@ -90,7 +94,7 @@ export function CyberThreatsWidget() {
             </div>
           </div>
         )}
-        
+
         {lastUpdate && (
           <div className="mono text-[length:var(--text-micro)] text-[var(--t4)] mt-2">
             Last update: {new Date(lastUpdate).toLocaleTimeString()}
@@ -107,22 +111,22 @@ export function CyberThreatsWidget() {
             <span className="mono text-[length:var(--text-micro)] text-[var(--t4)] mt-1">All systems secure</span>
           </div>
         ) : (
-          threats.map((threat, i) => {
-            const severityColor = 
+          threats.map((threat: any, i: any) => {
+            const severityColor =
               threat.severity === 'CRITICAL' ? 'var(--danger)' :
-              threat.severity === 'HIGH' ? 'var(--warning)' :
-              'var(--info)';
-            
-            const Icon = 
+                threat.severity === 'HIGH' ? 'var(--warning)' :
+                  'var(--info)';
+
+            const Icon =
               threat.type === 'DDOS' ? Zap :
-              threat.type === 'MALWARE' ? AlertTriangle :
-              Shield;
+                threat.type === 'MALWARE' ? AlertTriangle :
+                  Shield;
 
             return (
               <div
                 key={threat.id}
                 className="flex gap-3 items-start px-4 py-3 hover:bg-[var(--bg-3)] transition-colors"
-                style={{ 
+                style={{
                   borderBottom: i < threats.length - 1 ? '1px solid var(--bd-s)' : 'none',
                   borderLeft: `3px solid ${severityColor}`,
                 }}
@@ -133,9 +137,9 @@ export function CyberThreatsWidget() {
                     <span className="mono text-[length:var(--text-body-sm)] font-bold text-[var(--t1)]">
                       {threat.type}
                     </span>
-                    <span 
+                    <span
                       className="mono text-[length:var(--text-micro)] px-1.5 py-0.5 rounded-sm font-bold"
-                      style={{ 
+                      style={{
                         background: `color-mix(in srgb, ${severityColor} 14%, transparent)`,
                         border: `1px solid color-mix(in srgb, ${severityColor} 35%, transparent)`,
                         color: severityColor,

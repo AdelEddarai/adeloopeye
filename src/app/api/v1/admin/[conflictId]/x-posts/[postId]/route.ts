@@ -37,7 +37,6 @@ export async function PUT(
   if (body.retweets !== undefined) data.retweets = body.retweets;
   if (body.replies !== undefined) data.replies = body.replies;
   if (body.views !== undefined) data.views = body.views;
-  if (body.pharosNote !== undefined) data.pharosNote = body.pharosNote;
 
   if (body.eventId !== undefined) {
     if (body.eventId !== null) {
