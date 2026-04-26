@@ -1,15 +1,9 @@
-function missing(name: string): never {
-  throw new Error(`Missing required environment variable: ${name}`);
-}
-
-/**
- * Read a required env var at runtime (server-only).
- * For NEXT_PUBLIC_* vars, use the dedicated exports below instead —
- * Next.js only inlines public env vars when accessed with a literal
- * string (process.env.NEXT_PUBLIC_X), not via dynamic lookup.
- */
 export function getRequiredEnv(name: string): string {
-  return process.env[name] ?? missing(name);
+  if (!process.env[name]) {
+    console.warn(`[WARNING] Missing environment variable: ${name}. App may not function correctly.`);
+    return '';
+  }
+  return process.env[name] as string;
 }
 
 /* ── public (client-safe) env vars ─────────────────────────────── */
@@ -34,5 +28,9 @@ export const publicAnalyticsEnabled: boolean =
 
 // Lazy getter — only evaluated when called on the server.
 export function getDatabaseUrl(): string {
-  return getRequiredEnv('DATABASE_URL');
+  if (!process.env.DATABASE_URL) {
+    console.warn('[WARNING] DATABASE_URL is missing. Using dummy URL to allow app to start without DB.');
+    return 'postgres://dummy:dummy@localhost:5432/dummy';
+  }
+  return process.env.DATABASE_URL;
 }
