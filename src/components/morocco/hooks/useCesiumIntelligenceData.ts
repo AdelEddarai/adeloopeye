@@ -689,10 +689,11 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                   outlineWidth: 3
                 },
                 description: `<div style="font-size: 11px;">
-                  <img src="${getPlaceholderImage('DEFAULT')}" class="w-full h-16 object-cover rounded mb-2 border border-slate-700/50" />
+                  <img src="${ev.image || getPlaceholderImage(ev.type)}" onerror="this.src='${getPlaceholderImage(ev.type)}'" class="w-full h-24 object-cover rounded mb-2 border border-slate-700/50" />
                   <p><strong>Type:</strong> ${ev.type}</p>
                   <p><strong>Severity:</strong> ${ev.severity}</p>
                   <p class="mt-1">${ev.description}</p>
+                  ${ev.source ? `<a href="${ev.source}" target="_blank" style="display:inline-block; margin-top:8px; padding:4px 8px; background:rgba(6,182,212,0.1); border:1px solid rgba(6,182,212,0.4); color:#22d3ee; border-radius:4px; text-decoration:none; font-family:monospace; font-size:10px;">ACCESS RAW INTEL ↗</a>` : ''}
                 </div>`
               });
             } catch(e) {}

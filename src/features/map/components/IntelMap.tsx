@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import Link from 'next/link';
@@ -61,10 +61,25 @@ export function IntelMap() {
     setVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const layers = useMapLayers(visibility, mapData);
-  const getTooltip = useCallback(
-    (info: PickingInfo) => getMapTooltip(info as PickingInfo<TooltipObject>),
-    [],
-  );
+  const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, object: any, html: string } | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleHover = useCallback((info: PickingInfo) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+
+    if (info.object) {
+      const tooltip = getMapTooltip(info as PickingInfo<TooltipObject>);
+      if (tooltip && tooltip.html) {
+        setHoverInfo({ x: info.x, y: info.y, object: info.object, html: tooltip.html });
+      } else {
+        setHoverInfo(null);
+      }
+    } else {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoverInfo(null);
+      }, 250);
+    }
+  }, []);
   
   // 🎯 FLY TO LOCATION when event is selected
   useEffect(() => {
@@ -178,11 +193,31 @@ export function IntelMap() {
           }}
           controller={true}
           layers={layers}
-          getTooltip={getTooltip}
+          onHover={handleHover}
           style={{ width: '100%', height: '100%' }}
         >
           <Map mapStyle={MAP_STYLE_SAT} />
         </DeckGL>
+
+        {hoverInfo && (
+          <div
+            style={{
+              position: 'absolute',
+              left: hoverInfo.x,
+              top: hoverInfo.y,
+              zIndex: 100,
+              pointerEvents: 'auto',
+              transform: 'translate(12px, 12px)',
+            }}
+            onMouseEnter={() => {
+              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+            }}
+            onMouseLeave={() => {
+              hoverTimeoutRef.current = setTimeout(() => setHoverInfo(null), 250);
+            }}
+            dangerouslySetInnerHTML={{ __html: hoverInfo.html }}
+          />
+        )}
 
         <IntelMapLegend />
 

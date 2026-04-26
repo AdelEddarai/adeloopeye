@@ -15,6 +15,34 @@ import { useLandscapeScrollEmitter } from '@/shared/hooks/use-landscape-scroll-e
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
+function Sparkline({ data, isPositive }: { data: {time: number, close: number}[], isPositive: boolean }) {
+  if (!data || data.length === 0) return <div className="w-16 h-6 bg-[var(--bg-3)] rounded opacity-50" />;
+  
+  const values = data.map(d => d.close);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  
+  const pts = values.map((val, i) => {
+    const x = (i / (values.length - 1)) * 60; // width 60
+    const y = 24 - ((val - min) / range) * 24; // height 24
+    return `${x},${y}`;
+  }).join(' ');
+  
+  return (
+    <svg width="60" height="24" className="overflow-visible ml-auto">
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={isPositive ? 'var(--success)' : 'var(--danger)'}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type CategoryKey =
   | 'all'
   | 'energy'
@@ -278,6 +306,7 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
                         <th className="text-left py-2 px-2 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono">LIVE</th>
                         <th className="text-left py-2 px-3 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono">SYMBOL</th>
                         {!isWidget && <th className="text-left py-2 px-3 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono hidden sm:table-cell">NAME</th>}
+                        <th className="text-right py-2 px-3 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono">CHART</th>
                         <th className="text-right py-2 px-3 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono">PRICE</th>
                         {!isWidget && <th className="text-right py-2 px-3 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono hidden sm:table-cell">CHANGE</th>}
                         <th className="text-right py-2 px-3 text-[length:var(--text-caption)] font-bold text-[var(--t4)] mono">CHANGE %</th>
@@ -303,6 +332,10 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
                                 <div className="truncate max-w-[120px]">{TICKER_NAMES[result.ticker] || result.ticker}</div>
                               </td>
                             )}
+
+                            <td className={`py-2 px-3 text-right ${flashClass}`}>
+                              <Sparkline data={result.chart} isPositive={isPositive} />
+                            </td>
 
                             <td className={`py-2 px-3 text-right mono text-[length:var(--text-body-sm)] font-semibold text-[var(--t1)] ${flashClass}`}>
                               <div>{result.currency} {result.price.toFixed(2)}</div>
@@ -358,6 +391,23 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
 function MarketChart({ data }: { data: any }) {
   const isPositive = data.changePct >= 0;
   
+  // FIX: When markets are closed, all 300+ data points might be exactly the same value.
+  // ECharts 'scale: true' disappears/crashes when max === min.
+  // We manually compute the domain and pad it if it's perfectly flat.
+  const values = data.chart?.map((p: any) => p.close) || [];
+  
+  let minVal: number | undefined = undefined;
+  let maxVal: number | undefined = undefined;
+  
+  if (values.length > 0) {
+    minVal = Math.min(...values, ...data.chart.map((p: any) => p.low));
+    maxVal = Math.max(...values, ...data.chart.map((p: any) => p.high));
+    if (minVal === maxVal) {
+      minVal = minVal * 0.99;
+      maxVal = maxVal * 1.01;
+    }
+  }
+  
   const option = {
     backgroundColor: 'transparent',
     grid: { left: '1%', right: '1%', bottom: '0%', top: '15%', containLabel: true },
@@ -369,19 +419,32 @@ function MarketChart({ data }: { data: any }) {
       textStyle: { color: '#e4e4e7', fontSize: 10 },
       formatter: (params: any) => {
         const point = params[0];
-        return `<div style="font-weight:bold; margin-bottom:4px;">${new Date(point.data[0]).toLocaleTimeString()}</div>
-                <div style="color:${isPositive ? '#10b981' : '#ef4444'};">Price: ${point.data[1].toFixed(2)}</div>`;
+        const [time, open, close, low, high] = point.data;
+        return `
+          <div style="font-weight:bold; margin-bottom:4px; border-bottom: 1px solid #3f3f46; padding-bottom: 4px;">
+            ${new Date(time).toLocaleTimeString()}
+          </div>
+          <div style="display:grid; grid-template-columns: auto auto; gap: 4px 12px;">
+            <span style="color:#a1a1aa">Open</span> <span style="font-family:monospace; text-align:right">${open.toFixed(2)}</span>
+            <span style="color:#a1a1aa">High</span> <span style="font-family:monospace; text-align:right; color:#10b981">${high.toFixed(2)}</span>
+            <span style="color:#a1a1aa">Low</span> <span style="font-family:monospace; text-align:right; color:#ef4444">${low.toFixed(2)}</span>
+            <span style="color:#a1a1aa">Close</span> <span style="font-family:monospace; text-align:right; color:${close >= open ? '#10b981' : '#ef4444'}">${close.toFixed(2)}</span>
+          </div>
+        `;
       }
     },
     xAxis: {
-      type: 'time',
+      type: 'category',
+      data: data.chart.map((p: any) => p.time * 1000),
       axisLine: { show: false },
-      axisLabel: { color: '#71717a', fontSize: 9 },
+      axisLabel: { show: false }, // Hide time labels to keep it clean like before
       axisTick: { show: false },
       splitLine: { show: false }
     },
     yAxis: {
       type: 'value',
+      min: minVal,
+      max: maxVal,
       axisLine: { show: false },
       axisLabel: { color: '#71717a', fontSize: 9 },
       splitLine: { lineStyle: { color: '#27272a', type: 'dashed' } },
@@ -389,23 +452,18 @@ function MarketChart({ data }: { data: any }) {
     },
     series: [
       {
-        type: 'line',
-        data: data.chart.map((point: any) => [point.time * 1000, point.value]),
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          width: 2,
-          color: isPositive ? '#10b981' : '#ef4444'
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: isPositive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)' },
-              { offset: 1, color: isPositive ? 'rgba(16, 185, 129, 0.01)' : 'rgba(239, 68, 68, 0.01)' }
-            ]
-          }
+        type: 'candlestick',
+        data: data.chart.map((point: any) => [
+          point.open,
+          point.close,
+          point.low,
+          point.high
+        ]),
+        itemStyle: {
+          color: '#10b981',      // Bullish candle fill
+          color0: '#ef4444',     // Bearish candle fill
+          borderColor: '#10b981',// Bullish border/wick
+          borderColor0: '#ef4444'// Bearish border/wick
         }
       }
     ]
@@ -437,7 +495,7 @@ function MarketChart({ data }: { data: any }) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <ReactECharts option={option} style={{ height: '140px' }} />
+        <ReactECharts option={option} style={{ height: '140px' }} opts={{ renderer: 'svg' }} />
       </CardContent>
     </Card>
   );

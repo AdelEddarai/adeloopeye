@@ -74,9 +74,20 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
     html = `<div style="font-size:11px;color:var(--t1)">${String(obj.label ?? obj.name ?? '')}</div>`;
   }
 
+  const itemUrl = (object as any).url || (object as any).sourceUrl || (object as any).source;
+  if (itemUrl && typeof itemUrl === 'string' && itemUrl.startsWith('http')) {
+    html += `
+      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);text-align:right;">
+        <a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--blue-l);text-decoration:none;font-size:10px;font-weight:700;display:inline-block;padding:2px 0;">
+          VIEW SOURCE ↗
+        </a>
+      </div>
+    `;
+  }
+
   if (!html) return null;
   return {
-    html: `<div style="background:var(--bg-app);border:1px solid var(--bd);padding:8px 10px;font-family:monospace;max-width:260px;border-radius:2px">${html}</div>`,
-    style: { backgroundColor: 'transparent', border: 'none', padding: '0' },
+    html: `<div style="background:var(--bg-app);border:1px solid var(--bd);padding:8px 10px;font-family:monospace;max-width:260px;border-radius:2px;pointer-events:auto;box-shadow:0 4px 12px rgba(0,0,0,0.5);">${html}</div>`,
+    style: { backgroundColor: 'transparent', border: 'none', padding: '0', pointerEvents: 'auto' },
   };
 }

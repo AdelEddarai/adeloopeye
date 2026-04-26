@@ -80,70 +80,82 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
 
       {/* Map Info Panel - Hide if Embedded */}
       {!embedded && (
-        <div className="absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg backdrop-blur-sm border border-gray-800 pointer-events-none">
-          <h3 className="font-bold text-lg mb-1">🌍 Global 4D Map</h3>
-          <p className="text-sm text-gray-300">Live OSINT Intelligence</p>
+        <div className="absolute top-4 left-4 bg-black/40 text-white p-4 rounded-lg backdrop-blur-xl border border-cyan-900/50 shadow-[0_0_30px_rgba(6,182,212,0.1)] pointer-events-none overflow-hidden before:absolute before:inset-0 before:bg-[url('/grid.svg')] before:opacity-10 before:z-[-1]">
+          <div className="flex justify-between items-start gap-6">
+            <div>
+              <h3 className="font-bold text-lg mb-1 tracking-widest text-cyan-50">GLOBAL 4D ENGINE</h3>
+              <p className="text-xs text-cyan-400 font-mono">LIVE OSINT INTELLIGENCE</p>
+            </div>
+            <div className="flex items-center gap-2 mt-1 px-2 py-1 bg-cyan-950/50 border border-cyan-800 rounded">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+              <span className="text-[9px] text-cyan-400 font-mono tracking-widest uppercase">Stream: Active</span>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Advanced Toggles Panel - Hide if Embedded */}
       {!embedded && (
-        <div className="absolute top-[92px] left-4 z-50 bg-black/80 text-white p-4 rounded-lg backdrop-blur-sm min-w-[240px] border border-gray-800 shadow-2xl">
-          <h3 className="font-bold mb-3 flex items-center gap-2">
-            <span className="text-blue-400">⚡</span> Data Layers
+        <div className="absolute top-[96px] left-4 z-50 bg-black/60 text-white p-4 rounded-lg backdrop-blur-xl min-w-[240px] border border-cyan-900/50 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+          <h3 className="font-bold mb-3 flex items-center gap-2 text-sm tracking-widest">
+            <span className="text-cyan-400">⚡</span> DATA LAYERS
           </h3>
 
           {moroccoError && (
-            <div className="bg-red-500/20 border border-red-500/50 text-red-300 p-2 rounded text-xs mb-3">
-               Connection Failed
+            <div className="bg-red-950/50 border border-red-500/50 text-red-400 p-2 rounded text-xs mb-3 font-mono">
+               [!] CONNECTION FAILED
             </div>
           )}
           
           {isDataLoading && !isInitializing && (
-            <div className="text-xs text-blue-300 mb-3 animate-pulse">
-              Fetching satellite telemetry...
+            <div className="text-[10px] text-cyan-300 mb-3 animate-pulse font-mono flex items-center gap-2">
+              <span className="inline-block w-3 h-3 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></span>
+              FETCHING TELEMETRY...
             </div>
           )}
 
-          <div className="space-y-2 mt-2">
+          <div className="space-y-1 mt-2">
             {/* Global Toggles */}
-            <div className="text-[10px] text-gray-500 font-bold tracking-widest mt-4 mb-2">WORLD LAYER</div>
+            <div className="text-[9px] text-cyan-600/80 font-bold tracking-widest mt-4 mb-2 border-b border-cyan-900/30 pb-1">WORLD LAYER</div>
             
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">✈️ Flights & Assets</span>
-              <input type="checkbox" checked={toggles.flights} onChange={() => toggleLayer('flights')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">✈️ Flights & Assets</span>
+              <input type="checkbox" checked={toggles.flights} onChange={() => toggleLayer('flights')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">💻 Cyber Threats</span>
-              <input type="checkbox" checked={toggles.cyber} onChange={() => toggleLayer('cyber')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">💻 Cyber Threats</span>
+              <input type="checkbox" checked={toggles.cyber} onChange={() => toggleLayer('cyber')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
 
             {/* Morocco Toggles */}
-            <div className="text-[10px] text-gray-500 font-bold tracking-widest mt-4 mb-2">MOROCCO LAYER</div>
+            <div className="text-[9px] text-cyan-600/80 font-bold tracking-widest mt-5 mb-2 border-b border-cyan-900/30 pb-1">MOROCCO LAYER</div>
             
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">📍 Events</span>
-              <input type="checkbox" checked={toggles.events} onChange={() => toggleLayer('events')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">📍 Events</span>
+              <input type="checkbox" checked={toggles.events} onChange={() => toggleLayer('events')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">🏗️ Infrastructure</span>
-              <input type="checkbox" checked={toggles.infrastructure} onChange={() => toggleLayer('infrastructure')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">🏗️ Infrastructure</span>
+              <input type="checkbox" checked={toggles.infrastructure} onChange={() => toggleLayer('infrastructure')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">🔗 Connections</span>
-              <input type="checkbox" checked={toggles.connections} onChange={() => toggleLayer('connections')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">🔗 Connections</span>
+              <input type="checkbox" checked={toggles.connections} onChange={() => toggleLayer('connections')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">🛣️ Routes</span>
-              <input type="checkbox" checked={toggles.routes} onChange={() => toggleLayer('routes')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">🛣️ Routes</span>
+              <input type="checkbox" checked={toggles.routes} onChange={() => toggleLayer('routes')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">🔥 Fires</span>
-              <input type="checkbox" checked={toggles.fires} onChange={() => toggleLayer('fires')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">🔥 Fires</span>
+              <input type="checkbox" checked={toggles.fires} onChange={() => toggleLayer('fires')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
-            <label className="flex items-center justify-between cursor-pointer hover:bg-white/5 p-1 rounded">
-              <span className="text-xs">🌤️ Weather</span>
-              <input type="checkbox" checked={toggles.weather} onChange={() => toggleLayer('weather')} className="rounded bg-gray-700 border-gray-600 text-blue-500" />
+            <label className="flex items-center justify-between cursor-pointer hover:bg-cyan-900/20 p-1.5 rounded transition-colors group">
+              <span className="text-xs text-slate-300 group-hover:text-cyan-100 transition-colors">🌤️ Weather</span>
+              <input type="checkbox" checked={toggles.weather} onChange={() => toggleLayer('weather')} className="rounded bg-black border-cyan-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0" />
             </label>
           </div>
         </div>
@@ -152,7 +164,7 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
       {/* Hover Info Tooltip */}
       {hoverInfo && (
         <div 
-          className="absolute z-[100] pointer-events-none backdrop-blur-md bg-slate-900/80 border-l-4 border-cyan-500 border-y border-r border-slate-700 text-white p-4 rounded-r-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] min-w-[200px] max-w-md transition-all duration-75"
+          className="absolute z-[100] pointer-events-none backdrop-blur-xl bg-slate-950/80 border-l-4 border-cyan-500 border-y border-r border-slate-700/80 text-white p-4 rounded-r-xl shadow-[0_0_30px_rgba(6,182,212,0.2)] min-w-[220px] max-w-md transition-all duration-75"
           style={{ top: hoverInfo.y + 15, left: hoverInfo.x + 15 }}
         >
           <div className="flex items-center gap-2 mb-2">
@@ -160,13 +172,16 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
             </span>
-            <div className="font-bold text-sm text-cyan-50 uppercase tracking-wider">{hoverInfo.title}</div>
+            <div className="font-bold text-[11px] text-cyan-50 uppercase tracking-wider">{hoverInfo.title}</div>
           </div>
-          <div className="h-[1px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent mb-2.5" />
+          <div className="h-[1px] w-full bg-gradient-to-r from-cyan-500/80 to-transparent mb-3" />
           <div 
-            className="text-xs text-slate-300 leading-relaxed [&>div]:mb-0 [&>p]:mb-1 [&_strong]:text-cyan-200" 
+            className="text-xs text-slate-300 leading-relaxed [&>div]:mb-0 [&>p]:mb-1 [&_strong]:text-cyan-300" 
             dangerouslySetInnerHTML={{ __html: hoverInfo.details }} 
           />
+          <div className="mt-3 pt-2 border-t border-dashed border-slate-700 text-[9px] text-cyan-500/70 text-center tracking-widest font-mono animate-pulse">
+            CLICK TO EXPAND INTELLIGENCE
+          </div>
         </div>
       )}
 

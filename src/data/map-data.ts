@@ -24,6 +24,8 @@ export type StrikeArc = {
   to:        [number, number];
   label:     string;
   severity:  'CRITICAL' | 'HIGH';
+  url?:      string | null;
+  source?:   string | null;
 };
 
 export type MissileTrack = {
@@ -39,6 +41,8 @@ export type MissileTrack = {
   to:        [number, number];
   label:     string;
   severity:  'CRITICAL' | 'HIGH';
+  url?:      string | null;
+  source?:   string | null;
 };
 
 export type Target = {
@@ -53,6 +57,8 @@ export type Target = {
   name:        string;
   position:    [number, number];
   description: string;
+  url?:        string | null;
+  source?:     string | null;
 };
 
 export type Asset = {
@@ -70,6 +76,8 @@ export type Asset = {
   heading?:    number; // For airplane rotation
   velocity?:   number | null;
   altitude?:   number | null;
+  url?:        string | null;
+  source?:     string | null;
 };
 
 export type ThreatZone = {
@@ -83,6 +91,8 @@ export type ThreatZone = {
   name:        string;
   coordinates: [number, number][];
   color:       [number, number, number, number];
+  url?:        string | null;
+  source?:     string | null;
 };
 
 export type HeatPoint = {
@@ -92,6 +102,8 @@ export type HeatPoint = {
   priority:       string;
   position:       [number, number];
   weight:         number;
+  url?:           string | null;
+  source?:        string | null;
 };
 
 export type CyberThreat = {
