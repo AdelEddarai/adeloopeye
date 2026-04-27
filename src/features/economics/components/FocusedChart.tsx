@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback,useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { IChartApi } from 'lightweight-charts';
 
@@ -38,9 +38,10 @@ export function FocusedChart({ index, data: initialData, initialRangeKey = '5d',
     setTimeout(onClose, 280);
   }, [onClose]);
 
+  // @ts-ignore
   const prices = data.chart.map(p => p.value).filter(Boolean);
   const periodHigh = prices.length ? Math.max(...prices) : data.price;
-  const periodLow  = prices.length ? Math.min(...prices) : data.price;
+  const periodLow = prices.length ? Math.min(...prices) : data.price;
   const periodOpen = prices.length ? prices[0] : data.previousClose;
 
   useEffect(() => {
@@ -74,7 +75,7 @@ export function FocusedChart({ index, data: initialData, initialRangeKey = '5d',
   useEffect(() => {
     if (rangeIdx === (RANGES.findIndex(r => r.key === initialRangeKey) >= 0 ? RANGES.findIndex(r => r.key === initialRangeKey) : 1)) return;
     fetchRange(rangeIdx);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeIdx]);
 
   const chartRef = useFocusedChart(

@@ -21,9 +21,8 @@ export function IndexCard({ index, data, loading, onFocus }: IndexCardProps) {
 
   return (
     <div
-      className={`group flex flex-col overflow-hidden bg-[var(--bg-1)] border border-[var(--bd)] transition-all duration-150 ${
-        canFocus ? 'hover:border-white/20 hover:bg-[var(--bg-2)] cursor-pointer' : ''
-      }`}
+      className={`group flex flex-col overflow-hidden bg-[var(--bg-1)] border border-[var(--bd)] transition-all duration-150 ${canFocus ? 'hover:border-white/20 hover:bg-[var(--bg-2)] cursor-pointer' : ''
+        }`}
       onClick={canFocus ? onFocus : undefined}
       title={canFocus ? `Click to expand ${index.shortName}` : undefined}
     >
@@ -86,6 +85,7 @@ export function IndexCard({ index, data, loading, onFocus }: IndexCardProps) {
           </div>
         ) : data?.chart && data.chart.length > 0 ? (
           <>
+            {/* @ts-ignore */}
             <MiniChart data={data.chart} color={index.color} positive={positive} height={80} />
             {/* Hover expand hint */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">

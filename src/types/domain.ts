@@ -466,7 +466,7 @@ export type MarketResult = {
   change: number;
   changePct: number;
   currency: string;
-  chart: { time: number; value: number }[];
+  chart: { time: number; open: number; close: number; low: number; high: number }[];
   error?: string;
 };
 

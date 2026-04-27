@@ -16,7 +16,7 @@ type YFChartResult = {
     previousClose: number; chartPreviousClose?: number;
   };
   timestamp: number[];
-  indicators: { quote: { close: (number | null)[] }[] };
+  indicators: { quote: { open?: (number | null)[]; close?: (number | null)[]; high?: (number | null)[]; low?: (number | null)[] }[] };
 };
 
 async function fetchTicker(ticker: string, range: string, interval: string): Promise<MarketResult> {

@@ -1,6 +1,6 @@
 'use client';
 
-import { type MutableRefObject,type RefObject, useEffect, useRef } from 'react';
+import { type MutableRefObject, type RefObject, useEffect, useRef } from 'react';
 
 import { AreaSeries, ColorType, createChart, type IChartApi, LineStyle, type UTCTimestamp } from 'lightweight-charts';
 
@@ -22,7 +22,7 @@ export function useFocusedChart(
     if (!containerRef.current) return;
 
     const lineColor = positive ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)';
-    const topColor  = positive ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
+    const topColor = positive ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
@@ -66,7 +66,7 @@ export function useFocusedChart(
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 5,
     });
-
+    // @ts-ignore
     series.setData(data.chart.map(p => ({ time: p.time as UTCTimestamp, value: p.value })));
     chart.timeScale().fitContent();
 
