@@ -33,8 +33,10 @@ export function useFlightTracking(conflictId: string) {
       const response = await fetch('/api/v1/flights');
       if (!response.ok) throw new Error('Failed to fetch flights');
       
-      const data = await response.json();
-      setFlights(data.assets || []);
+      const json = await response.json();
+      // The ok() utility wraps the response in { ok: true, data: { ... } }
+      const flightAssets = json.data?.assets || [];
+      setFlights(flightAssets);
       setLastUpdate(new Date());
       setIsLoading(false);
     } catch (error) {

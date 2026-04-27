@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { ArcLayer, PolygonLayer, ScatterplotLayer, TextLayer, PathLayer } from '@deck.gl/layers';
+import { ArcLayer, PolygonLayer, ScatterplotLayer, TextLayer, PathLayer, IconLayer } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
 
 import type { MapDataResult } from '@/features/map/queries';
@@ -34,6 +34,12 @@ function textToken(name: string, fallback: number): number {
   const n = parseFloat(raw);
   return Number.isFinite(n) ? n : fallback;
 }
+
+const AIRPLANE_SVG = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path d="M21,16v-2l-8-5V3.5c0-0.83-0.67-1.5-1.5-1.5S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" fill="white"/>
+</svg>
+`);
 
 // Catmull-Rom Spline interpolation for curvy paths
 function catmullRomSpline(points: [number, number][], numSegments = 10): [number, number][] {
@@ -241,6 +247,7 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
         data: flights,
         getPosition: (d: Asset): [number, number] => d.position,
         getText: (): string => '✈',
+        characterSet: ['✈'], // Force WebGL to include the emoji in the texture atlas
         getSize: textToken('--text-h3', 20),
         getAngle: (d: Asset): number => -(d.heading || 0) + 45, // Emoji points 45deg by default
         getColor: (d: Asset): [number, number, number, number] =>

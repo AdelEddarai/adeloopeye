@@ -134,7 +134,7 @@ export function transformFlightsToMapFeatures(flights: OpenSkyFlight[]) {
       const heading = flight.true_track || 0;
       
       return {
-        id: `flight-${flight.icao24}-${Date.now()}`,
+        id: `flight-${flight.icao24}`,
         sourceEventId: null,
         actor,
         priority,
