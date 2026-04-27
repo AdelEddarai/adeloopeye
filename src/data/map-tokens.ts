@@ -34,7 +34,7 @@ export const ALL_CATEGORIES: MarkerCategory[] = ['KINETIC', 'INSTALLATION', 'ZON
 // Level 3: Type
 
 export type KineticType      = 'AIRSTRIKE' | 'NAVAL_STRIKE' | 'BALLISTIC' | 'CRUISE' | 'DRONE';
-export type InstallationType = 'CARRIER' | 'AIR_BASE' | 'NAVAL_BASE' | 'ARMY_BASE' | 'NUCLEAR_SITE' | 'COMMAND' | 'INFRASTRUCTURE' | 'FIRE' | 'EXPLOSION' | 'ATTACK' | 'STRIKE' | 'INCIDENT';
+export type InstallationType = 'CARRIER' | 'AIR_BASE' | 'NAVAL_BASE' | 'ARMY_BASE' | 'NUCLEAR_SITE' | 'COMMAND' | 'INFRASTRUCTURE' | 'FIRE' | 'EXPLOSION' | 'ATTACK' | 'STRIKE' | 'INCIDENT' | 'AIRCRAFT';
 export type ZoneType         = 'CLOSURE' | 'PATROL' | 'NFZ' | 'THREAT_CORRIDOR';
 
 export type MarkerType = KineticType | InstallationType | ZoneType;
@@ -57,6 +57,7 @@ export const TYPE_META: Record<string, { label: string; category: MarkerCategory
   ATTACK:           { label: 'Attack',           category: 'INSTALLATION' },
   STRIKE:           { label: 'Strike',           category: 'INSTALLATION' },
   INCIDENT:         { label: 'Incident',         category: 'INSTALLATION' },
+  AIRCRAFT:         { label: 'Aircraft',         category: 'INSTALLATION' },
   CLOSURE:          { label: 'Closure',          category: 'ZONE' },
   PATROL:           { label: 'Patrol',           category: 'ZONE' },
   NFZ:              { label: 'NFZ',              category: 'ZONE' },

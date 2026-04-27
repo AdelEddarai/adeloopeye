@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 import type { MapViewState, PickingInfo } from '@deck.gl/core';
 import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl/maplibre';
+import { Map as MapGL } from 'react-map-gl/maplibre';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { Target, MapPin } from 'lucide-react';
 
 import { useMapData } from '@/features/map/queries';
 import { useLiveFlights } from '@/shared/hooks/use-live-flights';
+import type { Asset } from '@/data/map-data';
 
 import { type LayerVisibility, type TooltipObject, useMapLayers } from './intel-map-layers';
 import { getMapTooltip } from './intel-map-tooltip';
@@ -57,7 +58,7 @@ export function IntelMap() {
   
   // Flight tracking state
   const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
-  const [flightTrails, setFlightTrails] = useState<Map<string, [number, number][]>>(new Map());
+  const [flightTrails, setFlightTrails] = useState(new globalThis.Map<string, [number, number][]>());
   const MAX_TRAIL_LENGTH = 50; // Keep last 50 positions
   
   // Redux: Listen to event selection
@@ -120,7 +121,7 @@ export function IntelMap() {
         velocity: flight.velocity,
         altitude: flight.baro_altitude || flight.geo_altitude,
         status: 'ACTIVE' as const,
-        priority: 'MEDIUM' as const,
+        priority: 'P2' as const,
         category: 'INSTALLATION' as const,
       }));
     
@@ -146,7 +147,7 @@ export function IntelMap() {
     if (flights.length === 0) return;
     
     setFlightTrails(prev => {
-      const updated = new Map(prev);
+      const updated = new globalThis.Map(prev);
       
       flights.forEach(flight => {
         const trail = updated.get(flight.id) || [];
@@ -165,7 +166,7 @@ export function IntelMap() {
       
       // Clean up trails for flights that no longer exist
       const currentFlightIds = new Set(flights.map(f => f.id));
-      Array.from(updated.keys()).forEach(id => {
+      Array.from(updated.keys()).forEach((id: string) => {
         if (!currentFlightIds.has(id)) {
           updated.delete(id);
         }
@@ -352,7 +353,7 @@ export function IntelMap() {
           onClick={handleClick}
           style={{ width: '100%', height: '100%' }}
         >
-          <Map mapStyle={MAP_STYLE_SAT} />
+          <MapGL mapStyle={MAP_STYLE_SAT} />
         </DeckGL>
 
         {hoverInfo && (

@@ -88,7 +88,7 @@ export function useMapLayers(
   flights: Asset[] = [], 
   time: number = 0,
   selectedFlightId: string | null = null,
-  flightTrails: Map<string, [number, number][]> = new Map()
+  flightTrails?: Map<string, [number, number][]>
 ) {
   return useMemo(() => {
     console.log('[useMapLayers] Creating layers with:', {
@@ -97,7 +97,7 @@ export function useMapLayers(
       flightsSample: flights[0],
       time,
       selectedFlightId,
-      trailsCount: flightTrails.size,
+      trailsCount: flightTrails?.size || 0,
     });
     
     const strikes = mapData?.strikes ?? [];
@@ -314,7 +314,7 @@ export function useMapLayers(
       }),
 
     // Flight trail path
-    visibility.flights && selectedFlightId && flightTrails.has(selectedFlightId) &&
+    visibility.flights && selectedFlightId && flightTrails && flightTrails.has(selectedFlightId) &&
       new PathLayer({
         id: 'selected-flight-trail',
         data: [{ id: selectedFlightId, path: flightTrails.get(selectedFlightId)! }],
@@ -347,15 +347,17 @@ export function useMapLayers(
         }
       }),
 
-    ].filter(Boolean);
+    ];
+    
+    const filteredLayers = layers.filter(Boolean);
     
     console.log('[useMapLayers] Created layers:', {
-      total: layers.length,
-      layerIds: layers.map((l: any) => l?.id).filter(Boolean),
-      flightLayersIncluded: layers.some((l: any) => l?.id === 'flights-icons'),
-      selectedFlightLayersIncluded: layers.some((l: any) => l?.id === 'selected-flight-circle'),
+      total: filteredLayers.length,
+      layerIds: filteredLayers.map((l: any) => l?.id).filter(Boolean),
+      flightLayersIncluded: filteredLayers.some((l: any) => l?.id === 'flights-icons'),
+      selectedFlightLayersIncluded: filteredLayers.some((l: any) => l?.id === 'selected-flight-circle'),
     });
     
-    return layers;
+    return filteredLayers as any;
   }, [visibility, mapData, flights, time, selectedFlightId, flightTrails]);
 }

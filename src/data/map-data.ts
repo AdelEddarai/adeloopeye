@@ -67,7 +67,7 @@ export type Asset = {
   actor:       ActorKey;
   priority:    Priority;
   category:    Extract<MarkerCategory, 'INSTALLATION'>;
-  type:        Extract<InstallationType, 'CARRIER' | 'AIR_BASE' | 'NAVAL_BASE' | 'ARMY_BASE'>;
+  type:        Extract<InstallationType, 'CARRIER' | 'AIR_BASE' | 'NAVAL_BASE' | 'ARMY_BASE' | 'AIRCRAFT'>;
   status:      InstallationStatus;
   timestamp?:  string;
   name:        string;

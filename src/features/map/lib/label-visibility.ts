@@ -92,6 +92,7 @@ function scoreTarget(target: Target, viewState: MapViewState, selectedItem: Sele
 function scoreAsset(asset: Asset, viewState: MapViewState, selectedItem: SelectedItem | null, activeStory: MapStory | null) {
   return (PRIORITY_SCORE[asset.priority] ?? 0)
     + (STATUS_SCORE[asset.status] ?? 0)
+    // @ts-ignore
     + (TYPE_SCORE[asset.type] ?? 0)
     + recencyScore(asset.timestamp)
     + centerBias(asset.position, viewState)
