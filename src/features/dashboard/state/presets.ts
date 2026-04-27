@@ -68,10 +68,10 @@ type PresetDefinition = {
 export const PRESETS: Record<PresetId, PresetDefinition> = {
   analyst: {
     label: 'DEFAULT',
-    description: 'Live intelligence stream with data panels',
+    description: 'Intelligence map with Morocco KPI dashboard',
     columns: [
-      { id: 'col-a', widgets: ['livenews', 'signals'] },
-      { id: 'col-b', widgets: ['intelanalytics', 'criticalnews'] },
+      { id: 'col-a', widgets: ['map'] },
+      { id: 'col-b', widgets: ['moroccokpi'] },
     ],
     columnSizes: { 'col-a': 50, 'col-b': 50 },
   },

@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import Link from 'next/link';
 
-import { ArrowRight, BookOpen, Map as MapIcon, TrendingUp, Users, Zap } from 'lucide-react';
+import { ArrowRight, BookOpen, TrendingUp, Users, Zap } from 'lucide-react';
 
 import { useActors } from '@/features/actors/queries';
 import { CasChip } from '@/features/dashboard/components/CasChip';
@@ -13,9 +13,7 @@ import { useConflictDays } from '@/features/dashboard/queries/conflicts';
 import { useEvents } from '@/features/events/queries';
 import { useXPosts } from '@/features/events/queries/x-posts';
 import { useMapStories } from '@/features/map/queries';
-import { MapWidget } from '@/features/dashboard/components/widgets/MapWidget';
 import { widgetComponents } from '@/features/dashboard/components/widgets';
-import { XPostCard } from '@/shared/components/shared/XPostCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,22 +26,32 @@ import { addWidget, removeWidget } from '@/features/dashboard/state/workspace-sl
 import { SELECTABLE_WIDGET_KEYS, WIDGET_LABELS, type WidgetKey } from '@/features/dashboard/state/presets';
 
 import { trackNavigationClicked } from '@/shared/lib/analytics';
-import { getConflictForDay, getEventsForDay, getPostsForDay } from '@/shared/lib/day-filter';
+import { getConflictForDay, getEventsForDay } from '@/shared/lib/day-filter';
 import { fmtTimeZ } from '@/shared/lib/format';
-import { SEV_C } from '@/shared/lib/severity-colors';
 import { useAnalyticsLayoutMode } from '@/shared/hooks/use-analytics-layout-mode';
-
-import type { XPost } from '@/types/domain';
-
-const SEV_CLS: Record<string, string> = {
-  CRITICAL: 'sev sev-crit', HIGH: 'sev sev-high', STANDARD: 'sev sev-std',
-};
 
 export function MobileOverview() {
   const dispatch = useAppDispatch();
   const { columns } = useAppSelector(s => s.workspace);
   const usedWidgets = columns.flatMap(c => c.widgets);
   const targetColId = columns[0]?.id || 'col-a';
+
+  // Default mobile widgets that are always visible (not toggleable)
+  const CORE_MOBILE_WIDGETS: WidgetKey[] = ['latest', 'map', 'signals'];
+  // Default custom widgets for mobile (can be toggled on/off)
+  const DEFAULT_MOBILE_CUSTOM_WIDGETS: WidgetKey[] = ['markets', 'morocco', 'aitech'];
+  
+  // Initialize default mobile widgets on first load ONLY if workspace is completely empty
+  useEffect(() => {
+    // Only initialize if there are NO widgets at all (first time user)
+    if (usedWidgets.length === 0 && columns.length > 0) {
+      console.log('[MobileOverview] First time user - initializing default mobile widgets');
+      DEFAULT_MOBILE_CUSTOM_WIDGETS.forEach(widget => {
+        dispatch(addWidget({ colId: targetColId, widget }));
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   const handleToggleWidget = (key: WidgetKey, checked: boolean) => {
     if (checked) {
@@ -54,8 +62,14 @@ export function MobileOverview() {
   };
 
   const WIDGETS = useMemo(() => widgetComponents(), []);
-  const CORE_MOBILE_WIDGETS: WidgetKey[] = ['latest', 'map', 'signals'];
-  const customWidgets = usedWidgets.filter(k => !CORE_MOBILE_WIDGETS.includes(k));
+  
+  // Get custom widgets from workspace state
+  const customWidgets = useMemo(() => {
+    return usedWidgets.filter(k => !CORE_MOBILE_WIDGETS.includes(k));
+  }, [usedWidgets, CORE_MOBILE_WIDGETS]);
+  
+  // State for fullscreen modal
+  const [fullscreenWidget, setFullscreenWidget] = useState<{ key: WidgetKey; label: string } | null>(null);
 
   const { data: bootstrap } = useBootstrap();
   const { data: snapshots } = useConflictDays();
@@ -74,13 +88,6 @@ export function MobileOverview() {
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 5);
   }, [allEvents, allDays, latestDay]);
-
-  const breakingSignals = useMemo(() => {
-    if (!xPosts) return [];
-    return getPostsForDay(xPosts, allDays, latestDay)
-      .filter(p => p.significance === 'BREAKING')
-      .slice(0, 3);
-  }, [xPosts, allDays, latestDay]);
 
   const totalEvents = allEvents?.length ?? 0;
   const totalActors = actors?.length ?? 0;
@@ -154,25 +161,6 @@ export function MobileOverview() {
         </Card>
       )}
 
-      {/* ── GO TO MAP hero ── */}
-      <Card className="bg-card border-0 shadow-none overflow-hidden h-[300px] relative rounded-lg">
-        <MapWidget />
-        <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-3 pointer-events-none bg-gradient-to-b from-black/60 to-transparent">
-          <div className="flex items-center gap-2">
-            <span className="mono text-xs font-bold text-white tracking-widest drop-shadow-md">LIVE MAP</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
-          <p className="text-[10px] text-white/80 mono drop-shadow-md">{totalStories} stories • {totalEvents} events</p>
-        </div>
-        <div className="absolute bottom-3 right-3 z-10">
-          <Link href={mapHref()} onClick={() => trackOverviewNavigation(mapHref(), 'widget_link', 'map')}>
-             <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90 font-bold mono text-[10px] px-4 shadow-xl active:scale-95 transition-transform">
-                FULL MAP <ArrowRight size={12} className="ml-1.5" />
-             </Button>
-          </Link>
-        </div>
-      </Card>
-
       {/* ── Quick stats (Fluid Grid) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
@@ -194,7 +182,19 @@ export function MobileOverview() {
       {customWidgets.map(key => {
         if (!WIDGETS[key]) return null;
         return (
-          <Card key={key} className="bg-[var(--card)] border border-[var(--border)] shadow-sm overflow-hidden h-[450px]">
+          <Card key={key} className="bg-[var(--card)] border border-[var(--border)] shadow-sm overflow-hidden h-[450px] relative">
+            <div className="absolute top-2 right-2 z-10">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 bg-[var(--background)]/80 backdrop-blur-sm hover:bg-[var(--background)] border border-[var(--border)]"
+                onClick={() => setFullscreenWidget({ key, label: WIDGET_LABELS[key] })}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                </svg>
+              </Button>
+            </div>
             {WIDGETS[key]()}
           </Card>
         );
@@ -278,24 +278,6 @@ export function MobileOverview() {
         </Card>
       )}
 
-      {/* ── Breaking signals ── */}
-      {breakingSignals.length > 0 && (
-        <Card className="bg-card border-0 shadow-none overflow-hidden">
-          <CardHeader className="p-3 pb-2 border-b-0 flex flex-row items-center justify-between">
-            <CardTitle className="text-xs font-bold mono text-foreground tracking-widest uppercase">Breaking Signals</CardTitle>
-            <Link href="/dashboard/signals" className="no-underline flex items-center gap-1 text-muted-foreground hover:text-foreground" onClick={() => trackOverviewNavigation('/dashboard/signals', 'widget_link', 'signals')}>
-              <span className="mono text-[10px] font-bold">ALL</span>
-              <ArrowRight size={10} />
-            </Link>
-          </CardHeader>
-          <div className="p-3 space-y-3 bg-background/50">
-            {breakingSignals.map(p => (
-              <XPostCard key={p.id} post={p as XPost} compact />
-            ))}
-          </div>
-        </Card>
-      )}
-
       {/* ── Nav links to other pages ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
         {[
@@ -328,16 +310,20 @@ export function MobileOverview() {
               <p className="text-xs text-[var(--muted-foreground)]">Select intelligence widgets to pin to your mobile feed. This layout seamlessly syncs with your desktop workspace.</p>
             </SheetHeader>
             <div className="space-y-4 pb-12">
-              {SELECTABLE_WIDGET_KEYS.filter(k => !CORE_MOBILE_WIDGETS.includes(k)).map(key => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-[var(--border)]/50 last:border-0">
-                  <span className="text-sm font-semibold text-[var(--foreground)]">{WIDGET_LABELS[key]}</span>
-                  <Switch
-                    checked={usedWidgets.includes(key)}
-                    onCheckedChange={(checked) => handleToggleWidget(key, checked)}
-                    className="data-[state=checked]:bg-[var(--foreground)] data-[state=unchecked]:bg-[var(--accent)]"
-                  />
-                </div>
-              ))}
+              {SELECTABLE_WIDGET_KEYS.filter(k => !CORE_MOBILE_WIDGETS.includes(k)).map(key => {
+                const isChecked = usedWidgets.includes(key);
+                
+                return (
+                  <div key={key} className="flex items-center justify-between py-2 border-b border-[var(--border)]/50 last:border-0">
+                    <span className="text-sm font-semibold text-[var(--foreground)]">{WIDGET_LABELS[key]}</span>
+                    <Switch
+                      checked={isChecked}
+                      onCheckedChange={(checked) => handleToggleWidget(key, checked)}
+                      className="data-[state=checked]:bg-[var(--foreground)] data-[state=unchecked]:bg-[var(--accent)]"
+                    />
+                  </div>
+                );
+              })}
             </div>
           </SheetContent>
         </Sheet>
@@ -345,6 +331,34 @@ export function MobileOverview() {
 
       {/* Bottom padding */}
       <div className="h-4" />
+      
+      {/* ── Fullscreen Widget Modal ── */}
+      {fullscreenWidget && (
+        <div className="fixed inset-0 z-[9999] bg-[var(--background)] flex flex-col">
+          {/* Modal Header */}
+          <div className="shrink-0 flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--card)]">
+            <h2 className="font-mono text-sm font-bold text-[var(--foreground)] tracking-widest uppercase">
+              {fullscreenWidget.label}
+            </h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setFullscreenWidget(null)}
+              className="h-8 w-8"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </Button>
+          </div>
+          
+          {/* Modal Content */}
+          <div className="flex-1 overflow-y-auto">
+            {WIDGETS[fullscreenWidget.key] && WIDGETS[fullscreenWidget.key]()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

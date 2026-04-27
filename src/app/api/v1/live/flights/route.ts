@@ -15,12 +15,17 @@ import { openSkyClient } from '@/server/lib/api-clients/opensky-client';
  * [24, 32, 42, 63] = Persian Gulf, Iran, Israel, Iraq, Syria
  */
 export async function GET(req: NextRequest) {
+  console.log('[Live Flights API] Request received');
+  
   try {
     const bboxParam = req.nextUrl.searchParams.get('bbox');
     const icao24 = req.nextUrl.searchParams.get('icao24');
+    
+    console.log('[Live Flights API] Params:', { bboxParam, icao24 });
 
     // If specific aircraft requested
     if (icao24) {
+      console.log('[Live Flights API] Fetching specific aircraft:', icao24);
       const flight = await openSkyClient.getFlightByIcao(icao24);
       return ok({
         flight,
@@ -33,6 +38,7 @@ export async function GET(req: NextRequest) {
     if (bboxParam) {
       const parts = bboxParam.split(',').map(Number);
       if (parts.length !== 4 || parts.some(isNaN)) {
+        console.error('[Live Flights API] Invalid bbox:', bboxParam);
         return err('BAD_REQUEST', 'Invalid bbox format. Use: minLat,minLon,maxLat,maxLon');
       }
       bbox = parts as [number, number, number, number];
@@ -41,12 +47,16 @@ export async function GET(req: NextRequest) {
       bbox = [24, 32, 42, 63];
     }
 
+    console.log('[Live Flights API] Fetching flights for bbox:', bbox);
     const flights = await openSkyClient.getFlightsInBbox(bbox);
+    console.log('[Live Flights API] Received', flights.length, 'flights from OpenSky');
 
     // Filter out flights with no position data
     const validFlights = flights.filter(
       f => f.latitude !== null && f.longitude !== null
     );
+    
+    console.log('[Live Flights API] Returning', validFlights.length, 'valid flights');
 
     return ok(
       {
@@ -62,7 +72,7 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('Flights API error:', error);
+    console.error('[Live Flights API] Error:', error);
     return err(
       'FETCH_ERROR',
       error instanceof Error ? error.message : 'Failed to fetch flights',

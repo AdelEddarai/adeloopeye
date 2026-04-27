@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import Link from 'next/link';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Target, MapPin } from 'lucide-react';
 
 import { useMapData } from '@/features/map/queries';
-import { useFlightTracking } from '../hooks/use-flight-tracking';
+import { useLiveFlights } from '@/shared/hooks/use-live-flights';
 
 import { type LayerVisibility, type TooltipObject, useMapLayers } from './intel-map-layers';
 import { getMapTooltip } from './intel-map-tooltip';
@@ -41,18 +41,24 @@ const BUTTON_CONFIG: Array<{
   { key: 'missiles', label: 'MISSILES', active: { bg: 'var(--danger-dim)', border: 'var(--danger)', color: 'var(--danger)' } },
   { key: 'targets',  label: 'TARGETS',  active: { bg: 'var(--warning-dim)', border: 'var(--warning)', color: 'var(--warning)' } },
   { key: 'assets',   label: 'ASSETS',   active: { bg: 'var(--teal-dim)', border: 'var(--teal)', color: 'var(--teal)' } },
+  { key: 'flights',  label: 'FLIGHTS',  active: { bg: 'var(--purple-dim)', border: 'var(--purple)', color: 'var(--purple)' } },
   { key: 'zones',    label: 'ZONES',    active: { bg: 'var(--gold-dim)', border: 'var(--gold)', color: 'var(--gold)' } },
   { key: 'heat',     label: 'HEAT',     active: { bg: 'var(--cyber-dim)', border: 'var(--cyber)', color: 'var(--cyber)' } },
 ];
 
 const DEFAULT_VISIBILITY: LayerVisibility = {
-  strikes: true, missiles: true, targets: true, assets: true, zones: true, heat: true,
+  strikes: true, missiles: true, targets: true, assets: true, flights: true, zones: true, heat: true,
 };
 
 export function IntelMap() {
   const { data: mapData } = useMapData();
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const [visibility, setVisibility] = useState<LayerVisibility>(DEFAULT_VISIBILITY);
+  
+  // Flight tracking state
+  const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
+  const [flightTrails, setFlightTrails] = useState<Map<string, [number, number][]>>(new Map());
+  const MAX_TRAIL_LENGTH = 50; // Keep last 50 positions
   
   // Redux: Listen to event selection
   const dispatch = useDispatch();
@@ -80,8 +86,102 @@ export function IntelMap() {
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
-  const { flights } = useFlightTracking('global');
-  const layers = useMapLayers(visibility, mapData, flights, time);
+  // Use live flights API with Middle East bounding box
+  const bbox: [number, number, number, number] = [24, 32, 42, 63];
+  const { data: liveFlightsData } = useLiveFlights(bbox);
+  
+  // Transform live flights to Asset format for map layers
+  const flights = useMemo(() => {
+    console.log('[IntelMap] Raw flight data:', liveFlightsData);
+    
+    if (!liveFlightsData?.flights) {
+      console.warn('[IntelMap] No flight data available');
+      return [];
+    }
+    
+    console.log(`[IntelMap] Processing ${liveFlightsData.flights.length} flights`);
+    
+    const transformed = liveFlightsData.flights
+      .filter(flight => {
+        const hasPosition = flight.latitude !== null && flight.longitude !== null;
+        if (!hasPosition) {
+          console.log('[IntelMap] Skipping flight without position:', flight.icao24);
+        }
+        return hasPosition;
+      })
+      .map(flight => ({
+        id: flight.icao24,
+        name: flight.callsign?.trim() || flight.icao24,
+        type: 'AIRCRAFT' as const,
+        actor: flight.origin_country.toLowerCase().includes('united states') ? 'us' : 
+               flight.origin_country.toLowerCase().includes('israel') ? 'israel' : 'other',
+        position: [flight.longitude!, flight.latitude!] as [number, number],
+        heading: flight.true_track || 0,
+        velocity: flight.velocity,
+        altitude: flight.baro_altitude || flight.geo_altitude,
+        status: 'ACTIVE' as const,
+        priority: 'MEDIUM' as const,
+        category: 'INSTALLATION' as const,
+      }));
+    
+    console.log('[IntelMap] Transformed flights:', {
+      count: transformed.length,
+      samples: transformed.slice(0, 3),
+    });
+    
+    return transformed;
+  }, [liveFlightsData]);
+  
+  // DEBUG: Log flights data
+  useEffect(() => {
+    console.log('[IntelMap] Flights data updated:', {
+      count: flights.length,
+      sample: flights[0],
+      visibility: visibility.flights,
+    });
+  }, [flights, visibility.flights]);
+  
+  // Update flight trails when positions change
+  useEffect(() => {
+    if (flights.length === 0) return;
+    
+    setFlightTrails(prev => {
+      const updated = new Map(prev);
+      
+      flights.forEach(flight => {
+        const trail = updated.get(flight.id) || [];
+        const lastPos = trail[trail.length - 1];
+        
+        // Only add if position changed significantly (avoid duplicates)
+        const posChanged = !lastPos || 
+          Math.abs(lastPos[0] - flight.position[0]) > 0.001 ||
+          Math.abs(lastPos[1] - flight.position[1]) > 0.001;
+        
+        if (posChanged) {
+          const newTrail = [...trail, flight.position].slice(-MAX_TRAIL_LENGTH);
+          updated.set(flight.id, newTrail);
+        }
+      });
+      
+      // Clean up trails for flights that no longer exist
+      const currentFlightIds = new Set(flights.map(f => f.id));
+      Array.from(updated.keys()).forEach(id => {
+        if (!currentFlightIds.has(id)) {
+          updated.delete(id);
+        }
+      });
+      
+      return updated;
+    });
+  }, [flights, MAX_TRAIL_LENGTH]);
+  
+  // Get selected flight data
+  const selectedFlight = useMemo(() => {
+    if (!selectedFlightId) return null;
+    return flights.find(f => f.id === selectedFlightId) || null;
+  }, [selectedFlightId, flights]);
+  
+  const layers = useMapLayers(visibility, mapData, flights, time, selectedFlightId, flightTrails);
   const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, object: any, html: string } | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -101,6 +201,40 @@ export function IntelMap() {
       }, 250);
     }
   }, []);
+  
+  // Handle click on map objects (especially flights)
+  const handleClick = useCallback((info: PickingInfo) => {
+    console.log('[IntelMap] Click detected:', info);
+    
+    if (info.object && info.layer?.id === 'flights-icons') {
+      const flight = info.object as Asset;
+      console.log('[IntelMap] Flight clicked:', flight);
+      
+      // Toggle selection
+      if (selectedFlightId === flight.id) {
+        setSelectedFlightId(null);
+        console.log('[IntelMap] Deselected flight');
+      } else {
+        setSelectedFlightId(flight.id);
+        console.log('[IntelMap] Selected flight:', flight.id);
+        
+        // Optionally fly to the selected flight
+        setViewState(prev => ({
+          ...prev,
+          longitude: flight.position[0],
+          latitude: flight.position[1],
+          zoom: Math.max(prev.zoom ?? 4.5, 8),
+          transitionDuration: 1000,
+        }));
+      }
+    } else if (!info.object) {
+      // Clicked on empty space - deselect
+      if (selectedFlightId) {
+        setSelectedFlightId(null);
+        console.log('[IntelMap] Deselected flight (clicked empty space)');
+      }
+    }
+  }, [selectedFlightId]);
   
   // 🎯 FLY TO LOCATION when event is selected
   useEffect(() => {
@@ -215,6 +349,7 @@ export function IntelMap() {
           controller={true}
           layers={layers}
           onHover={handleHover}
+          onClick={handleClick}
           style={{ width: '100%', height: '100%' }}
         >
           <Map mapStyle={MAP_STYLE_SAT} />
@@ -238,6 +373,100 @@ export function IntelMap() {
             }}
             dangerouslySetInnerHTML={{ __html: hoverInfo.html }}
           />
+        )}
+        
+        {/* Selected Flight Info Card */}
+        {selectedFlight && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 60,
+              left: 12,
+              zIndex: 110,
+              background: 'rgba(28, 33, 39, 0.95)',
+              border: '2px solid var(--purple)',
+              borderRadius: 4,
+              padding: 12,
+              minWidth: 280,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ color: 'var(--purple)', fontWeight: 700, fontSize: 'var(--text-body-sm)', fontFamily: 'monospace' }}>
+                ✈ TRACKING FLIGHT
+              </span>
+              <button
+                onClick={() => setSelectedFlightId(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--t3)',
+                  cursor: 'pointer',
+                  fontSize: 16,
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 8 }}>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Callsign:</span>
+                <span style={{ color: 'var(--t1)', fontSize: 'var(--text-body-sm)', fontWeight: 600, marginLeft: 8, fontFamily: 'monospace' }}>
+                  {selectedFlight.name}
+                </span>
+              </div>
+              
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>ICAO24:</span>
+                <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
+                  {selectedFlight.id}
+                </span>
+              </div>
+              
+              {selectedFlight.heading !== undefined && (
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Heading:</span>
+                  <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
+                    {Math.round(selectedFlight.heading)}°
+                  </span>
+                </div>
+              )}
+              
+              {selectedFlight.velocity !== undefined && selectedFlight.velocity !== null && (
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Speed:</span>
+                  <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
+                    {Math.round(selectedFlight.velocity * 3.6)} km/h
+                  </span>
+                </div>
+              )}
+              
+              {selectedFlight.altitude !== undefined && selectedFlight.altitude !== null && (
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Altitude:</span>
+                  <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
+                    {Math.round(selectedFlight.altitude)} m
+                  </span>
+                </div>
+              )}
+              
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Position:</span>
+                <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
+                  {selectedFlight.position[1].toFixed(4)}°N, {selectedFlight.position[0].toFixed(4)}°E
+                </span>
+              </div>
+              
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--bd)' }}>
+                <span style={{ color: 'var(--purple)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>
+                  Trail: {flightTrails.get(selectedFlight.id)?.length || 0} points
+                </span>
+              </div>
+            </div>
+          </div>
         )}
 
         <IntelMapLegend />

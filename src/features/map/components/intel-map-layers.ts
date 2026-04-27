@@ -22,6 +22,7 @@ export type LayerVisibility = {
   missiles: boolean;
   targets: boolean;
   assets: boolean;
+  flights: boolean;
   zones: boolean;
   heat: boolean;
 };
@@ -81,8 +82,24 @@ function catmullRomSpline(points: [number, number][], numSegments = 10): [number
   return result;
 }
 
-export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult | undefined, flights: Asset[] = [], time: number = 0) {
+export function useMapLayers(
+  visibility: LayerVisibility, 
+  mapData: MapDataResult | undefined, 
+  flights: Asset[] = [], 
+  time: number = 0,
+  selectedFlightId: string | null = null,
+  flightTrails: Map<string, [number, number][]> = new Map()
+) {
   return useMemo(() => {
+    console.log('[useMapLayers] Creating layers with:', {
+      visibility,
+      flightsCount: flights.length,
+      flightsSample: flights[0],
+      time,
+      selectedFlightId,
+      trailsCount: flightTrails.size,
+    });
+    
     const strikes = mapData?.strikes ?? [];
     const missiles = mapData?.missiles ?? [];
     const targets = mapData?.targets ?? [];
@@ -93,7 +110,7 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
 
     const pathStyleExtension = new PathStyleExtension({dash: true});
 
-    return [
+    const layers = [
     visibility.heat && heatPts.length > 0 &&
       new HeatmapLayer<HeatPoint>({
         id: 'heat',
@@ -241,7 +258,7 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       }),
 
-    visibility.assets && flights.length > 0 &&
+    visibility.flights && flights.length > 0 &&
       new TextLayer<Asset>({
         id: 'flights-icons',
         data: flights,
@@ -261,7 +278,7 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
         },
       }),
 
-    visibility.assets && flights.length > 0 &&
+    visibility.flights && flights.length > 0 &&
       new TextLayer<Asset>({
         id: 'flights-labels',
         data: flights,
@@ -276,6 +293,39 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
         updateTriggers: {
           getPosition: [],
+        },
+      }),
+
+    // Selected flight highlight circle
+    visibility.flights && selectedFlightId && flights.find(f => f.id === selectedFlightId) &&
+      new ScatterplotLayer<Asset>({
+        id: 'selected-flight-circle',
+        data: flights.filter(f => f.id === selectedFlightId),
+        getPosition: (d: Asset): [number, number] => d.position,
+        getRadius: 25000, // Larger circle around selected flight
+        getFillColor: [160, 100, 255, 30], // Purple with transparency
+        stroked: true,
+        getLineColor: [160, 100, 255, 200], // Solid purple border
+        lineWidthMinPixels: 3,
+        pickable: false,
+        updateTriggers: {
+          data: [selectedFlightId],
+        },
+      }),
+
+    // Flight trail path
+    visibility.flights && selectedFlightId && flightTrails.has(selectedFlightId) &&
+      new PathLayer({
+        id: 'selected-flight-trail',
+        data: [{ id: selectedFlightId, path: flightTrails.get(selectedFlightId)! }],
+        getPath: (d: any) => d.path,
+        getColor: [160, 100, 255, 180], // Purple trail
+        getWidth: 3,
+        widthUnits: 'pixels',
+        widthMinPixels: 2,
+        pickable: false,
+        updateTriggers: {
+          data: [selectedFlightId, flightTrails.get(selectedFlightId)?.length],
         },
       }),
 
@@ -298,5 +348,14 @@ export function useMapLayers(visibility: LayerVisibility, mapData: MapDataResult
       }),
 
     ].filter(Boolean);
-  }, [visibility, mapData, flights, time]);
+    
+    console.log('[useMapLayers] Created layers:', {
+      total: layers.length,
+      layerIds: layers.map((l: any) => l?.id).filter(Boolean),
+      flightLayersIncluded: layers.some((l: any) => l?.id === 'flights-icons'),
+      selectedFlightLayersIncluded: layers.some((l: any) => l?.id === 'selected-flight-circle'),
+    });
+    
+    return layers;
+  }, [visibility, mapData, flights, time, selectedFlightId, flightTrails]);
 }

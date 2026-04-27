@@ -1,60 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>API Test</title>
-</head>
-<body>
-    <h1>Direct API Test</h1>
-    <button onclick="testCyberThreats()">Test Cyber Threats API</button>
-    <button onclick="testAITech()">Test AI Tech API</button>
-    <button onclick="testCommodities()">Test Commodities API</button>
-    <pre id="output"></pre>
 
-    <script>
-        async function testCyberThreats() {
-            const output = document.getElementById('output');
-            output.textContent = 'Fetching cyber threats...';
-            
-            try {
-                const response = await fetch('/api/v1/live/cyber-threats');
-                const data = await response.json();
-                output.textContent = JSON.stringify(data, null, 2);
-                console.log('Cyber Threats:', data);
-            } catch (error) {
-                output.textContent = 'Error: ' + error.message;
-                console.error('Error:', error);
-            }
-        }
+LiveFlightsPanel.tsx
+ 
 
-        async function testAITech() {
-            const output = document.getElementById('output');
-            output.textContent = 'Fetching AI tech news...';
-            
-            try {
-                const response = await fetch('/api/v1/live/ai-tech');
-                const data = await response.json();
-                output.textContent = JSON.stringify(data, null, 2);
-                console.log('AI Tech:', data);
-            } catch (error) {
-                output.textContent = 'Error: ' + error.message;
-                console.error('Error:', error);
-            }
-        }
+MapWidget.tsx
+ 
 
-        async function testCommodities() {
-            const output = document.getElementById('output');
-            output.textContent = 'Fetching commodities...';
-            
-            try {
-                const response = await fetch('/api/v1/live/commodity-prices');
-                const data = await response.json();
-                output.textContent = JSON.stringify(data, null, 2);
-                console.log('Commodities:', data);
-            } catch (error) {
-                output.textContent = 'Error: ' + error.message;
-                console.error('Error:', error);
-            }
-        }
-    </script>
-</body>
-</html>
+LiveFlightsWidget.tsx
+ please analyze the project especially the flights and tell me why not airplane not shows in map in production, it works well in dev but not production, do deep analyze and please fix that 
