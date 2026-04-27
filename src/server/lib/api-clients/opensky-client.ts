@@ -22,26 +22,57 @@ export class OpenSkyClient {
       'Content-Type': 'application/json',
     };
 
-    // Add basic auth if credentials provided (increases rate limit)
+    // Add basic auth if credentials provided (increases rate limit from 10s to 5s intervals)
     if (this.username && this.password) {
-      const auth = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+      // Use btoa() instead of Buffer for Edge Runtime compatibility (Netlify, Vercel Edge)
+      const auth = btoa(`${this.username}:${this.password}`);
       headers['Authorization'] = `Basic ${auth}`;
+      console.log('[OpenSky Client] Using authenticated request (better rate limits)');
+    } else {
+      console.warn('[OpenSky Client] No credentials - using anonymous access (limited rate)');
     }
 
     try {
+      console.log('[OpenSky Client] Requesting:', url.toString());
+      
       const res = await fetch(url.toString(), {
         headers,
         next: { revalidate: 10 }, // Cache for 10s (flights move fast)
         signal: AbortSignal.timeout(15000), // 15 second timeout
       });
 
+      console.log('[OpenSky Client] Response status:', res.status);
+
       if (!res.ok) {
+        const errorText = await res.text().catch(() => 'No error details');
+        console.error('[OpenSky Client] API error:', {
+          status: res.status,
+          statusText: res.statusText,
+          body: errorText,
+          authenticated: !!this.username,
+        });
+        
+        // Provide specific error messages for common issues
+        if (res.status === 429) {
+          throw new Error('OpenSky API rate limit exceeded. Authenticated users: 5s intervals, Anonymous: 10s intervals.');
+        } else if (res.status === 401) {
+          throw new Error('OpenSky API authentication failed. Check OPENSKY_USERNAME and OPENSKY_PASSWORD.');
+        } else if (res.status === 503) {
+          throw new Error('OpenSky API service unavailable. Try again later.');
+        }
+        
         throw new Error(`OpenSky API error: ${res.status} ${res.statusText}`);
       }
 
-      return res.json();
+      const data = await res.json();
+      console.log('[OpenSky Client] Success, states count:', data.states?.length || 0);
+      return data;
     } catch (error) {
-      console.error('OpenSky API request failed:', error);
+      console.error('[OpenSky Client] Request failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        url: url.toString(),
+        authenticated: !!this.username,
+      });
       throw error;
     }
   }

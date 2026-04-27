@@ -17,6 +17,9 @@ import { openSkyClient } from '@/server/lib/api-clients/opensky-client';
 export async function GET(req: NextRequest) {
   console.log('[Live Flights API] Request received');
   
+  // Declare bbox outside try block so it's accessible in catch
+  let bbox: [number, number, number, number] = [24, 32, 42, 63]; // Default
+  
   try {
     const bboxParam = req.nextUrl.searchParams.get('bbox');
     const icao24 = req.nextUrl.searchParams.get('icao24');
@@ -34,7 +37,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Parse bounding box or use Middle East default
-    let bbox: [number, number, number, number];
     if (bboxParam) {
       const parts = bboxParam.split(',').map(Number);
       if (parts.length !== 4 || parts.some(isNaN)) {
@@ -42,9 +44,6 @@ export async function GET(req: NextRequest) {
         return err('BAD_REQUEST', 'Invalid bbox format. Use: minLat,minLon,maxLat,maxLon');
       }
       bbox = parts as [number, number, number, number];
-    } else {
-      // Default: Middle East region
-      bbox = [24, 32, 42, 63];
     }
 
     console.log('[Live Flights API] Fetching flights for bbox:', bbox);
@@ -73,10 +72,22 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     console.error('[Live Flights API] Error:', error);
-    return err(
-      'FETCH_ERROR',
-      error instanceof Error ? error.message : 'Failed to fetch flights',
-      500
+    
+    // Return empty flights array with error details
+    // Frontend will handle gracefully by showing no flights
+    return ok(
+      {
+        flights: [],
+        bbox,
+        count: 0,
+        fetchedAt: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'OpenSky API unavailable',
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
+        },
+      }
     );
   }
 }

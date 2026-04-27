@@ -89,7 +89,7 @@ export function IntelMap() {
 
   // Use live flights API with Middle East bounding box
   const bbox: [number, number, number, number] = [24, 32, 42, 63];
-  const { data: liveFlightsData } = useLiveFlights(bbox);
+  const { data: liveFlightsData, error: flightsError, isLoading: flightsLoading } = useLiveFlights(bbox);
   
   // Transform live flights to Asset format for map layers
   const flights = useMemo(() => {
@@ -121,9 +121,9 @@ export function IntelMap() {
         velocity: flight.velocity,
         altitude: flight.baro_altitude || flight.geo_altitude,
         status: 'ACTIVE' as const,
-        priority: 'P2' as const,
+        priority: 'P3' as const,
         category: 'INSTALLATION' as const,
-      }));
+      } satisfies Asset));
     
     console.log('[IntelMap] Transformed flights:', {
       count: transformed.length,
@@ -314,6 +314,9 @@ export function IntelMap() {
           
           {BUTTON_CONFIG.map(({ key, label, active }) => {
             const on = visibility[key];
+            const isFlightsWithError = key === 'flights' && flightsError;
+            const isFlightsLoading = key === 'flights' && flightsLoading;
+            
             return (
               <Button
                 key={key}
@@ -325,9 +328,13 @@ export function IntelMap() {
                   border: `1px solid ${on ? active.border : 'var(--bd)'}`,
                   background: on ? active.bg : 'var(--bg-1)',
                   color: on ? active.color : 'var(--t4)',
+                  opacity: isFlightsWithError ? 0.5 : 1,
                 }}
+                title={isFlightsWithError ? 'Flight data unavailable' : isFlightsLoading ? 'Loading flights...' : undefined}
               >
                 {label}
+                {isFlightsWithError && ' ⚠'}
+                {isFlightsLoading && ' ⋯'}
               </Button>
             );
           })}
