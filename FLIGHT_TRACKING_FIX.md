@@ -83,12 +83,43 @@ Added new FLIGHTS button to the map controls:
 Ensure these are set in Netlify:
 
 ```bash
-# Optional - increases OpenSky API rate limit
+# Required for better OpenSky API rate limits
 OPENSKY_USERNAME=your_username
 OPENSKY_PASSWORD=your_password
 ```
 
 **Note:** The API works without credentials but has lower rate limits.
+
+## Netlify Configuration
+
+A `netlify.toml` file has been created with the following:
+
+```toml
+[build]
+  command = "next build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
+```
+
+This plugin is **critical** for Next.js API routes to work as serverless functions on Netlify.
+
+## btoa() Compatibility Fix
+
+The OpenSky client has been updated to work in both Node.js and edge environments:
+
+```typescript
+// Use Buffer for Node.js environments, fallback to btoa for edge/browser compatibility
+const auth = typeof Buffer !== 'undefined' 
+  ? Buffer.from(`${this.username}:${this.password}`).toString('base64')
+  : btoa(`${this.username}:${this.password}`);
+```
+
+This ensures authentication works correctly in Netlify's serverless functions.
 
 ## Debugging Production Issues
 

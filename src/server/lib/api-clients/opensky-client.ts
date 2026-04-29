@@ -24,8 +24,10 @@ export class OpenSkyClient {
 
     // Add basic auth if credentials provided (increases rate limit from 10s to 5s intervals)
     if (this.username && this.password) {
-      // Use btoa() instead of Buffer for Edge Runtime compatibility (Netlify, Vercel Edge)
-      const auth = btoa(`${this.username}:${this.password}`);
+      // Use Buffer for Node.js environments, fallback to btoa for edge/browser compatibility
+      const auth = typeof Buffer !== 'undefined' 
+        ? Buffer.from(`${this.username}:${this.password}`).toString('base64')
+        : btoa(`${this.username}:${this.password}`);
       headers['Authorization'] = `Basic ${auth}`;
       console.log('[OpenSky Client] Using authenticated request (better rate limits)');
     } else {
