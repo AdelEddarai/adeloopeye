@@ -7,7 +7,7 @@ import { multiNewsClient } from '@/server/lib/api-clients/multi-news-client';
 import { WORLD_MARITIME_LANES } from '@/data/world-maritime-lanes';
 import { GLOBAL_SHIPPING_ROUTES } from '@/data/global-shipping-routes';
 import { fetchDatalasticVesselsSnapshot } from '@/server/lib/api-clients/datalastic-maritime-client';
-import { openSkyClient } from '@/server/lib/api-clients/opensky-client';
+import { adsbfiClient } from '@/server/lib/api-clients/adsbfi-client';
 import { transformFlightsToMapFeatures, transformNewsToHeatPoints, transformNewsToCriticalEvents } from '@/server/lib/live-data-transformer';
 import { MIDDLE_EAST_CHOKEPOINTS, MIDDLE_EAST_CONFLICT_ZONES } from '@/data/middle-east-chokepoints';
 import { MIDDLE_EAST_INFRASTRUCTURE } from '@/data/middle-east-infrastructure';
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           console.error('[Map Data] News API failed:', err.message);
           return [];
         }),
-      openSkyClient.getAllFlights()
+      adsbfiClient.getFlightsByLocation(33, 44, 250)
         .catch(err => {
           console.error('[Map Data] OpenSky failed:', err.message);
           return [];
@@ -49,8 +49,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     console.log(`[Map Data] Got ${articlesData.length} articles, ${flightsData.length} flights, ${cyberThreatsData.length} threats, ${vesselsData.length} vessels (AIS)`);
 
+    // Transform adsb.fi aircraft to OpenSkyFlight format
+    const transformedFlights = flightsData.map(ac => adsbfiClient.parseAircraft(ac));
+    
     // Filter only airborne flights
-    const airborneFlights = flightsData.filter(f => !f.on_ground && f.latitude !== null && f.longitude !== null);
+    const airborneFlights = transformedFlights.filter(f => !f.on_ground && f.latitude !== null && f.longitude !== null);
 
     // Transform into map features
     const heatPoints = transformNewsToHeatPoints(articlesData);

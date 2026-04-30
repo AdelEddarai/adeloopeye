@@ -1,21 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { OpenSkyFlight } from '@/server/lib/api-clients/opensky-client';
+import type { OpenSkyFlight } from '@/server/lib/api-clients/adsbfi-client';
 
 type FlightsResponse = {
   flights: OpenSkyFlight[];
   bbox: [number, number, number, number];
   count: number;
   fetchedAt: string;
+  source?: string;
+  scope?: string;
+  error?: string;
 };
 
-export function useLiveFlights(bbox?: [number, number, number, number], enabled: boolean = true) {
+export function useLiveFlights(bbox?: [number, number, number, number], enabled: boolean = true, global: boolean = true) {
   return useQuery({
-    queryKey: ['live-flights', bbox],
+    queryKey: ['live-flights', bbox, global],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (bbox) {
         params.set('bbox', bbox.join(','));
+      }
+      if (global) {
+        params.set('global', 'true');
       }
 
       const res = await fetch(`/api/v1/live/flights?${params}`);

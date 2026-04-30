@@ -87,29 +87,25 @@ export function IntelMap() {
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
-  // Use live flights API with Middle East bounding box
-  const bbox: [number, number, number, number] = [24, 32, 42, 63];
-  const { data: liveFlightsData, error: flightsError, isLoading: flightsLoading } = useLiveFlights(bbox);
+  // Use live flights API - GLOBAL by default
+  const { data: liveFlightsData, error: flightsError, isLoading: flightsLoading } = useLiveFlights(undefined, true, true);
   
   // Transform live flights to Asset format for map layers
   const flights = useMemo(() => {
-    console.log('[IntelMap] Raw flight data:', liveFlightsData);
-    
     if (!liveFlightsData?.flights) {
-      console.warn('[IntelMap] No flight data available');
+      console.log('[IntelMap] No flight data available:', { liveFlightsData, flightsError, flightsLoading });
       return [];
     }
     
-    console.log(`[IntelMap] Processing ${liveFlightsData.flights.length} flights`);
+    console.log('[IntelMap] Processing flights:', {
+      totalFlights: liveFlightsData.flights.length,
+      source: liveFlightsData.source,
+      scope: liveFlightsData.scope,
+      bbox: liveFlightsData.bbox,
+    });
     
-    const transformed = liveFlightsData.flights
-      .filter(flight => {
-        const hasPosition = flight.latitude !== null && flight.longitude !== null;
-        if (!hasPosition) {
-          console.log('[IntelMap] Skipping flight without position:', flight.icao24);
-        }
-        return hasPosition;
-      })
+    const processedFlights = liveFlightsData.flights
+      .filter(flight => flight.latitude !== null && flight.longitude !== null)
       .map(flight => ({
         id: flight.icao24,
         name: flight.callsign?.trim() || flight.icao24,
@@ -125,22 +121,13 @@ export function IntelMap() {
         category: 'INSTALLATION' as const,
       } satisfies Asset));
     
-    console.log('[IntelMap] Transformed flights:', {
-      count: transformed.length,
-      samples: transformed.slice(0, 3),
+    console.log('[IntelMap] Processed flights:', {
+      count: processedFlights.length,
+      sample: processedFlights.slice(0, 3),
     });
     
-    return transformed;
-  }, [liveFlightsData]);
-  
-  // DEBUG: Log flights data
-  useEffect(() => {
-    console.log('[IntelMap] Flights data updated:', {
-      count: flights.length,
-      sample: flights[0],
-      visibility: visibility.flights,
-    });
-  }, [flights, visibility.flights]);
+    return processedFlights;
+  }, [liveFlightsData, flightsError, flightsLoading]);
   
   // Update flight trails when positions change
   useEffect(() => {
@@ -153,7 +140,6 @@ export function IntelMap() {
         const trail = updated.get(flight.id) || [];
         const lastPos = trail[trail.length - 1];
         
-        // Only add if position changed significantly (avoid duplicates)
         const posChanged = !lastPos || 
           Math.abs(lastPos[0] - flight.position[0]) > 0.001 ||
           Math.abs(lastPos[1] - flight.position[1]) > 0.001;
@@ -164,7 +150,6 @@ export function IntelMap() {
         }
       });
       
-      // Clean up trails for flights that no longer exist
       const currentFlightIds = new Set(flights.map(f => f.id));
       Array.from(updated.keys()).forEach((id: string) => {
         if (!currentFlightIds.has(id)) {
@@ -175,6 +160,33 @@ export function IntelMap() {
       return updated;
     });
   }, [flights, MAX_TRAIL_LENGTH]);
+  
+  // Listen for track-flight events from LiveFlightsWidget
+  useEffect(() => {
+    const handleTrackFlight = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { icao24 } = customEvent.detail;
+      
+      if (icao24) {
+        setSelectedFlightId(icao24);
+        
+        // Fly to the selected flight
+        const flight = flights.find(f => f.id === icao24);
+        if (flight) {
+          setViewState(prev => ({
+            ...prev,
+            longitude: flight.position[0],
+            latitude: flight.position[1],
+            zoom: Math.max(prev.zoom ?? 4.5, 8),
+            transitionDuration: 1000,
+          }));
+        }
+      }
+    };
+    
+    window.addEventListener('track-flight', handleTrackFlight);
+    return () => window.removeEventListener('track-flight', handleTrackFlight);
+  }, [flights]);
   
   // Get selected flight data
   const selectedFlight = useMemo(() => {
@@ -447,7 +459,7 @@ export function IntelMap() {
                 <div style={{ marginBottom: 6 }}>
                   <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Speed:</span>
                   <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
-                    {Math.round(selectedFlight.velocity * 3.6)} km/h
+                    {Math.round(selectedFlight.velocity * 3.6)} km/h ({Math.round(selectedFlight.velocity * 1.944)} kts)
                   </span>
                 </div>
               )}
@@ -456,7 +468,7 @@ export function IntelMap() {
                 <div style={{ marginBottom: 6 }}>
                   <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>Altitude:</span>
                   <span style={{ color: 'var(--t2)', fontSize: 'var(--text-caption)', marginLeft: 8, fontFamily: 'monospace' }}>
-                    {Math.round(selectedFlight.altitude)} m
+                    {Math.round(selectedFlight.altitude)} m ({Math.round(selectedFlight.altitude * 3.281).toLocaleString()} ft)
                   </span>
                 </div>
               )}
@@ -469,9 +481,16 @@ export function IntelMap() {
               </div>
               
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--bd)' }}>
-                <span style={{ color: 'var(--purple)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>
-                  Trail: {flightTrails.get(selectedFlight.id)?.length || 0} points
-                </span>
+                <div style={{ marginBottom: 4 }}>
+                  <span style={{ color: 'var(--purple)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>
+                    Trail: {flightTrails.get(selectedFlight.id)?.length || 0} points
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--t4)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>
+                    Route: Projected 200km ahead →
+                  </span>
+                </div>
               </div>
             </div>
           </div>

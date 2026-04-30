@@ -91,14 +91,6 @@ export function useMapLayers(
   flightTrails?: Map<string, [number, number][]>
 ) {
   return useMemo(() => {
-    console.log('[useMapLayers] Creating layers with:', {
-      visibility,
-      flightsCount: flights.length,
-      flightsSample: flights[0],
-      time,
-      selectedFlightId,
-      trailsCount: flightTrails?.size || 0,
-    });
     
     const strikes = mapData?.strikes ?? [];
     const missiles = mapData?.missiles ?? [];
@@ -258,18 +250,23 @@ export function useMapLayers(
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       }),
 
+    // Flight icons using IconLayer for better rendering
     visibility.flights && flights.length > 0 &&
-      new TextLayer<Asset>({
+      new IconLayer<Asset>({
         id: 'flights-icons',
         data: flights,
+        iconAtlas: AIRPLANE_SVG,
+        iconMapping: {
+          airplane: { x: 0, y: 0, width: 24, height: 24, mask: true },
+        },
         getPosition: (d: Asset): [number, number] => d.position,
-        getText: (): string => '✈',
-        characterSet: ['✈'], // Force WebGL to include the emoji in the texture atlas
-        getSize: textToken('--text-h3', 20),
-        getAngle: (d: Asset): number => -(d.heading || 0) + 45, // Emoji points 45deg by default
+        getIcon: () => 'airplane',
+        getSize: 18,
+        getAngle: (d: Asset): number => -(d.heading || 0),
         getColor: (d: Asset): [number, number, number, number] =>
           d.actor === 'us' ? [100, 180, 255, 255] : [255, 100, 100, 255],
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        sizeUnits: 'pixels',
+        sizeScale: 1,
         pickable: true,
         autoHighlight: true,
         updateTriggers: {
@@ -326,6 +323,51 @@ export function useMapLayers(
         pickable: false,
         updateTriggers: {
           data: [selectedFlightId, flightTrails.get(selectedFlightId)?.length],
+        },
+      }),
+
+    // Projected flight route line (where the plane is going)
+    visibility.flights && selectedFlightId && flights.find(f => f.id === selectedFlightId) &&
+      new PathLayer({
+        id: 'selected-flight-route',
+        data: [(() => {
+          const flight = flights.find(f => f.id === selectedFlightId)!;
+          const heading = (flight.heading || 0) * (Math.PI / 180); // Convert to radians
+          const distance = 200000; // 200km projection
+          
+          // Calculate destination point
+          const lat1 = flight.position[1] * (Math.PI / 180);
+          const lon1 = flight.position[0] * (Math.PI / 180);
+          const R = 6371000; // Earth's radius in meters
+          
+          const lat2 = Math.asin(
+            Math.sin(lat1) * Math.cos(distance / R) +
+            Math.cos(lat1) * Math.sin(distance / R) * Math.cos(heading)
+          );
+          
+          const lon2 = lon1 + Math.atan2(
+            Math.sin(heading) * Math.sin(distance / R) * Math.cos(lat1),
+            Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2)
+          );
+          
+          return {
+            id: selectedFlightId,
+            path: [
+              flight.position, // Current position
+              [(lon2 * 180 / Math.PI), (lat2 * 180 / Math.PI)] // Projected destination
+            ]
+          };
+        })()],
+        getPath: (d: any) => d.path,
+        getColor: [160, 100, 255, 100], // Purple with less opacity
+        getWidth: 2,
+        widthUnits: 'pixels',
+        widthMinPixels: 1,
+        getDashArray: [10, 5], // Dashed line
+        dashJustified: true,
+        pickable: false,
+        updateTriggers: {
+          data: [selectedFlightId, flights.find(f => f.id === selectedFlightId)?.heading],
         },
       }),
 

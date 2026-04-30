@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Flights API</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        .result {
+            background: #2a2a2a;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .info {
+            color: #4a90e2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛩️ Flight API Test</h1>
+        <p>Test the adsb.fi integration for live flight tracking</p>
+        
+        <div>
+            <button onclick="testGlobalFlights()">Test Global Flights</button>
+            <button onclick="testRegionalFlights()">Test Regional Flights (Middle East)</button>
+            <button onclick="testDirectADSBFi()">Test Direct adsb.fi API</button>
+        </div>
+        
+        <div id="result" class="result">
+            Click a button to test the API...
+        </div>
+    </div>
+
+    <script>
+        const resultDiv = document.getElementById('result');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            resultDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        function clearLog() {
+            resultDiv.innerHTML = '';
+        }
+
+        async function testGlobalFlights() {
+            clearLog();
+            log('Testing Global Flights API...', 'info');
+            
+            try {
+                const response = await fetch('/api/v1/live/flights?global=true');
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+                if (data.ok && data.data) {
+                    log(`✅ Success! Found ${data.data.count} flights`, 'success');
+                    log(`Source: ${data.data.source || 'unknown'}`, 'info');
+                    log(`Scope: ${data.data.scope || 'unknown'}`, 'info');
+                    
+                    if (data.data.flights && data.data.flights.length > 0) {
+                        log(`\nSample flight:`, 'info');
+                        log(JSON.stringify(data.data.flights[0], null, 2), 'info');
+                    }
+                } else {
+                    log(`❌ API returned error: ${data.error?.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        async function testRegionalFlights() {
+            clearLog();
+            log('Testing Regional Flights API (Middle East)...', 'info');
+            
+            try {
+                // Middle East bbox: [minLat, minLon, maxLat, maxLon]
+                const bbox = '24,32,42,63';
+                const response = await fetch(`/api/v1/live/flights?bbox=${bbox}`);
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+                if (data.ok && data.data) {
+                    log(`✅ Success! Found ${data.data.count} flights`, 'success');
+                    log(`Source: ${data.data.source || 'unknown'}`, 'info');
+                    log(`Scope: ${data.data.scope || 'unknown'}`, 'info');
+                    log(`BBox: ${JSON.stringify(data.data.bbox)}`, 'info');
+                    
+                    if (data.data.flights && data.data.flights.length > 0) {
+                        log(`\nSample flight:`, 'info');
+                        log(JSON.stringify(data.data.flights[0], null, 2), 'info');
+                    }
+                } else {
+                    log(`❌ API returned error: ${data.error?.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        async function testDirectADSBFi() {
+            clearLog();
+            log('Testing Direct adsb.fi API...', 'info');
+            
+            try {
+                // Test Middle East region
+                const lat = 33;
+                const lon = 44;
+                const dist = 250;
+                const url = `https://opendata.adsb.fi/api/v3/lat/${lat}/lon/${lon}/dist/${dist}`;
+                
+                log(`Fetching: ${url}`, 'info');
+                
+                const response = await fetch(url);
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                
+                if (data.ac) {
+                    log(`✅ Success! Found ${data.ac.length} aircraft`, 'success');
+                    
+                    if (data.ac.length > 0) {
+                        log(`\nSample aircraft:`, 'info');
+                        log(JSON.stringify(data.ac[0], null, 2), 'info');
+                    }
+                } else {
+                    log(`❌ No aircraft data in response`, 'error');
+                    log(JSON.stringify(data, null, 2), 'info');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                log(`Note: Direct API calls may fail due to CORS. This is expected.`, 'info');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

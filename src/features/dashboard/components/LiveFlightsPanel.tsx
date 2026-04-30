@@ -24,6 +24,11 @@ export function LiveFlightsPanel({ bbox }: Props) {
               {data.count} active
             </span>
           )}
+          {data?.source && (
+            <span className="mono text-[9px] text-[var(--t4)] px-1.5 py-0.5 rounded bg-[var(--bg-2)]">
+              {data.source}
+            </span>
+          )}
         </div>
         <Button
           variant="outline"
@@ -110,6 +115,7 @@ export function LiveFlightsPanel({ bbox }: Props) {
       {data && (
         <div className="px-3 py-2 border-t border-[var(--bd-s)] text-[10px] text-[var(--t4)] mono">
           Last updated: {new Date(data.fetchedAt).toLocaleTimeString()} • Updates every 10s
+          {data.source && ` • Source: ${data.source}`}
         </div>
       )}
     </div>

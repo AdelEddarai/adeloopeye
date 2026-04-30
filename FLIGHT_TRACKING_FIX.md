@@ -3,10 +3,25 @@
 ## Problem Summary
 Flights were not showing in production (Netlify) but worked in local development. The issue was caused by:
 
-1. **Duplicate implementations**: Two different flight tracking systems existed
-2. **API confusion**: Two separate endpoints (`/api/v1/flights` and `/api/v1/live/flights`)
-3. **Toggle confusion**: Flights were controlled by `assets` toggle instead of dedicated `flights` toggle
-4. **Missing visibility**: No separate FLIGHTS button in the UI
+1. **OpenSky Network blocks cloud providers**: AWS, Netlify, Vercel, and other hyperscalers are intentionally blocked
+2. **Duplicate implementations**: Two different flight tracking systems existed
+3. **API confusion**: Two separate endpoints (`/api/v1/flights` and `/api/v1/live/flights`)
+4. **Toggle confusion**: Flights were controlled by `assets` toggle instead of dedicated `flights` toggle
+5. **Missing visibility**: No separate FLIGHTS button in the UI
+
+## Solution Implemented
+
+### Primary: adsb.fi API
+- **Why**: Works on all cloud platforms (Netlify, Vercel, AWS)
+- **Rate Limit**: 1 request/second (86,400 requests/day)
+- **Coverage**: 5,400+ community feeders worldwide
+- **Cost**: Completely free for personal/non-commercial use
+- **Website**: https://adsb.fi/
+
+### Fallback: OpenSky Network
+- **When**: Used only as fallback for local development
+- **Limitation**: Blocked on cloud platforms
+- **Credentials**: Still useful for local development with authenticated access
 
 ## Changes Made
 
@@ -146,21 +161,29 @@ If flights still don't show in production:
 
 ## Architecture Benefits
 
-### Before (Confusing)
+### Before (Broken in Production)
 ```
-IntelMap → useFlightTracking → /api/v1/flights → OpenSky
-LiveFlightsWidget → useLiveFlights → /api/v1/live/flights → OpenSky
+IntelMap → useLiveFlights → /api/v1/live/flights → OpenSky (BLOCKED on cloud)
+LiveFlightsWidget → useLiveFlights → /api/v1/live/flights → OpenSky (BLOCKED on cloud)
 ```
 
-### After (Clean)
+### After (Works Everywhere)
 ```
-IntelMap → useLiveFlights → /api/v1/live/flights → OpenSky
-LiveFlightsWidget → useLiveFlights → /api/v1/live/flights → OpenSky
-LiveFlightsPanel → useLiveFlights → /api/v1/live/flights → OpenSky
-LiveIntelFeed → useLiveFlights → /api/v1/live/flights → OpenSky
+IntelMap → useLiveFlights → /api/v1/live/flights → adsb.fi (primary)
+                                                    ↓ (fallback)
+                                                OpenSky (local only)
+
+LiveFlightsWidget → useLiveFlights → /api/v1/live/flights → adsb.fi (primary)
+                                                            ↓ (fallback)
+                                                        OpenSky (local only)
 ```
 
 **Benefits:**
+- ✅ Works on all cloud platforms (Netlify, Vercel, AWS)
+- ✅ Automatic fallback to OpenSky if adsb.fi fails
+- ✅ Source attribution shown in UI ("adsb.fi" or "opensky (fallback)")
+- ✅ Better rate limits (86,400 requests/day vs 8,640)
+- ✅ No API keys required for adsb.fi
 - ✅ Single source of truth
 - ✅ Shared caching across components
 - ✅ Consistent error handling
@@ -176,8 +199,13 @@ LiveIntelFeed → useLiveFlights → /api/v1/live/flights → OpenSky
 5. **Add loading state** to FLIGHTS button when fetching
 
 ## Related Files
+- `src/server/lib/api-clients/adsbfi-client.ts` (NEW - Primary API client)
+- `src/server/lib/api-clients/opensky-client.ts` (Fallback API client)
+- `src/app/api/v1/live/flights/route.ts` (Updated - Dual API support)
+- `src/app/api/v1/live/flights-global/route.ts` (Updated - Dual API support)
+- `src/shared/hooks/use-live-flights.ts` (Updated - Source tracking)
 - `src/features/map/components/IntelMap.tsx`
 - `src/features/map/components/intel-map-layers.ts`
-- `src/shared/hooks/use-live-flights.ts`
-- `src/app/api/v1/live/flights/route.ts`
-- `src/features/dashboard/components/widgets/LiveFlightsWidget.tsx`
+- `src/features/dashboard/components/widgets/LiveFlightsWidget.tsx` (Updated - Source display)
+- `src/features/dashboard/components/LiveFlightsPanel.tsx` (Updated - Source display)
+- `netlify.toml` (NEW - Netlify configuration)

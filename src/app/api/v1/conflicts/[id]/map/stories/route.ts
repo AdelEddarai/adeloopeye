@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { ok } from '@/server/lib/api-utils';
 import { fetchCyberThreats } from '@/server/lib/api-clients/cyber-threat-client';
 import { newsAPIClient } from '@/server/lib/api-clients/newsapi-client';
-import { openSkyClient } from '@/server/lib/api-clients/opensky-client';
+import { adsbfiClient } from '@/server/lib/api-clients/adsbfi-client';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await params;
@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     
     const [articles, flights, cyberThreats] = await Promise.allSettled([
       newsAPIClient.searchNews('iran OR israel OR syria OR iraq OR ukraine OR russia attack OR strike OR war OR conflict', 20, 'en').catch(() => []),
-      openSkyClient.getAllFlights().catch(() => []),
+      adsbfiClient.getFlightsByLocation(33, 44, 250).catch(() => []),
       fetchCyberThreats().catch(() => []),
     ]);
 
@@ -21,18 +21,21 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const flightsData = flights.status === 'fulfilled' ? flights.value : [];
     const cyberThreatsData = cyberThreats.status === 'fulfilled' ? cyberThreats.value : [];
 
+    // Transform adsb.fi aircraft to check if airborne
+    const transformedFlights = flightsData.map(ac => adsbfiClient.parseAircraft(ac));
+
     const stories = [];
     const now = new Date().toISOString();
 
     // Story 1: Global Flight Activity
-    if (flightsData.length > 0) {
-      const airborne = flightsData.filter(f => !f.on_ground);
+    if (transformedFlights.length > 0) {
+      const airborne = transformedFlights.filter(f => !f.on_ground);
       stories.push({
         id: 'story-flights',
         conflictId: 'iran-2026',
         title: `${airborne.length} Aircraft Tracked`,
         subtitle: 'Real-time monitoring',
-        narrative: `Tracking ${airborne.length} airborne aircraft worldwide.`,
+        narrative: `Tracking ${airborne.length} airborne aircraft in Middle East region.`,
         timestamp: now,
         category: 'INTELLIGENCE',
         iconName: 'plane',
@@ -43,9 +46,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         highlightTargetIds: [],
         highlightAssetIds: [],
         viewState: { 
-          longitude: 0, 
-          latitude: 30, 
-          zoom: 2, 
+          longitude: 44, 
+          latitude: 33, 
+          zoom: 5, 
           pitch: 0, 
           bearing: 0,
           transitionDuration: 1200,

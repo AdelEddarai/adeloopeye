@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Plane, RefreshCw } from 'lucide-react';
+import { Loader2, Plane, RefreshCw, Navigation2, ArrowUpRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useLiveFlights } from '@/shared/hooks/use-live-flights';
@@ -34,7 +34,7 @@ export function LiveFlightsWidget() {
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--bd-s)]">
         <Plane size={12} className="text-[var(--blue-l)]" />
         <span className="mono text-[10px] text-[var(--t4)]">
-          {data?.count || 0} active • Updates every 10s
+          {data?.count || 0} active • Global • Updates every 10s
         </span>
         <Button
           variant="ghost"
@@ -48,56 +48,77 @@ export function LiveFlightsWidget() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
-        {data?.flights.slice(0, 30).map((flight) => (
-          <div
-            key={flight.icao24}
-            className="p-2 rounded bg-[var(--bg-2)] border border-[var(--bd)]"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="mono text-xs text-[var(--t1)] font-semibold">
-                {flight.callsign || flight.icao24}
-              </span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded mono ${
-                flight.on_ground
-                  ? 'bg-[var(--bg-3)] text-[var(--t4)]'
-                  : 'bg-[var(--blue-dim)] text-[var(--blue-l)]'
-              }`}>
-                {flight.on_ground ? 'GND' : 'AIR'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px]">
-              <div>
-                <span className="text-[var(--t4)]">Country:</span>
-                <span className="text-[var(--t2)] ml-1">{flight.origin_country}</span>
+        {data?.flights.slice(0, 30).map((flight) => {
+          const speedKmh = flight.velocity ? Math.round(flight.velocity * 3.6) : null;
+          const altitudeM = flight.baro_altitude ? Math.round(flight.baro_altitude) : null;
+          const altitudeFt = altitudeM ? Math.round(altitudeM * 3.281) : null;
+          
+          return (
+            <div
+              key={flight.icao24}
+              className="p-2.5 rounded bg-[var(--bg-2)] border border-[var(--bd)] hover:border-[var(--purple)] transition-colors cursor-pointer group"
+              onClick={() => {
+                // Dispatch custom event to notify map to track this flight
+                window.dispatchEvent(new CustomEvent('track-flight', { 
+                  detail: { icao24: flight.icao24 } 
+                }));
+              }}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="mono text-xs text-[var(--t1)] font-semibold">
+                    {flight.callsign || flight.icao24}
+                  </span>
+                  <ArrowUpRight size={10} className="text-[var(--t4)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded mono flex items-center gap-1 ${
+                  flight.on_ground
+                    ? 'bg-[var(--bg-3)] text-[var(--t4)]'
+                    : 'bg-[var(--blue-dim)] text-[var(--blue-l)]'
+                }`}>
+                  {flight.on_ground ? 'GND' : 'AIR'}
+                  {flight.true_track !== null && !flight.on_ground && (
+                    <Navigation2 size={8} style={{ transform: `rotate(${flight.true_track}deg)` }} />
+                  )}
+                </span>
               </div>
-              {flight.velocity !== null && (
-                <div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="text-[var(--t4)]">Country:</span>
+                  <span className="text-[var(--t2)] mono">{flight.origin_country}</span>
+                </div>
+                
+                <div className="flex items-center justify-between text-[9px]">
                   <span className="text-[var(--t4)]">Speed:</span>
-                  <span className="text-[var(--t2)] ml-1 mono">
-                    {Math.round(flight.velocity * 3.6)} km/h
+                  <span className="text-[var(--t2)] mono">
+                    {speedKmh ? `${speedKmh} km/h` : 'N/A'}
                   </span>
                 </div>
-              )}
-              {flight.baro_altitude !== null && (
-                <div>
-                  <span className="text-[var(--t4)]">Alt:</span>
-                  <span className="text-[var(--t2)] ml-1 mono">
-                    {Math.round(flight.baro_altitude)} m
+                
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="text-[var(--t4)]">Altitude:</span>
+                  <span className="text-[var(--t2)] mono">
+                    {altitudeFt ? `${altitudeFt.toLocaleString()} ft` : 'N/A'}
                   </span>
                 </div>
-              )}
-              {flight.latitude !== null && flight.longitude !== null && (
-                <div className="col-span-2">
-                  <span className="text-[var(--t4)]">Pos:</span>
-                  <span className="text-[var(--t2)] ml-1 mono">
-                    {flight.latitude.toFixed(2)}, {flight.longitude.toFixed(2)}
-                  </span>
-                </div>
-              )}
+                
+                {flight.latitude !== null && flight.longitude !== null && (
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="text-[var(--t4)]">Position:</span>
+                    <span className="text-[var(--t2)] mono">
+                      {flight.latitude.toFixed(2)}°, {flight.longitude.toFixed(2)}°
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 pt-1.5 border-t border-[var(--bd-s)] text-[8px] text-[var(--t4)] mono opacity-0 group-hover:opacity-100 transition-opacity">
+                Click to track on map →
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -4,7 +4,7 @@
  */
 
 import type { NewsArticle } from './api-clients/newsapi-client';
-import type { OpenSkyFlight } from './api-clients/opensky-client';
+import type { OpenSkyFlight } from './api-clients/adsbfi-client';
 
 // Transform news articles into Intel Events
 export function transformNewsToEvents(articles: NewsArticle[]) {
