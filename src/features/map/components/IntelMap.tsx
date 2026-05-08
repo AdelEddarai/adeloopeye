@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Target, MapPin } from 'lucide-react';
 
 import { useMapData } from '@/features/map/queries';
-import { useLiveFlights } from '@/shared/hooks/use-live-flights';
 import type { Asset } from '@/data/map-data';
 
 import { type LayerVisibility, type TooltipObject, useMapLayers } from './intel-map-layers';
@@ -87,47 +86,27 @@ export function IntelMap() {
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
-  // Use live flights API - GLOBAL by default
-  const { data: liveFlightsData, error: flightsError, isLoading: flightsLoading } = useLiveFlights(undefined, true, true);
-  
-  // Transform live flights to Asset format for map layers
+  // Use flights from mapData.assets (already includes flights from map/data endpoint)
+  // This is more reliable than separate useLiveFlights() which can timeout in production
   const flights = useMemo(() => {
-    if (!liveFlightsData?.flights) {
-      console.log('[IntelMap] No flight data available:', { liveFlightsData, flightsError, flightsLoading });
+    if (!mapData?.assets) {
       return [];
     }
     
-    console.log('[IntelMap] Processing flights:', {
-      totalFlights: liveFlightsData.flights.length,
-      source: liveFlightsData.source,
-      scope: liveFlightsData.scope,
-      bbox: liveFlightsData.bbox,
+    // Filter only aircraft assets (flights)
+    const flightAssets = mapData.assets.filter(asset => 
+      asset.type === 'AIRCRAFT' && 
+      asset.position && 
+      asset.position.length === 2
+    );
+    
+    console.log('[IntelMap] Using flights from mapData:', {
+      totalAssets: mapData.assets.length,
+      flightCount: flightAssets.length,
     });
     
-    const processedFlights = liveFlightsData.flights
-      .filter(flight => flight.latitude !== null && flight.longitude !== null)
-      .map(flight => ({
-        id: flight.icao24,
-        name: flight.callsign?.trim() || flight.icao24,
-        type: 'AIRCRAFT' as const,
-        actor: flight.origin_country.toLowerCase().includes('united states') ? 'us' : 
-               flight.origin_country.toLowerCase().includes('israel') ? 'israel' : 'other',
-        position: [flight.longitude!, flight.latitude!] as [number, number],
-        heading: flight.true_track || 0,
-        velocity: flight.velocity,
-        altitude: flight.baro_altitude || flight.geo_altitude,
-        status: 'ACTIVE' as const,
-        priority: 'P3' as const,
-        category: 'INSTALLATION' as const,
-      } satisfies Asset));
-    
-    console.log('[IntelMap] Processed flights:', {
-      count: processedFlights.length,
-      sample: processedFlights.slice(0, 3),
-    });
-    
-    return processedFlights;
-  }, [liveFlightsData, flightsError, flightsLoading]);
+    return flightAssets;
+  }, [mapData]);
   
   // Update flight trails when positions change
   useEffect(() => {
@@ -326,8 +305,6 @@ export function IntelMap() {
           
           {BUTTON_CONFIG.map(({ key, label, active }) => {
             const on = visibility[key];
-            const isFlightsWithError = key === 'flights' && flightsError;
-            const isFlightsLoading = key === 'flights' && flightsLoading;
             
             return (
               <Button
@@ -340,13 +317,9 @@ export function IntelMap() {
                   border: `1px solid ${on ? active.border : 'var(--bd)'}`,
                   background: on ? active.bg : 'var(--bg-1)',
                   color: on ? active.color : 'var(--t4)',
-                  opacity: isFlightsWithError ? 0.5 : 1,
                 }}
-                title={isFlightsWithError ? 'Flight data unavailable' : isFlightsLoading ? 'Loading flights...' : undefined}
               >
                 {label}
-                {isFlightsWithError && ' ⚠'}
-                {isFlightsLoading && ' ⋯'}
               </Button>
             );
           })}
