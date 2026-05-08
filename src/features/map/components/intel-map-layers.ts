@@ -252,28 +252,35 @@ export function useMapLayers(
 
     // Flight icons using IconLayer for better rendering
     visibility.flights && flights.length > 0 &&
-      new IconLayer<Asset>({
-        id: 'flights-icons',
-        data: flights,
-        iconAtlas: AIRPLANE_SVG,
-        iconMapping: {
-          airplane: { x: 0, y: 0, width: 24, height: 24, mask: true },
-        },
-        getPosition: (d: Asset): [number, number] => d.position,
-        getIcon: () => 'airplane',
-        getSize: 18,
-        getAngle: (d: Asset): number => -(d.heading || 0),
-        getColor: (d: Asset): [number, number, number, number] =>
-          d.actor === 'us' ? [100, 180, 255, 255] : [255, 100, 100, 255],
-        sizeUnits: 'pixels',
-        sizeScale: 1,
-        pickable: true,
-        autoHighlight: true,
-        updateTriggers: {
-          getAngle: [],
-          getPosition: [],
-        },
-      }),
+      (() => {
+        console.log('[useMapLayers] Creating flights-icons layer:', {
+          visibility: visibility.flights,
+          flightCount: flights.length,
+          sampleFlight: flights[0],
+        });
+        return new IconLayer<Asset>({
+          id: 'flights-icons',
+          data: flights,
+          iconAtlas: AIRPLANE_SVG,
+          iconMapping: {
+            airplane: { x: 0, y: 0, width: 24, height: 24, mask: true },
+          },
+          getPosition: (d: Asset): [number, number] => d.position,
+          getIcon: () => 'airplane',
+          getSize: 18,
+          getAngle: (d: Asset): number => -(d.heading || 0),
+          getColor: (d: Asset): [number, number, number, number] =>
+            d.actor === 'us' ? [100, 180, 255, 255] : [255, 100, 100, 255],
+          sizeUnits: 'pixels',
+          sizeScale: 1,
+          pickable: true,
+          autoHighlight: true,
+          updateTriggers: {
+            getAngle: [],
+            getPosition: [],
+          },
+        });
+      })(),
 
     visibility.flights && flights.length > 0 &&
       new TextLayer<Asset>({

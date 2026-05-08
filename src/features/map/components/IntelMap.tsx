@@ -47,7 +47,7 @@ const BUTTON_CONFIG: Array<{
 ];
 
 const DEFAULT_VISIBILITY: LayerVisibility = {
-  strikes: true, missiles: true, targets: true, assets: true, flights: true, zones: true, heat: true,
+  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true,
 };
 
 export function IntelMap() {
@@ -90,20 +90,37 @@ export function IntelMap() {
   // This is more reliable than separate useLiveFlights() which can timeout in production
   const flights = useMemo(() => {
     if (!mapData?.assets) {
+      console.log('[IntelMap] No mapData.assets available');
       return [];
     }
     
-    // Filter only aircraft assets (flights)
-    const flightAssets = mapData.assets.filter(asset => 
-      asset.type === 'AIRCRAFT' && 
-      asset.position && 
-      asset.position.length === 2
-    );
+    console.log('[IntelMap] Raw assets:', {
+      totalAssets: mapData.assets.length,
+      assetTypes: mapData.assets.map(a => a.type),
+      sampleAssets: mapData.assets.slice(0, 3),
+    });
     
-    console.log('[IntelMap] Using flights from mapData:', {
+    // Filter only aircraft assets (flights)
+    const flightAssets = mapData.assets.filter(asset => {
+      const isAircraft = asset.type === 'AIRCRAFT';
+      const hasPosition = asset.position && asset.position.length === 2;
+      
+      if (!isAircraft) {
+        console.log('[IntelMap] Non-aircraft asset:', asset.type, asset.name);
+      }
+      
+      return isAircraft && hasPosition;
+    });
+    
+    console.log('[IntelMap] Filtered flights:', {
       totalAssets: mapData.assets.length,
       flightCount: flightAssets.length,
+      sampleFlights: flightAssets.slice(0, 3),
     });
+    
+    if (flightAssets.length === 0) {
+      console.warn('[IntelMap] ⚠️ NO FLIGHTS FOUND! Check if map/data API is returning flights in assets array');
+    }
     
     return flightAssets;
   }, [mapData]);

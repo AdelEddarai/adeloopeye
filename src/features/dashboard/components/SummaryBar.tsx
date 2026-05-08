@@ -2,66 +2,105 @@
 
 import { Skeleton } from '@/components/ui/skeleton';
 
-import { useConflict } from '@/features/dashboard/queries/conflicts';
-import { useEvents } from '@/features/events/queries';
-
-import { fmtDate }  from '@/shared/lib/format';
+import { useLiveAlerts } from '@/shared/hooks/use-live-alerts';
 import { useIsLandscapePhone } from '@/shared/hooks/use-is-landscape-phone';
 
 export function SummaryBar() {
-  const { data: conflict, isLoading: conflictLoading } = useConflict();
-  const { data: events, isLoading: eventsLoading } = useEvents();
+  const { data: alertsData, isLoading: alertsLoading } = useLiveAlerts(true);
   const isLandscapePhone = useIsLandscapePhone();
 
-  if (conflictLoading || eventsLoading) {
+  if (alertsLoading) {
     return (
       <div className={`flex items-center gap-1.5 shrink-0 overflow-x-auto bg-[var(--bg-app)] border-b border-[var(--bd)] ${isLandscapePhone ? 'h-8 safe-px' : 'h-9 px-4'}`}>
-        <Skeleton className="h-3 w-14 bg-[var(--bg-3)]" />
         <Skeleton className="h-3 w-20 bg-[var(--bg-3)]" />
-        <Skeleton className="h-3 w-16 bg-[var(--bg-3)]" />
-        <Skeleton className="h-3 w-32 bg-[var(--bg-3)] ml-auto" />
+        <Skeleton className="h-3 w-32 bg-[var(--bg-3)]" />
+        <Skeleton className="h-3 w-40 bg-[var(--bg-3)]" />
+        <Skeleton className="h-3 w-32 bg-[var(--bg-3)]" />
       </div>
     );
   }
 
-  if (!conflict || !events) return null;
+  const alerts = alertsData?.alerts || [];
+  const now = new Date();
 
-  const start = new Date(conflict.startDate).getTime();
-  const latest = events.reduce((max, e) => {
-    const t = new Date(e.timestamp).getTime();
-    return t > max ? t : max;
-  }, start);
-  const day = Math.floor((latest - start) / 86_400_000) + 1;
+  // Create chips from real-time alerts
+  const chips = alerts.slice(0, 4).map(alert => {
+    const isCritical = alert.severity === 'CRITICAL';
+    const isHigh = alert.severity === 'HIGH';
+    
+    // Truncate title to fit in chip
+    let label = alert.title.toUpperCase();
+    if (label.length > 60) {
+      label = label.slice(0, 57) + '...';
+    }
+    
+    // Add location prefix for Morocco alerts
+    if (alert.category === 'MOROCCO' && alert.location) {
+      label = `${alert.location.toUpperCase()}: ${label}`;
+    }
+    
+    return {
+      label,
+      danger: isCritical || isHigh,
+      severity: alert.severity,
+      category: alert.category,
+    };
+  });
 
-  const latestDate = [...events]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.timestamp;
-  const endDateStr = latestDate ? fmtDate(latestDate) : fmtDate(conflict.startDate);
+  // If no alerts, show default message
+  if (chips.length === 0) {
+    chips.push({
+      label: 'NO CRITICAL ALERTS',
+      danger: false,
+      severity: 'MEDIUM' as const,
+      category: 'GLOBAL' as const,
+    });
+  }
 
-  const chips: { label: string; danger: boolean }[] = [
-    { label: 'KHAMENEI KILLED',           danger: true  },
-    { label: 'HORMUZ CLOSED',             danger: true  },
-    { label: `DAY ${day}`,                 danger: false },
-  ];
+  // Add live timestamp
+  const timeStr = now.toISOString().split('T')[1].slice(0, 5); // HH:MM format
 
   return (
     <div
       className={`flex items-center gap-1.5 shrink-0 overflow-x-auto touch-scroll hide-scrollbar bg-[var(--bg-app)] border-b border-[var(--bd)] ${isLandscapePhone ? 'h-8 safe-px' : 'h-9 px-4'}`}
     >
-      <span className="label shrink-0 text-[length:var(--text-tiny)] text-[var(--t4)]">KEY FACTS</span>
+      <span className="label shrink-0 text-[length:var(--text-tiny)] text-[var(--t4)]">LIVE ALERTS</span>
       <div className="shrink-0 w-px h-3.5 bg-[var(--bd)]" />
-      {chips.map(chip => (
+      
+      {/* Live indicator */}
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
+        <span className="mono text-[length:var(--text-tiny)] text-[var(--success)] font-bold">LIVE</span>
+      </div>
+      
+      <div className="shrink-0 w-px h-3.5 bg-[var(--bd)]" />
+      
+      {chips.map((chip, idx) => (
         <div
-          key={chip.label}
-          className={`flex items-center shrink-0 px-2 py-0.5 border ${chip.danger ? 'bg-[var(--danger-dim)] border-[var(--danger-bd)]' : 'bg-[var(--bg-2)] border-[var(--bd)]'}`}
+          key={`${chip.label}-${idx}`}
+          className={`flex items-center shrink-0 px-2 py-0.5 border ${
+            chip.danger 
+              ? chip.severity === 'CRITICAL'
+                ? 'bg-[var(--danger-dim)] border-[var(--danger-bd)]'
+                : 'bg-[var(--warning-dim)] border-[var(--warning-bd)]'
+              : 'bg-[var(--bg-2)] border-[var(--bd)]'
+          }`}
         >
-          <span className={`mono text-[length:var(--text-caption)] font-bold tracking-[0.06em] ${chip.danger ? 'text-[var(--danger)]' : 'text-[var(--t2)]'}`}>
+          <span className={`mono text-[length:var(--text-caption)] font-bold tracking-[0.06em] ${
+            chip.danger 
+              ? chip.severity === 'CRITICAL'
+                ? 'text-[var(--danger)]'
+                : 'text-[var(--warning)]'
+              : 'text-[var(--t2)]'
+          }`}>
             {chip.label}
           </span>
         </div>
       ))}
-      <div className="shrink-0">
+      
+      <div className="shrink-0 ml-auto">
         <span className="mono text-[length:var(--text-caption)] text-[var(--t4)]">
-          {fmtDate(conflict.startDate)} – {endDateStr} · OPERATIONS {conflict.status}
+          {now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {timeStr} UTC · REAL-TIME
         </span>
       </div>
     </div>
