@@ -54,80 +54,16 @@ async function fetchTicker(ticker: string, range: string, interval: string): Pro
     let change = price - prevClose;
     let changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
-    // FALLBACK CHART: On weekends, Yahoo Finance sometimes returns a price but an empty chart array.
-    if (chart.length === 0 && price > 0) {
-      const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const now = Math.floor(Date.now() / 1000);
-      let lastClose = price;
-      for (let i = 0; i < 40; i++) {
-        const val = price + (Math.sin(i * 0.5 + seed) * (price * 0.002));
-        const variance = price * 0.001;
-        chart.push({
-          time: now - ((40 - i) * 300),
-          open: lastClose,
-          close: val,
-          low: Math.min(lastClose, val) - variance,
-          high: Math.max(lastClose, val) + variance
-        });
-        lastClose = val;
-      }
-      change = chart[chart.length - 1].close - chart[0].open;
-      changePct = (change / chart[0].open) * 100;
-    }
-
-    // JITTER: If the market is closed (e.g., weekend) and change is exactly 0,
-    if (change === 0 && price > 0) {
-      const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      change = Math.sin(Date.now() / 100000 + seed) * (price * 0.005);
-      changePct = (change / price) * 100;
-      
-      if (chart.length > 0) {
-        const last = chart[chart.length - 1];
-        last.close += change;
-        last.high = Math.max(last.high, last.close);
-        last.low = Math.min(last.low, last.close);
-      }
-    }
-
-    return { ticker, price: price + change, previousClose: prevClose, change, changePct, currency: result.meta.currency ?? 'USD', chart };
+    return { ticker, price, previousClose: prevClose, change, changePct, currency: result.meta.currency ?? 'USD', chart };
   } catch (err) {
-    // FALLBACK: If Yahoo Finance blocks the Vercel IP (401/403) or the ticker doesn't exist (Morocco .CS / .CAS),
-    // generate realistic mock data so the dashboard UI remains beautiful and dynamic instead of showing 0s.
-    const isCrypto = ticker.includes('-');
-    const basePrice = isCrypto ? 40000 : ticker.includes('MAD') ? 10 : 150;
-    
-    // Use a deterministic seed based on ticker name so it's consistent but looks real
-    const seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const mockPrice = basePrice + (seed % 50);
-    const mockChange = (Math.sin(Date.now() / 100000 + seed) * 2);
-    const mockPrevClose = mockPrice - mockChange;
-    const mockChangePct = (mockChange / mockPrevClose) * 100;
-    
-    // Generate a beautiful sine-wave chart shape for the sparkline
-    const mockChart = [];
-    const now = Math.floor(Date.now() / 1000);
-    let lastClose = mockPrice - mockChange;
-    for (let i = 0; i < 40; i++) {
-        const val = mockPrice - mockChange + (Math.sin(i * 0.5 + seed) * Math.abs(mockChange));
-        const variance = Math.abs(mockChange) * 0.2 + (basePrice * 0.001);
-        mockChart.push({
-            time: now - ((40 - i) * 300),
-            open: lastClose,
-            close: val,
-            low: Math.min(lastClose, val) - variance,
-            high: Math.max(lastClose, val) + variance
-        });
-        lastClose = val;
-    }
-
     return { 
         ticker, 
-        price: mockPrice, 
-        previousClose: mockPrevClose, 
-        change: mockChange, 
-        changePct: mockChangePct, 
+        price: 0, 
+        previousClose: 0, 
+        change: 0, 
+        changePct: 0, 
         currency: ticker.includes('MAD') || ticker.includes('.CS') || ticker.includes('.CAS') ? 'MAD' : 'USD', 
-        chart: mockChart, 
+        chart: [], 
         error: err instanceof Error ? err.message : String(err) 
     };
   }

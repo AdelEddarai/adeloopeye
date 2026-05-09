@@ -10,10 +10,10 @@ import { MapCNController } from '@/features/map/components/MapCNControllers';
 
 import { MAP_STYLE_DARK, MAP_STYLE_SAT } from '@/features/map/components/map-styles';
 import { MapFilterPanel } from '@/features/map/components/MapFilterPanel';
-import { MapLegend }     from '@/features/map/components/MapLegend';
-import { MapOverlays }   from '@/features/map/components/MapOverlays';
-import { MapSidebar }    from '@/features/map/components/MapSidebar';
-import { MapTimeline }   from '@/features/map/components/MapTimeline';
+import { MapLegend } from '@/features/map/components/MapLegend';
+import { MapOverlays } from '@/features/map/components/MapOverlays';
+import { MapSidebar } from '@/features/map/components/MapSidebar';
+import { MapTimeline } from '@/features/map/components/MapTimeline';
 import { MapVisibilityMenu } from '@/features/map/components/MapVisibilityMenu';
 import { MobileDetailPanel } from '@/features/map/components/mobile/MapDetailPanel';
 import { UnifiedMapControls } from '@/features/map/components/UnifiedMapControls';
@@ -46,194 +46,195 @@ export function MobileMapLayout({ ctx, embedded = false }: Props) {
     <div className="w-full h-full bg-[var(--bg-app)] overflow-hidden min-w-0">
       <div className="relative overflow-hidden w-full h-full">
         {/* Map canvas */}
-        <Map 
-          center={[viewState.longitude || 0, viewState.latitude || 0]} 
-          zoom={viewState.zoom || 2} 
-          pitch={viewState.pitch || 0} 
+        <Map
+          center={[viewState.longitude || 0, viewState.latitude || 0]}
+          zoom={viewState.zoom || 2}
+          pitch={viewState.pitch || 0}
           bearing={viewState.bearing || 0}
-          style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} 
+          // @ts-ignore
+          style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT}
         >
           <MapCNController />
-          <MapCNDeckGLOverlay 
-            layers={layers} 
-            getTooltip={tooltip as any} 
-            onClick={handleMapClick as any} 
+          <MapCNDeckGLOverlay
+            layers={layers}
+            getTooltip={tooltip as any}
+            onClick={handleMapClick as any}
           />
 
-        {/* ── Bottom sheet: detail + stories ── */}
-        {(sidebarOpen || selectedItem) && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: sheetExpanded ? '100%' : '55%',
-              transition: 'height 0.22s cubic-bezier(0.4,0,0.2,1)',
-              zIndex: 25,
-              background: 'var(--bg-app)',
-              borderTop: '1px solid var(--bd)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            {/* Detail panel (inline, above stories) */}
-            {selectedItem && (
-              <MobileDetailPanel
-                item={selectedItem}
-                onClose={() => setSelectedItem(null)}
-                onSelectItem={setSelectedItem}
-                onActivateStory={activateStory}
-              />
-            )}
-
-            {/* Stories list */}
-            {sidebarOpen && (
-              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <MapSidebar
-                  isOpen={sidebarOpen}
-                  stories={stories}
-                  activeStory={activeStory}
-                  onToggle={() => { setSheetExpanded(false); toggleSidebar(); }}
-                  onActivateStory={story => {
-                    setSidebarOpen(true);
-                    setSelectedItem(null);
-                    activateStory(story);
-                  }}
-                  onClearStory={() => setActiveStory(null)}
-                  expanded={sheetExpanded}
-                  onToggleExpand={() => setSheetExpanded(prev => !prev)}
-                  onCitySelect={(city) => {
-                    // Navigate to city on map
-                    setViewState({
-                      ...viewState,
-                      longitude: city.lon,
-                      latitude: city.lat,
-                      zoom: 10,
-                      transitionDuration: 1500,
-                    });
-                  }}
-                  onNewsClick={(news) => {
-                    // Navigate to news location on map
-                    if (news.location) {
-                      setViewState({
-                        ...viewState,
-                        longitude: news.location.lon,
-                        latitude: news.location.lat,
-                        zoom: 12,
-                        transitionDuration: 1500,
-                      });
-                    }
-                  }}
-                  onIntelItemClick={(item) => {
-                    // Navigate to intel item location on map
-                    if (item.coordinates) {
-                      setViewState({
-                        ...viewState,
-                        longitude: item.coordinates[0],
-                        latitude: item.coordinates[1],
-                        zoom: item.type === 'FLIGHT' ? 8 : 10,
-                        transitionDuration: 1500,
-                      });
-                    }
-                  }}
-                  selectedCountry={selectedItem?.type === 'country' ? {
-                    name: selectedItem.data.name,
-                    code: selectedItem.data.code,
-                  } : null}
+          {/* ── Bottom sheet: detail + stories ── */}
+          {(sidebarOpen || selectedItem) && (
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: sheetExpanded ? '100%' : '55%',
+                transition: 'height 0.22s cubic-bezier(0.4,0,0.2,1)',
+                zIndex: 25,
+                background: 'var(--bg-app)',
+                borderTop: '1px solid var(--bd)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {/* Detail panel (inline, above stories) */}
+              {selectedItem && (
+                <MobileDetailPanel
+                  item={selectedItem}
+                  onClose={() => setSelectedItem(null)}
+                  onSelectItem={setSelectedItem}
+                  onActivateStory={activateStory}
                 />
-              </div>
-            )}
-          </div>
-        )}
+              )}
 
-        {/* ── Map overlays ── */}
-        <MapOverlays
-          activeStory={activeStory}
-          onClearStory={() => setActiveStory(null)}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={toggleSidebar}
-          embedded={embedded}
-          isMobile
-        />
+              {/* Stories list */}
+              {sidebarOpen && (
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  <MapSidebar
+                    isOpen={sidebarOpen}
+                    stories={stories}
+                    activeStory={activeStory}
+                    onToggle={() => { setSheetExpanded(false); toggleSidebar(); }}
+                    onActivateStory={story => {
+                      setSidebarOpen(true);
+                      setSelectedItem(null);
+                      activateStory(story);
+                    }}
+                    onClearStory={() => setActiveStory(null)}
+                    expanded={sheetExpanded}
+                    onToggleExpand={() => setSheetExpanded(prev => !prev)}
+                    onCitySelect={(city) => {
+                      // Navigate to city on map
+                      setViewState({
+                        ...viewState,
+                        longitude: city.lon,
+                        latitude: city.lat,
+                        zoom: 10,
+                        transitionDuration: 1500,
+                      });
+                    }}
+                    onNewsClick={(news) => {
+                      // Navigate to news location on map
+                      if (news.location) {
+                        setViewState({
+                          ...viewState,
+                          longitude: news.location.lon,
+                          latitude: news.location.lat,
+                          zoom: 12,
+                          transitionDuration: 1500,
+                        });
+                      }
+                    }}
+                    onIntelItemClick={(item) => {
+                      // Navigate to intel item location on map
+                      if (item.coordinates) {
+                        setViewState({
+                          ...viewState,
+                          longitude: item.coordinates[0],
+                          latitude: item.coordinates[1],
+                          zoom: item.type === 'FLIGHT' ? 8 : 10,
+                          transitionDuration: 1500,
+                        });
+                      }
+                    }}
+                    selectedCountry={selectedItem?.type === 'country' ? {
+                      name: selectedItem.data.name,
+                      code: selectedItem.data.code,
+                    } : null}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
-        {overlayVisibility.legend && (
-          <MapLegend 
-            hasPanel={false} 
-            timelineVisible={showTimeline} 
+          {/* ── Map overlays ── */}
+          <MapOverlays
+            activeStory={activeStory}
+            onClearStory={() => setActiveStory(null)}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={toggleSidebar}
+            embedded={embedded}
             isMobile
           />
-        )}
-        
-        <div style={{ position: 'absolute', top: 12, right: 'max(12px, var(--safe-right))', zIndex: 10 }}>
-          <UnifiedMapControls
-            mapStyle={mapStyle}
-            onStyleChange={setMapStyle}
-            showAllLabels={showAllLabels}
-            onShowAllLabelsChange={setShowAllLabels}
-            dataLayers={dataLayers}
-            onDataLayerToggle={toggleDataLayer}
-            scope={scope}
-            onScopeChange={setScope}
-            moroccoLayerToggles={moroccoLayerToggles}
-            onMoroccoLayerToggle={toggleMoroccoLayerType}
-            visibility={overlayVisibility}
-            onVisibilityToggle={toggleOverlay}
-            showTerrain={showTerrain}
-            onTerrainToggle={toggleTerrain}
-            terrainExaggeration={terrainExaggeration}
-            onTerrainExaggerationChange={setTerrainExaggeration}
-            hillshadeIntensity={hillshadeIntensity}
-            onHillshadeIntensityChange={setHillshadeIntensity}
-            showRoads={showRoads}
-            onShowRoadsChange={setShowRoads}
-            show3DBuildings={show3DBuildings}
-            onShow3DBuildingsChange={setShow3DBuildings}
-          />
-        </div>
 
-        {/* Visibility menu */}
-        <div style={{
-          position: 'absolute',
-          bottom: showTimeline ? 'calc(126px + var(--safe-bottom))' : 'calc(82px + var(--safe-bottom))',
-          right: 'max(12px, var(--safe-right))',
-          zIndex: 10,
-        }}>
-          <MapVisibilityMenu visibility={overlayVisibility} onToggle={toggleOverlay} />
-        </div>
+          {overlayVisibility.legend && (
+            <MapLegend
+              hasPanel={false}
+              timelineVisible={showTimeline}
+              isMobile
+            />
+          )}
 
-        {/* Filter panel */}
-        {overlayVisibility.filters && (
-          <div style={{ position: 'absolute', top: 56, right: 'max(12px, var(--safe-right))', zIndex: 10 }}>
-            <MapFilterPanel
-              defaultExpanded
-              state={f.state}
-              facets={f.facets}
-              isFiltered={f.isFiltered}
-              onToggleDataset={f.toggleDataset}
-              onToggleType={f.toggleType}
-              onToggleActor={f.toggleActor}
-              onTogglePriority={f.togglePriority}
-              onToggleStatus={f.toggleStatus}
-              onToggleHeat={f.toggleHeat}
-              onReset={f.resetFilters}
+          <div style={{ position: 'absolute', top: 12, right: 'max(12px, var(--safe-right))', zIndex: 10 }}>
+            <UnifiedMapControls
+              mapStyle={mapStyle}
+              onStyleChange={setMapStyle}
+              showAllLabels={showAllLabels}
+              onShowAllLabelsChange={setShowAllLabels}
+              dataLayers={dataLayers}
+              onDataLayerToggle={toggleDataLayer}
+              scope={scope}
+              onScopeChange={setScope}
+              moroccoLayerToggles={moroccoLayerToggles}
+              onMoroccoLayerToggle={toggleMoroccoLayerType}
+              visibility={overlayVisibility}
+              onVisibilityToggle={toggleOverlay}
+              showTerrain={showTerrain}
+              onTerrainToggle={toggleTerrain}
+              terrainExaggeration={terrainExaggeration}
+              onTerrainExaggerationChange={setTerrainExaggeration}
+              hillshadeIntensity={hillshadeIntensity}
+              onHillshadeIntensityChange={setHillshadeIntensity}
+              showRoads={showRoads}
+              onShowRoadsChange={setShowRoads}
+              show3DBuildings={show3DBuildings}
+              onShow3DBuildingsChange={setShow3DBuildings}
             />
           </div>
-        )}
 
-        {/* Timeline */}
-        {showTimeline && (
-          <MapTimeline
-            rawData={f.rawData}
-            dataExtent={f.dataExtent}
-            viewExtent={f.viewExtent}
-            onViewExtent={f.setViewExtent}
-            timeRange={f.state.timeRange}
-            onTimeRange={f.setTimeRange}
-            isMobile
-          />
-        )}
+          {/* Visibility menu */}
+          <div style={{
+            position: 'absolute',
+            bottom: showTimeline ? 'calc(126px + var(--safe-bottom))' : 'calc(82px + var(--safe-bottom))',
+            right: 'max(12px, var(--safe-right))',
+            zIndex: 10,
+          }}>
+            <MapVisibilityMenu visibility={overlayVisibility} onToggle={toggleOverlay} />
+          </div>
+
+          {/* Filter panel */}
+          {overlayVisibility.filters && (
+            <div style={{ position: 'absolute', top: 56, right: 'max(12px, var(--safe-right))', zIndex: 10 }}>
+              <MapFilterPanel
+                defaultExpanded
+                state={f.state}
+                facets={f.facets}
+                isFiltered={f.isFiltered}
+                onToggleDataset={f.toggleDataset}
+                onToggleType={f.toggleType}
+                onToggleActor={f.toggleActor}
+                onTogglePriority={f.togglePriority}
+                onToggleStatus={f.toggleStatus}
+                onToggleHeat={f.toggleHeat}
+                onReset={f.resetFilters}
+              />
+            </div>
+          )}
+
+          {/* Timeline */}
+          {showTimeline && (
+            <MapTimeline
+              rawData={f.rawData}
+              dataExtent={f.dataExtent}
+              viewExtent={f.viewExtent}
+              onViewExtent={f.setViewExtent}
+              timeRange={f.state.timeRange}
+              onTimeRange={f.setTimeRange}
+              isMobile
+            />
+          )}
         </Map>
       </div>
     </div>

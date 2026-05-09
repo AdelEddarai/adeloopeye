@@ -330,6 +330,7 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
                         const isPositive = result.changePct >= 0;
                         const changeState = changedTickers[result.ticker];
                         const flashClass = changeState === 'up' ? 'market-flash-up' : changeState === 'down' ? 'market-flash-down' : '';
+                        const textFlashClass = changeState === 'up' ? 'market-text-flash-up' : changeState === 'down' ? 'market-text-flash-down' : '';
                         const latestPoint = result.chart?.at(-1);
                         const lastPointTime = latestPoint?.time ? new Date(latestPoint.time * 1000).toLocaleTimeString() : '--:--:--';
                         return (
@@ -349,7 +350,7 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
                               <Sparkline data={result.chart} isPositive={isPositive} />
                             </td>
 
-                            <td className={`py-2 px-3 text-right mono text-[length:var(--text-body-sm)] font-semibold text-[var(--t1)] ${flashClass}`}>
+                            <td className={`py-2 px-3 text-right mono text-[length:var(--text-body-sm)] font-semibold text-[var(--t1)] ${textFlashClass}`}>
                               <div>
                                 {result.currency === 'USD' ? '$' : ''}
                                 {result.price.toFixed(2)}
@@ -359,7 +360,7 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
                             </td>
 
                             {!isWidget && (
-                              <td className={`py-2 px-3 text-right mono text-[length:var(--text-body-sm)] font-semibold hidden sm:table-cell ${flashClass} ${
+                              <td className={`py-2 px-3 text-right mono text-[length:var(--text-body-sm)] font-semibold hidden sm:table-cell ${textFlashClass} ${
                                 isPositive ? 'text-[var(--success)]' : 'text-[var(--danger)]'
                               }`}>
                                 {isPositive ? '+' : ''}{result.change.toFixed(2)}
