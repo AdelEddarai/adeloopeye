@@ -3,9 +3,10 @@ import Link from 'next/link';
 
 import type { MapViewState } from '@deck.gl/core';
 import { FlyToInterpolator } from '@deck.gl/core';
-import DeckGL from '@deck.gl/react';
 import { ArrowLeft, BookOpen, Clock, Map as MapIcon } from 'lucide-react';
-import Map from 'react-map-gl/maplibre';
+import { Map } from '@/components/ui/map';
+import { MapCNDeckGLOverlay } from '@/features/map/components/MapCNDeckGLOverlay';
+import { MapCNController, MapCNEventFlyTo } from '@/features/map/components/MapCNControllers';
 
 import { Button } from '@/components/ui/button';
 
@@ -40,20 +41,20 @@ export function MapCanvas({ ctx, onOpenStories, onSelectFeature }: Props) {
 
   return (
     <div className="w-full h-full relative overflow-hidden">
-      <DeckGL
-        viewState={{
-          ...viewState,
-          ...(viewState.transitionDuration ? { transitionInterpolator: new FlyToInterpolator() } : {}),
-        }}
-        onViewStateChange={({ viewState: vs }) => setViewState(vs as MapViewState)}
-        controller
-        layers={layers}
-        getTooltip={tooltip}
-        onClick={handleClick}
-        style={{ width: '100%', height: '100%' }}
+      <Map 
+        center={[viewState.longitude || 0, viewState.latitude || 0]} 
+        zoom={viewState.zoom || 2} 
+        pitch={viewState.pitch || 0} 
+        bearing={viewState.bearing || 0}
+        style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} 
       >
-        <Map mapStyle={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} />
-      </DeckGL>
+        <MapCNController />
+        <MapCNEventFlyTo />
+        <MapCNDeckGLOverlay 
+          layers={layers} 
+          getTooltip={tooltip as any} 
+          onClick={handleClick as any} 
+        />
 
       {/* ── Floating controls: top-left ── */}
       <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-20" style={{ left: 'max(8px, env(safe-area-inset-left))' }}>
@@ -175,6 +176,7 @@ export function MapCanvas({ ctx, onOpenStories, onSelectFeature }: Props) {
           isMobile={false}
         />
       )}
+      </Map>
     </div>
   );
 }

@@ -252,7 +252,6 @@ html[data-ui-scale="large"] {
   }
 }
 
-
 /* ── Base — resets and body defaults ────────────────────────────────────────
    Wrapped in @layer base so Tailwind utilities always win.
 ──────────────────────────────────────────────────────────────────────────── */
@@ -303,6 +302,12 @@ html[data-ui-scale="large"] {
   }
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  .maplibregl-popup-content {
+    @apply bg-transparent! shadow-none! p-0! rounded-none!;
+  }
+  .maplibregl-popup-tip {
+    @apply hidden!;
   }
 }
 

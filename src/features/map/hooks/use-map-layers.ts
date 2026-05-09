@@ -12,6 +12,7 @@ import { selectVisibleLabels } from '@/features/map/lib/label-visibility';
 import type { Asset, CyberThreat, HeatPoint, MaritimeLane, MaritimeVessel, MissileTrack, StrikeArc, Target, ThreatZone } from '@/data/map-data';
 import type { ActorMeta } from '@/data/map-tokens';
 import { NAVAL_RGB, STATUS_META } from '@/data/map-tokens';
+import type { OpenSkyFlight } from '@/server/lib/api-clients/adsbfi-client';
 import type { MapStory } from '@/types/domain';
 
 import type { FilteredData } from './use-map-filters';
@@ -54,6 +55,7 @@ type Props = {
   moroccoIntelligence?: MoroccoIntelPayload | null;
   showMoroccoLayer?: boolean;
   selectedEventId?: string | null;
+  globalFlights?: OpenSkyFlight[];
 };
 
 type RGBA = [number, number, number, number];
@@ -133,6 +135,7 @@ export function useMapLayers({
   moroccoIntelligence = null,
   showMoroccoLayer = false,
   selectedEventId = null,
+  globalFlights = [],
 }: Props): Layer[] {
   const cyberThreats = (filtered as any).cyberThreats || [];
   const [pulseTime, setPulseTime] = useState(0);
@@ -347,12 +350,40 @@ export function useMapLayers({
       },
     });
 
+    // Transform OpenSkyFlights into Asset format on the fly
+    const flightAssets: Asset[] = globalFlights.map(f => {
+      let actor = 'unknown';
+      const country = (f.origin_country || '').toLowerCase();
+      if (country.includes('united states') || country.includes('usa')) actor = 'us';
+      else if (country.includes('israel')) actor = 'israel';
+      else if (country.includes('iran')) actor = 'iran';
+      else if (country.includes('russia')) actor = 'russia';
+      else if (country.includes('china')) actor = 'china';
+
+      return {
+        id: `flight-${f.icao24}`,
+        sourceEventId: null,
+        actor: actor as any,
+        priority: (f.baro_altitude && f.baro_altitude > 10000) ? 'P2' : 'P3',
+        category: 'INSTALLATION',
+        type: 'AIRCRAFT',
+        status: 'ACTIVE',
+        name: f.callsign?.trim() || f.icao24,
+        position: [f.longitude!, f.latitude!],
+        heading: f.true_track || 0,
+        description: `${f.origin_country} - Alt: ${Math.round(f.baro_altitude || 0)}m, Speed: ${Math.round(f.velocity || 0)}m/s`,
+      };
+    });
+
+    // Combine any non-flight assets from the map engine (like Aircraft Carriers) with live flights
+    const allAssets = [...filtered.assets, ...flightAssets];
+
     // Asset layer with airplane icons for flights
-    const assetLayer = showFlights && filtered.assets.length > 0 && new IconLayer<Asset>({
+    const assetLayer = showFlights && allAssets.length > 0 && new IconLayer<Asset>({
       id: 'assets',
-      data: filtered.assets,
+      data: allAssets,
       getPosition: (d: Asset): [number, number] => d.position,
-      getIcon: () => 'airplane',
+      getIcon: (d: Asset) => d.type === 'CARRIER' ? 'carrier' : 'airplane',
       getSize: (d: Asset): number => (d.type === 'CARRIER' ? 48 : 36),
       getAngle: (d: Asset): number => {
         // Rotate airplane icon based on heading (true_track from OpenSky)
@@ -367,25 +398,30 @@ export function useMapLayers({
         return [rgb[0], rgb[1], rgb[2], alpha];
       },
       iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="airplane">
+        <svg width="256" height="128" viewBox="0 0 256 128" xmlns="http://www.w3.org/2000/svg">
+          <g id="airplane" transform="translate(0, 0)">
             <!-- Airplane body pointing up (north) -->
             <path d="M64 20 L68 50 L80 54 L68 58 L64 88 L60 58 L48 54 L60 50 Z" 
                   fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>
             <!-- Nose -->
             <circle cx="64" cy="20" r="4" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1"/>
           </g>
+          <g id="carrier" transform="translate(128, 0)">
+            <rect x="54" y="20" width="20" height="88" rx="2" fill="#555" stroke="white" stroke-width="2"/>
+            <rect x="58" y="24" width="12" height="80" fill="#444"/>
+          </g>
         </svg>
       `),
       iconMapping: {
         airplane: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        carrier: { x: 128, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
       },
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
         getColor: [mergedActiveStory?.id, mergedActiveStory?.highlightAssetIds.join('|'), isSatellite],
         getSize: [isSatellite],
-        getAngle: [filtered.assets.map(a => a.heading).join(',')], // Update when headings change
+        getAngle: [allAssets.map(a => a.heading).join(',')], // Update when headings change
       },
     });
 
@@ -394,9 +430,10 @@ export function useMapLayers({
     const targetLabels = false; // Disabled
 
     // Asset labels (show callsigns for flights)
-    const assetLabels = !isMobile && showFlights && visibleLabels.assets.length > 0 && new TextLayer<Asset>({
+    const assetLabelsData = !isMobile && showFlights ? allAssets : [];
+    const assetLabels = assetLabelsData.length > 0 && new TextLayer<Asset>({
       id: 'asset-labels',
-      data: visibleLabels.assets,
+      data: assetLabelsData,
       getPosition:       (d: Asset): [number, number] => d.position,
       getText:           (d: Asset): string => d.name,
       getSize:           isSatellite ? baseLabelSize : textToken('--text-label', 10),
@@ -873,7 +910,7 @@ export function useMapLayers({
     ].filter(Boolean);
 
     return layers as Layer[];
-  }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers]);
+  }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights]);
 }
 
 // Re-export so tooltip handler can share STATUS_META without another import

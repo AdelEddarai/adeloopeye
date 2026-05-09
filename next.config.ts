@@ -4,8 +4,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   
-  // Empty turbopack config to silence the warning
-  turbopack: {},
+  // Disable Turbopack to avoid SWC binary issues
+  // Use webpack instead (more stable on Windows)
+  experimental: {
+    turbo: undefined,
+  },
 };
 
 export default nextConfig;

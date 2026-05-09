@@ -20,15 +20,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     console.log('[Map Data] Fetching data from multiple sources...');
     
     // Fetch REAL data from multiple sources with individual error handling
-    const [articles, flights, cyberThreats, vesselsSnap] = await Promise.allSettled([
+    const [articles, cyberThreats, vesselsSnap] = await Promise.allSettled([
       multiNewsClient.searchNews('iran OR israel OR syria OR iraq OR ukraine OR russia OR china OR trade OR energy OR alliance attack OR strike OR fire OR explosion OR sanctions OR deal', 100, 'en')
         .catch(err => {
           console.error('[Map Data] News API failed:', err.message);
-          return [];
-        }),
-      adsbfiClient.getFlightsByLocation(33, 44, 250)
-        .catch(err => {
-          console.error('[Map Data] OpenSky failed:', err.message);
           return [];
         }),
       fetchCyberThreats()
@@ -43,21 +38,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ]);
 
     const articlesData = articles.status === 'fulfilled' ? articles.value : [];
-    const flightsData = flights.status === 'fulfilled' ? flights.value : [];
     const cyberThreatsData = cyberThreats.status === 'fulfilled' ? cyberThreats.value : [];
     const vesselsData = vesselsSnap.status === 'fulfilled' ? vesselsSnap.value : [];
 
-    console.log(`[Map Data] Got ${articlesData.length} articles, ${flightsData.length} flights, ${cyberThreatsData.length} threats, ${vesselsData.length} vessels (AIS)`);
-
-    // Transform adsb.fi aircraft to OpenSkyFlight format
-    const transformedFlights = flightsData.map(ac => adsbfiClient.parseAircraft(ac));
-    
-    // Filter only airborne flights
-    const airborneFlights = transformedFlights.filter(f => !f.on_ground && f.latitude !== null && f.longitude !== null);
+    console.log(`[Map Data] Got ${articlesData.length} articles, ${cyberThreatsData.length} threats, ${vesselsData.length} vessels (AIS)`);
 
     // Transform into map features
     const heatPoints = transformNewsToHeatPoints(articlesData);
-    const flightAssets = transformFlightsToMapFeatures(airborneFlights);
     const criticalEvents = transformNewsToCriticalEvents(articlesData);
     const geopoliticalRelationships = analyzeGeopoliticalRelationships(articlesData);
 
@@ -104,7 +91,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       { id: 'casablanca', name: 'Casablanca', country: 'Morocco', position: [-7.5898, 33.5731], type: 'MAJOR_CITY' },
     ] as const;
 
-    console.log(`[Map Data] Returning ${airborneFlights.length} flights, ${cyberThreatsData.length} threats, ${criticalEvents.length} events, ${geopoliticalRelationships.length} relationships, ${cities.length} cities`);
+    console.log(`[Map Data] Returning ${cyberThreatsData.length} threats, ${criticalEvents.length} events, ${geopoliticalRelationships.length} relationships, ${cities.length} cities`);
 
     // TEMPORARY: Add hardcoded test relationships to ensure lines show up
     const testRelationships = [
@@ -263,7 +250,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         strikeArcs: [],
         missileTracks: [],
         targets: allTargets,
-        assets: flightAssets,
+        assets: [],
         threatZones: allThreatZones,
         heatPoints,
         cyberThreats: cyberThreatsData,

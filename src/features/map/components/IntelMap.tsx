@@ -8,6 +8,7 @@ import Link from 'next/link';
 import type { MapViewState, PickingInfo } from '@deck.gl/core';
 import DeckGL from '@deck.gl/react';
 import { Map as MapGL } from 'react-map-gl/maplibre';
+import type { MapRef } from 'react-map-gl/maplibre';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,7 @@ import type { Asset } from '@/data/map-data';
 import { type LayerVisibility, type TooltipObject, useMapLayers } from './intel-map-layers';
 import { getMapTooltip } from './intel-map-tooltip';
 import { IntelMapLegend } from './IntelMapLegend';
+import { Map3DControls } from './Map3DControls';
 
 import { getCoordinatesForLocation } from '@/shared/lib/location-coordinates';
 import { clearSelection } from '@/shared/state/event-selection-slice';
@@ -55,6 +57,11 @@ export function IntelMap() {
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const [visibility, setVisibility] = useState<LayerVisibility>(DEFAULT_VISIBILITY);
   
+  // MapLibre map instance for 3D controls
+  const mapRef = useRef<MapRef>(null);
+  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  
   // Flight tracking state
   const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
   const [flightTrails, setFlightTrails] = useState(new globalThis.Map<string, [number, number][]>());
@@ -66,6 +73,20 @@ export function IntelMap() {
 
   const toggleLayer = (key: keyof LayerVisibility) =>
     setVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Get map instance when it loads
+  useEffect(() => {
+    if (mapRef.current) {
+      const map = mapRef.current.getMap();
+      console.log('[IntelMap] Map instance obtained:', map);
+      setMapInstance(map);
+      
+      map.on('load', () => {
+        console.log('[IntelMap] Map loaded successfully');
+        setIsMapLoaded(true);
+      });
+    }
+  }, []);
 
   // Animation loop for maritime lanes dashed offset
   const [time, setTime] = useState(0);
@@ -362,8 +383,14 @@ export function IntelMap() {
           onClick={handleClick}
           style={{ width: '100%', height: '100%' }}
         >
-          <MapGL mapStyle={MAP_STYLE_SAT} />
+          <MapGL 
+            ref={mapRef}
+            mapStyle={MAP_STYLE_SAT} 
+          />
         </DeckGL>
+
+        {/* 3D View Controls */}
+        <Map3DControls map={mapInstance} isLoaded={isMapLoaded} />
 
         {hoverInfo && (
           <div

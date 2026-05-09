@@ -13,6 +13,7 @@ import { useMapFilters } from '@/features/map/hooks/use-map-filters';
 import { useMapLayers } from '@/features/map/hooks/use-map-layers';
 import { createBuildTooltip } from '@/features/map/lib/map-tooltip';
 import { useMapStories } from '@/features/map/queries';
+import { useLiveFlights } from '@/shared/hooks/use-live-flights';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
 import {
   activateStory as activateStoryAction,
@@ -163,6 +164,28 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const { data: moroccoData } = useMoroccoIntelligence(showMoroccoLayer);
   const { data: stories = [], isLoading: storiesLoading } = useMapStories(undefined, enableOtherAPIs);
 
+  // Dynamic Live Flights fetching based on Viewport
+  // If zoomed out (< 4), fetch globally (15 cities). If zoomed in, fetch local bbox.
+  const isGlobalFlights = viewState.zoom < 4;
+  const latDiff = 180 / Math.pow(2, viewState.zoom);
+  const lonDiff = 360 / Math.pow(2, viewState.zoom);
+  const flightBbox = useMemo<[number, number, number, number] | undefined>(() => {
+    if (isGlobalFlights) return undefined;
+    return [
+      Math.max(-90, viewState.latitude - latDiff / 2),
+      Math.min(180, viewState.longitude - lonDiff / 2),
+      Math.min(90, viewState.latitude + latDiff / 2),
+      Math.max(-180, viewState.longitude + lonDiff / 2),
+    ];
+  }, [viewState.latitude, viewState.longitude, viewState.zoom, isGlobalFlights, latDiff, lonDiff]);
+
+  const { data: liveFlightsResp, isLoading: flightsLoading } = useLiveFlights(
+    flightBbox, 
+    dataLayers.flights, 
+    isGlobalFlights
+  );
+  const globalFlights = useMemo(() => liveFlightsResp?.flights || [], [liveFlightsResp]);
+
   // Morocco coordinates (center of the country)
   const MOROCCO_CENTER: [number, number] = [-7.0926, 31.7917]; // Between Casablanca and Marrakech
   const MOROCCO_ZOOM = 6;
@@ -250,6 +273,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     moroccoIntelligence: moroccoIntelForLayers,
     showMoroccoLayer,
     selectedEventId,
+    globalFlights,
   });
 
   const handleMapClick = useCallback(({ object, layer }: PickingInfo): SelectedItem | null => {
@@ -338,7 +362,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   }, [dispatch, moroccoData?.events, viewState]);
 
   const showTimeline = overlayVisibility.timeline && !(isMobile && !!selectedItem);
-  const isLoading = storiesLoading || f.isLoading;
+  const isLoading = storiesLoading || f.isLoading || flightsLoading;
 
   const storyId = searchParams.get('story');
   const prevStoryIdRef = useRef<string | null>(null);

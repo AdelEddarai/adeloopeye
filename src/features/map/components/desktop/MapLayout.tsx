@@ -5,8 +5,9 @@ import { useSelector } from 'react-redux';
 
 import type { MapViewState } from '@deck.gl/core';
 import { FlyToInterpolator } from '@deck.gl/core';
-import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl/maplibre';
+import { Map } from '@/components/ui/map';
+import { MapCNDeckGLOverlay } from '@/features/map/components/MapCNDeckGLOverlay';
+import { MapCNController, MapCNEventFlyTo } from '@/features/map/components/MapCNControllers';
 
 import { ResizableHandle,ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 
@@ -55,65 +56,8 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
     code: selectedItem.data.code,
   } : null;
   
-  // 🗺️ FLY TO EVENT POSITION when event is selected from Network Graph
-  useEffect(() => {
-    if (!eventSelection.followSelection) return;
-    if (eventSelection.selectedEventId && eventSelection.timestamp) {
-      console.log('🎯 Map received event selection:', eventSelection.selectedEventId, eventSelection.selectedLocation);
-      
-      // Enable Morocco layer if not already enabled
-      if (!showMoroccoLayer) {
-        console.log('📍 Enabling Morocco layer to show event');
-        setShowMoroccoLayer(true);
-        // Enable all layer types to ensure event is visible
-        setMoroccoLayerToggles({
-          events: true,
-          routes: true,
-          weather: true,
-          fires: true,
-          infrastructure: true,
-          connections: true,
-        });
-      }
-      
-      // Find the actual event in Morocco data by ID
-      const event = moroccoData?.events?.find(e => e.id === eventSelection.selectedEventId);
-      
-      if (event && event.position) {
-        // Fly to the event's exact position
-        console.log('🗺️ Map: Flying to event position:', event.position, 'Title:', event.title);
-        
-        setViewState({
-          ...viewState,
-          longitude: event.position[0],
-          latitude: event.position[1],
-          zoom: 12, // Close zoom to see the pulsing dot
-          transitionDuration: 1500,
-          transitionInterpolator: new FlyToInterpolator(),
-        });
-      } else if (eventSelection.selectedLocation) {
-        // Fallback: Use location coordinates if event not found
-        const coordinates = getCoordinatesForLocation(eventSelection.selectedLocation);
-        
-        if (coordinates) {
-          console.log('🗺️ Map: Flying to location (fallback):', eventSelection.selectedLocation, coordinates);
-          
-          setViewState({
-            ...viewState,
-            longitude: coordinates.lng,
-            latitude: coordinates.lat,
-            zoom: coordinates.zoom || 11,
-            transitionDuration: 1500,
-            transitionInterpolator: new FlyToInterpolator(),
-          });
-        } else {
-          console.warn('⚠️ Map: No coordinates found for location:', eventSelection.selectedLocation);
-        }
-      } else {
-        console.warn('⚠️ Map: Event not found in Morocco data:', eventSelection.selectedEventId);
-      }
-    }
-  }, [eventSelection.followSelection, eventSelection.selectedEventId, eventSelection.selectedLocation, eventSelection.timestamp, moroccoData, showMoroccoLayer]);
+  // MapCNEventFlyTo component handles event selection flying natively.
+  // We no longer rely on viewState changes for flying to events since MapCN manages its own viewState.
 
   return (
     <ResizablePanelGroup
@@ -180,17 +124,25 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
       {/* ── Map canvas ── */}
       <ResizablePanel id="canvas" defaultSize="75%" minSize="40%" className="relative overflow-hidden min-w-0">
         <div className="relative overflow-hidden w-full h-full min-w-0">
-          <DeckGL
-            viewState={{
-              ...viewState,
-              ...(viewState.transitionDuration ? { transitionInterpolator: new FlyToInterpolator() } : {}),
-            }}
-            onViewStateChange={({ viewState: vs }) => setViewState(vs as MapViewState)}
-            controller layers={layers} getTooltip={tooltip} onClick={handleMapClick}
-            style={{ width: '100%', height: '100%' }}
+          <Map 
+            center={[viewState.longitude || 0, viewState.latitude || 0]} 
+            zoom={viewState.zoom || 2} 
+            pitch={viewState.pitch || 0} 
+            bearing={viewState.bearing || 0}
+            style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} 
           >
-            <Map mapStyle={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} />
-          </DeckGL>
+            <MapCNController />
+            <MapCNEventFlyTo 
+              moroccoData={moroccoData} 
+              showMoroccoLayer={showMoroccoLayer} 
+              setShowMoroccoLayer={setShowMoroccoLayer} 
+              setMoroccoLayerToggles={setMoroccoLayerToggles} 
+            />
+            <MapCNDeckGLOverlay 
+              layers={layers} 
+              getTooltip={tooltip as any} 
+              onClick={handleMapClick as any} 
+            />
 
           {/* Overlays */}
           <MapOverlays
@@ -276,6 +228,7 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
               isMobile={false}
             />
           )}
+          </Map>
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>

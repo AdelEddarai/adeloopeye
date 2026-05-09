@@ -11,6 +11,20 @@
 
 export class ADSBFiClient {
   private baseUrl = 'https://opendata.adsb.fi/api';
+  private cache: Record<string, { data: any, timestamp: number }> = {};
+  private CACHE_TTL = 10000; // 10 seconds
+
+  private getCache<T>(key: string): T | null {
+    const cached = this.cache[key];
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.data as T;
+    }
+    return null;
+  }
+
+  private setCache(key: string, data: any) {
+    this.cache[key] = { data, timestamp: Date.now() };
+  }
 
   /**
    * Get flights within a radius of a center point
@@ -20,6 +34,10 @@ export class ADSBFiClient {
    */
   async getFlightsByLocation(lat: number, lon: number, dist: number = 250): Promise<ADSBFiAircraft[]> {
     try {
+      const cacheKey = `loc-${lat}-${lon}-${dist}`;
+      const cached = this.getCache<ADSBFiAircraft[]>(cacheKey);
+      if (cached) return cached;
+
       const url = `${this.baseUrl}/v3/lat/${lat}/lon/${lon}/dist/${dist}`;
       
       const res = await fetch(url, {
@@ -43,6 +61,7 @@ export class ADSBFiClient {
       }
 
       const data = await res.json();
+      this.setCache(cacheKey, data.ac || []);
       return data.ac || [];
     } catch (error) {
       throw error;
@@ -92,6 +111,10 @@ export class ADSBFiClient {
    */
   async getAircraftByHex(hex: string): Promise<ADSBFiAircraft | null> {
     try {
+      const cacheKey = `hex-${hex}`;
+      const cached = this.getCache<ADSBFiAircraft | null>(cacheKey);
+      if (cached !== null) return cached; // Notice this returns cached nulls too
+
       const url = `${this.baseUrl}/v2/hex/${hex}`;
       
       const res = await fetch(url, {
@@ -108,6 +131,7 @@ export class ADSBFiClient {
 
       const data = await res.json();
       const aircraft = data.ac?.[0] || null;
+      this.setCache(cacheKey, aircraft);
       return aircraft;
     } catch (error) {
       console.error('[ADSB.fi Client] Failed to fetch aircraft:', error);
@@ -159,6 +183,10 @@ export class ADSBFiClient {
       { lat: -26.2041, lon: 28.0473, dist: 250 }, // Johannesburg
     ];
 
+    const cacheKey = 'global-flights';
+    const cached = this.getCache<ADSBFiAircraft[]>(cacheKey);
+    if (cached) return cached;
+
     const allAircraft: ADSBFiAircraft[] = [];
     const seenHexes = new Set<string>();
 
@@ -184,6 +212,7 @@ export class ADSBFiClient {
       }
     }
 
+    this.setCache(cacheKey, allAircraft);
     return allAircraft;
   }
 
@@ -195,8 +224,8 @@ export class ADSBFiClient {
       icao24: ac.hex || '',
       callsign: ac.flight ? ac.flight.trim() : null,
       origin_country: ac.r || 'Unknown',
-      time_position: ac.seen_pos || 0,
-      last_contact: ac.seen || 0,
+      time_position: Math.floor(Date.now() / 1000) - (ac.seen_pos || 0),
+      last_contact: Math.floor(Date.now() / 1000) - (ac.seen || 0),
       longitude: ac.lon,
       latitude: ac.lat,
       baro_altitude: ac.alt_baro !== undefined ? ac.alt_baro : ac.alt_geom,

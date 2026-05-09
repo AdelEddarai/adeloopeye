@@ -4,8 +4,9 @@ import { useState } from 'react';
 
 import type { MapViewState } from '@deck.gl/core';
 import { FlyToInterpolator } from '@deck.gl/core';
-import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl/maplibre';
+import { Map } from '@/components/ui/map';
+import { MapCNDeckGLOverlay } from '@/features/map/components/MapCNDeckGLOverlay';
+import { MapCNController } from '@/features/map/components/MapCNControllers';
 
 import { MAP_STYLE_DARK, MAP_STYLE_SAT } from '@/features/map/components/map-styles';
 import { MapFilterPanel } from '@/features/map/components/MapFilterPanel';
@@ -45,17 +46,19 @@ export function MobileMapLayout({ ctx, embedded = false }: Props) {
     <div className="w-full h-full bg-[var(--bg-app)] overflow-hidden min-w-0">
       <div className="relative overflow-hidden w-full h-full">
         {/* Map canvas */}
-        <DeckGL
-          viewState={{
-            ...viewState,
-            ...(viewState.transitionDuration ? { transitionInterpolator: new FlyToInterpolator() } : {}),
-          }}
-          onViewStateChange={({ viewState: vs }) => setViewState(vs as MapViewState)}
-          controller layers={layers} getTooltip={tooltip} onClick={handleMapClick}
-          style={{ width: '100%', height: '100%' }}
+        <Map 
+          center={[viewState.longitude || 0, viewState.latitude || 0]} 
+          zoom={viewState.zoom || 2} 
+          pitch={viewState.pitch || 0} 
+          bearing={viewState.bearing || 0}
+          style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} 
         >
-          <Map mapStyle={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT} />
-        </DeckGL>
+          <MapCNController />
+          <MapCNDeckGLOverlay 
+            layers={layers} 
+            getTooltip={tooltip as any} 
+            onClick={handleMapClick as any} 
+          />
 
         {/* ── Bottom sheet: detail + stories ── */}
         {(sidebarOpen || selectedItem) && (
@@ -231,6 +234,7 @@ export function MobileMapLayout({ ctx, embedded = false }: Props) {
             isMobile
           />
         )}
+        </Map>
       </div>
     </div>
   );
