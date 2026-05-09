@@ -48,13 +48,13 @@ export function EventsTimeline({ data }: EventsTimelineProps) {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.5)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
+              { offset: 0, color: 'rgba(59, 130, 246, 0.8)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.1)' },
             ],
           },
-          borderRadius: [2, 2, 0, 0],
+          borderRadius: [4, 4, 0, 0],
         },
-        barWidth: '60%',
+        barWidth: '50%',
       },
       {
         name: 'Critical',
@@ -62,14 +62,30 @@ export function EventsTimeline({ data }: EventsTimelineProps) {
         data: data.map((d) => d.critical),
         smooth: true,
         symbol: 'circle',
-        symbolSize: 4,
+        symbolSize: 6,
         lineStyle: {
           width: 2,
           color: '#ef4444',
-          shadowBlur: 8,
-          shadowColor: 'rgba(239, 68, 68, 0.4)',
+          shadowBlur: 12,
+          shadowColor: 'rgba(239, 68, 68, 0.6)',
         },
-        itemStyle: { color: '#ef4444', borderWidth: 1, borderColor: '#18181b' },
+        itemStyle: { color: '#ef4444', borderWidth: 2, borderColor: '#18181b' },
+        markPoint: {
+          data: [
+            {
+              coord: [data.length - 1, data[data.length - 1].critical],
+              symbol: 'circle',
+              symbolSize: 14,
+              itemStyle: {
+                color: '#ef4444',
+                shadowBlur: 15,
+                shadowColor: 'rgba(239, 68, 68, 1)',
+              },
+              label: { show: false }
+            }
+          ],
+          animation: true,
+        }
       },
     ],
   };

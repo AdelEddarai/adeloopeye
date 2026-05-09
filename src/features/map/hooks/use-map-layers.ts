@@ -50,6 +50,7 @@ type Props = {
   showAllLabels?: boolean;
   showFlights?: boolean;
   showEvents?: boolean;
+  showZones?: boolean;
   showCyberThreats?: boolean;
   showMaritime?: boolean;
   moroccoIntelligence?: MoroccoIntelPayload | null;
@@ -130,6 +131,7 @@ export function useMapLayers({
   showAllLabels = false,
   showFlights = true,
   showEvents = true,
+  showZones = true,
   showCyberThreats = true,
   showMaritime = false,
   moroccoIntelligence = null,
@@ -254,7 +256,7 @@ export function useMapLayers({
     });
 
     // Threat zones
-    const zoneLayer = filtered.zones.length > 0 && new PolygonLayer<ThreatZone>({
+    const zoneLayer = showZones && filtered.zones.length > 0 && new PolygonLayer<ThreatZone>({
       id: 'zones',
       data: filtered.zones,
       getPolygon:    (d: ThreatZone): [number, number][] => d.coordinates,

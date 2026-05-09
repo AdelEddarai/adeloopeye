@@ -12,6 +12,7 @@ import { transformFlightsToMapFeatures, transformNewsToHeatPoints, transformNews
 import { MIDDLE_EAST_CHOKEPOINTS, MIDDLE_EAST_CONFLICT_ZONES } from '@/data/middle-east-chokepoints';
 import { MIDDLE_EAST_INFRASTRUCTURE } from '@/data/middle-east-infrastructure';
 import { MIDDLE_EAST_TRADE_ROUTES } from '@/data/middle-east-trade-routes';
+import { MOROCCO_FLASHPOINTS } from '@/data/morocco-flashpoints';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await params; // Consume params
@@ -236,7 +237,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       };
     });
 
-    const allThreatZones = [...chokepoints, ...conflictZones];
+    const allThreatZones = [...chokepoints, ...conflictZones, ...MOROCCO_FLASHPOINTS];
     const allTargets = [...criticalEvents, ...infrastructureTargets];
 
     console.log(`[Map Data] Added ${middleEastRelationships.length} ME trade routes, ${infrastructureTargets.length} infrastructure, ${allThreatZones.length} zones`);

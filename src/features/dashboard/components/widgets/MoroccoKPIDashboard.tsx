@@ -35,8 +35,6 @@ import {
   RealTimeEventStream,
   IntuitiveSankey,
   NewsNetwork,
-  InfrastructureChart,
-  CriticalTrend,
   EventDistribution,
 } from './morocco-kpi';
 
@@ -100,34 +98,31 @@ export function MoroccoKPIDashboard() {
   const historicalData = useMemo(() => {
     if (!data) return [];
 
+    const pseudoRandom = (seed: number) => {
+      const x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
+    };
+
     const days = timeRange === '24h' ? 24 : timeRange === '7d' ? 7 : 30;
     const now = Date.now();
     const interval = timeRange === '24h' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    const alignedNow = Math.floor(now / interval) * interval;
 
     return Array.from({ length: days }, (_, i) => {
-      const timestamp = now - (days - i - 1) * interval;
+      const isLatest = i === days - 1;
+      const timestamp = alignedNow - (days - i - 1) * interval;
       const date = new Date(timestamp);
+      const seed = Math.floor(timestamp / 100000);
 
       const baseEvents = data.summary.totalEvents;
-      const variance = Math.random() * 0.3 - 0.15;
-      const events = Math.max(0, Math.round(baseEvents * (1 + variance)));
+      const events = isLatest ? baseEvents : Math.max(0, Math.round(baseEvents * (1 + pseudoRandom(seed) * 0.3 - 0.15)));
 
       const baseCritical = data.summary.criticalEvents;
-      const criticalVariance = Math.random() * 0.4 - 0.2;
-      const critical = Math.max(0, Math.round(baseCritical * (1 + criticalVariance)));
+      const critical = isLatest ? baseCritical : Math.max(0, Math.round(baseCritical * (1 + pseudoRandom(seed + 1) * 0.4 - 0.2)));
 
-      const fires = Math.max(
-        0,
-        Math.round((data.summary.activeFires || 0) * (1 + Math.random() * 0.5 - 0.25))
-      );
-      const traffic = Math.max(
-        0,
-        Math.round((data.summary.trafficIncidents || 0) * (1 + Math.random() * 0.6 - 0.3))
-      );
-      const weather = Math.max(
-        0,
-        Math.round((data.summary.weatherAlerts || 0) * (1 + Math.random() * 0.4 - 0.2))
-      );
+      const fires = isLatest ? data.summary.activeFires || 0 : Math.max(0, Math.round((data.summary.activeFires || 0) * (1 + pseudoRandom(seed + 2) * 0.5 - 0.25)));
+      const traffic = isLatest ? data.summary.trafficIncidents || 0 : Math.max(0, Math.round((data.summary.trafficIncidents || 0) * (1 + pseudoRandom(seed + 3) * 0.6 - 0.3)));
+      const weather = isLatest ? data.summary.weatherAlerts || 0 : Math.max(0, Math.round((data.summary.weatherAlerts || 0) * (1 + pseudoRandom(seed + 4) * 0.4 - 0.2)));
 
       return {
         timestamp,
@@ -140,14 +135,8 @@ export function MoroccoKPIDashboard() {
         fires,
         traffic,
         weather,
-        connections: Math.max(
-          0,
-          Math.round((data.summary.activeConnections || 0) * (1 + Math.random() * 0.3 - 0.15))
-        ),
-        infrastructure: Math.max(
-          0,
-          Math.round((data.summary.operationalInfrastructure || 0) * (1 + Math.random() * 0.1 - 0.05))
-        ),
+        connections: isLatest ? data.summary.activeConnections || 0 : Math.max(0, Math.round((data.summary.activeConnections || 0) * (1 + pseudoRandom(seed + 5) * 0.3 - 0.15))),
+        infrastructure: isLatest ? data.summary.operationalInfrastructure || 0 : Math.max(0, Math.round((data.summary.operationalInfrastructure || 0) * (1 + pseudoRandom(seed + 6) * 0.1 - 0.05))),
       };
     });
   }, [data, timeRange]);
@@ -340,31 +329,24 @@ export function MoroccoKPIDashboard() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-zinc-900/50 border border-zinc-800/80 h-9 p-0.5 rounded-lg">
+          <TabsList className="grid w-full grid-cols-3 bg-zinc-900/50 border border-zinc-800/80 h-9 p-0.5 rounded-lg">
             <TabsTrigger
               value="overview"
-              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md"
+              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md transition-all"
             >
               <BarChart3 className="w-3 h-3 mr-1.5 opacity-70" />
               Overview
             </TabsTrigger>
             <TabsTrigger
-              value="trends"
-              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md"
-            >
-              <LineChartIcon className="w-3 h-3 mr-1.5 opacity-70" />
-              Trends
-            </TabsTrigger>
-            <TabsTrigger
               value="breakdown"
-              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md"
+              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md transition-all"
             >
               <MapPin className="w-3 h-3 mr-1.5 opacity-70" />
               Breakdown
             </TabsTrigger>
             <TabsTrigger
               value="flow"
-              className="h-7 text-[10px] data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 rounded-md"
+              className="h-7 text-[10px] data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 rounded-md transition-all"
             >
               <GitMerge className="w-3 h-3 mr-1.5 rotate-90 opacity-70" />
               Flows
@@ -374,11 +356,6 @@ export function MoroccoKPIDashboard() {
           <TabsContent value="overview" className="space-y-2 mt-2">
             <EventsTimeline data={historicalData} />
             <IncidentCategories data={historicalData} />
-          </TabsContent>
-
-          <TabsContent value="trends" className="space-y-2 mt-2">
-            <InfrastructureChart data={historicalData} />
-            <CriticalTrend data={historicalData} />
           </TabsContent>
 
           <TabsContent value="breakdown" className="space-y-2 mt-2">

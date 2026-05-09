@@ -157,6 +157,9 @@ export class ADSBFiClient {
   async getGlobalFlights(): Promise<ADSBFiAircraft[]> {
     // Strategic search points covering major flight routes worldwide
     const searchPoints = [
+      // Primary: North Africa / Morocco
+      { lat: 33.5731, lon: -7.5898, dist: 250 }, // Casablanca, Morocco
+
       // North America
       { lat: 40.7128, lon: -74.0060, dist: 250 }, // New York
       { lat: 34.0522, lon: -118.2437, dist: 250 }, // Los Angeles

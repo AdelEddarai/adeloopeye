@@ -194,15 +194,7 @@ export function MobileMapLayout({ ctx, embedded = false }: Props) {
             />
           </div>
 
-          {/* Visibility menu */}
-          <div style={{
-            position: 'absolute',
-            bottom: showTimeline ? 'calc(126px + var(--safe-bottom))' : 'calc(82px + var(--safe-bottom))',
-            right: 'max(12px, var(--safe-right))',
-            zIndex: 10,
-          }}>
-            <MapVisibilityMenu visibility={overlayVisibility} onToggle={toggleOverlay} />
-          </div>
+          {/* Visibility menu removed - handled by UnifiedMapControls */}
 
           {/* Filter panel */}
           {overlayVisibility.filters && (

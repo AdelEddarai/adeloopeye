@@ -62,17 +62,11 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
 
   const [overlayVisibility, setOverlayVisibility] = useState<OverlayVisibility>(() => (
     typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
-      ? { timeline: true, filters: false, legend: false, flights: true, events: true, cyberThreats: true }
-      : { timeline: true, filters: true, legend: true, flights: true, events: true, cyberThreats: true }
+      ? { timeline: true, filters: false, legend: false, zones: true, events: true, cyberThreats: true }
+      : { timeline: true, filters: true, legend: true, zones: true, events: true, cyberThreats: true }
   ));
 
-  // Sync dataLayers from Redux to overlayVisibility and Morocco layer
-  useEffect(() => {
-    setOverlayVisibility(prev => ({
-      ...prev,
-      flights: dataLayers.flights,
-    }));
-  }, [dataLayers.flights]);
+  // Removed duplicate sync for flights, we use dataLayers.flights directly now
 
   // Sync routes toggle with Morocco layer
   useEffect(() => {
@@ -108,9 +102,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   }, [dataLayers.infrastructure]);
 
   useEffect(() => {
-    if (dataLayers.maritime) {
-      dispatch(setScopeAction({ world: true }));
-    }
+    // We want maritime available in both scopes, so no forced dispatch here
   }, [dataLayers.maritime, dispatch]);
 
   const [trackedFlightId, setTrackedFlightId] = useState<string | null>(null);
@@ -255,7 +247,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     };
   }, [showMoroccoLayer, moroccoData, moroccoLayerToggles]);
 
-  const showMaritime = scope.world && dataLayers.maritime;
+  const showMaritime = dataLayers.maritime;
 
   const layers = useMapLayers({
     filtered: f.filtered,
@@ -266,8 +258,9 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     isSatellite: mapStyle === 'satellite',
     isMobile,
     showAllLabels,
-    showFlights: overlayVisibility.flights,
+    showFlights: dataLayers.flights,
     showEvents: overlayVisibility.events,
+    showZones: overlayVisibility.zones,
     showCyberThreats: overlayVisibility.cyberThreats,
     showMaritime,
     moroccoIntelligence: moroccoIntelForLayers,
@@ -288,6 +281,10 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     // Handle geopolitical relationship clicks with navigation animation
     if (id === 'geopolitical-relationships' || id === 'relationship-glow') {
       const relationship = object as any;
+
+      if (!relationship || !relationship.sourcePosition || !relationship.targetPosition) {
+        return null;
+      }
 
       // Calculate midpoint between source and target
       const midLon = (relationship.sourcePosition[0] + relationship.targetPosition[0]) / 2;

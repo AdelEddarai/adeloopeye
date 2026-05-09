@@ -17,9 +17,10 @@ export function IncidentCategories({ data }: IncidentCategoriesProps) {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(24, 24, 27, 0.95)',
-      borderColor: '#27272a',
+      backgroundColor: 'rgba(24, 24, 27, 0.7)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
       textStyle: { color: '#e4e4e7', fontSize: 10 },
+      extraCssText: 'backdrop-filter: blur(8px); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);',
     },
     legend: {
       data: ['Fires', 'Traffic', 'Weather'],
@@ -48,22 +49,38 @@ export function IncidentCategories({ data }: IncidentCategoriesProps) {
         type: 'bar',
         stack: 'total',
         data: data.map((d) => d.fires),
-        itemStyle: { color: '#f59e0b' },
-        barWidth: '50%',
+        itemStyle: { 
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: 'rgba(245, 158, 11, 0.9)' }, { offset: 1, color: 'rgba(245, 158, 11, 0.3)' }]
+          }
+        },
+        barWidth: '40%',
       },
       {
         name: 'Traffic',
         type: 'bar',
         stack: 'total',
         data: data.map((d) => d.traffic),
-        itemStyle: { color: '#3b82f6' },
+        itemStyle: { 
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: 'rgba(59, 130, 246, 0.9)' }, { offset: 1, color: 'rgba(59, 130, 246, 0.3)' }]
+          }
+        },
       },
       {
         name: 'Weather',
         type: 'bar',
         stack: 'total',
         data: data.map((d) => d.weather),
-        itemStyle: { color: '#8b5cf6', borderRadius: [2, 2, 0, 0] },
+        itemStyle: { 
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: 'rgba(139, 92, 246, 0.9)' }, { offset: 1, color: 'rgba(139, 92, 246, 0.3)' }]
+          },
+          borderRadius: [4, 4, 0, 0] 
+        },
       },
     ],
   };

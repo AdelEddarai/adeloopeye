@@ -241,7 +241,7 @@ export function UnifiedMapControls({
             <div className="space-y-2">
               <Label className="text-[9px] text-zinc-500 uppercase font-mono tracking-wider">Overlays</Label>
               <div className="space-y-1">
-                {(['timeline', 'filters', 'legend', 'events', 'cyberThreats'] as const).map(key => (
+                {(['timeline', 'filters', 'legend', 'zones', 'events', 'cyberThreats'] as const).map(key => (
                   <div key={key} className="flex items-center justify-between p-1 rounded-sm hover:bg-zinc-900">
                     <span className="text-[10px] font-mono text-zinc-300 uppercase">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                     <Switch checked={visibility[key]} onCheckedChange={() => onVisibilityToggle(key)} className="scale-75" />

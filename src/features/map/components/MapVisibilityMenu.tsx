@@ -10,7 +10,7 @@ export type OverlayVisibility = {
   timeline: boolean;
   filters:  boolean;
   legend:   boolean;
-  flights:  boolean;
+  zones:    boolean;
   events:   boolean;
   cyberThreats: boolean;
 };
@@ -25,7 +25,7 @@ const LABELS: { key: keyof OverlayVisibility; label: string }[] = [
   { key: 'timeline', label: 'TIMELINE' },
   { key: 'filters',  label: 'FILTERS'  },
   { key: 'legend',   label: 'LEGEND'   },
-  { key: 'flights',  label: 'FLIGHTS'  },
+  { key: 'zones',    label: 'ZONES'    },
   { key: 'events',   label: 'EVENTS'   },
   { key: 'cyberThreats', label: 'CYBER THREATS' },
 ];
