@@ -56,6 +56,13 @@ function buildMoroccoEventId(article: NewsArticle, type: MoroccoEventType, locat
   return `morocco-event-${stableId(`${type}|${location}|${published}|${source}|${title}`)}`;
 }
 
+function jitterCoordinate(coord: [number, number], scatterRadius = 0.08): [number, number] {
+  // Add random offset so multiple events in the same city don't stack perfectly on top of each other.
+  const jitterX = (Math.random() - 0.5) * scatterRadius;
+  const jitterY = (Math.random() - 0.5) * scatterRadius;
+  return [coord[0] + jitterX, coord[1] + jitterY];
+}
+
 export type MoroccoConnection = {
   id: string;
   type: 'TRADE_ROUTE' | 'DIPLOMATIC' | 'TRANSPORT' | 'ENERGY' | 'MIGRATION';
@@ -420,10 +427,13 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
     if (eventDetected && detectedType) {
       // Extract location
       const location = extractMoroccoLocation(originalContent);
-      const position = location ? MOROCCO_CITIES[location] : MOROCCO_CITIES['Morocco'];
+      const basePosition = location ? MOROCCO_CITIES[location] : MOROCCO_CITIES['Morocco'];
       const finalLocationName = location || 'Morocco';
 
-      if (position) {
+      if (basePosition) {
+        // Scatter events within an 8km radius of the city center so they don't perfectly stack
+        const position = jitterCoordinate(basePosition, 0.08);
+
         events.push({
           id: buildMoroccoEventId(article, detectedType, finalLocationName),
           type: detectedType,
@@ -477,22 +487,35 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
  * Extract Moroccan city from text
  */
 function extractMoroccoLocation(text: string): string | null {
-  const lower = text.toLowerCase();
+  // Strip common Moroccan news datelines (e.g., "Rabat (MAP) -" or "Rabat -")
+  // so the reporter's city doesn't override the actual story's location.
+  const cleanText = text.toLowerCase().replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)[a-z0-9\s()]*[-:]\s*/i, ' ');
 
   // Handle common alternate spellings
-  if (lower.includes('marrakesh')) return 'Marrakech';
-  if (lower.includes('tanger')) return 'Tangier';
-  if (lower.includes('fez')) return 'Fes';
-  if (lower.includes('meknes') || lower.includes('meknès')) return 'Meknes';
+  if (cleanText.includes('marrakesh')) return 'Marrakech';
+  if (cleanText.includes('tanger')) return 'Tangier';
+  if (cleanText.includes('fez')) return 'Fes';
+  if (cleanText.includes('meknes') || cleanText.includes('meknès')) return 'Meknes';
+  
+  const foundCities: string[] = [];
   
   for (const city of Object.keys(MOROCCO_CITIES)) {
     if (city === 'Morocco') continue; // Skip generic fallback in the loop
-    if (lower.includes(city.toLowerCase())) {
-      return city;
+    if (cleanText.includes(city.toLowerCase())) {
+      foundCities.push(city);
     }
   }
 
-  return null;
+  if (foundCities.length === 0) return null;
+  if (foundCities.length === 1) return foundCities[0];
+
+  // If multiple cities are found, prioritize non-Rabat cities since Rabat is often a dateline or government mention
+  const withoutRabat = foundCities.filter(c => c.toLowerCase() !== 'rabat');
+  if (withoutRabat.length > 0) {
+    return withoutRabat[0]; // Return the first non-Rabat city
+  }
+
+  return foundCities[0];
 }
 
 /**

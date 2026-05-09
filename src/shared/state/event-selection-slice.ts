@@ -5,8 +5,9 @@ export type EventSelectionState = {
   selectedEventId: string | null;
   selectedLocation: string | null;
   highlightedEvents: string[]; // Multiple events can be highlighted
-  focusMode: 'event' | 'location' | null; // What type of focus
+  focusMode: 'event' | 'location' | 'coordinates' | null; // What type of focus
   followSelection: boolean;
+  flyToCoords?: { coordinates: [number, number]; zoom: number } | null;
   timestamp: number; // For tracking selection changes
 };
 
@@ -16,6 +17,7 @@ const initialState: EventSelectionState = {
   highlightedEvents: [],
   focusMode: null,
   followSelection: true,
+  flyToCoords: null,
   timestamp: Date.now(),
 };
 
@@ -62,6 +64,12 @@ const eventSelectionSlice = createSlice({
       state.followSelection = action.payload;
       state.timestamp = Date.now();
     },
+    // Fly to arbitrary coordinates without selecting a specific event or location
+    flyToCoordinates(state, action: PayloadAction<{ coordinates: [number, number]; zoom: number }>) {
+      state.flyToCoords = action.payload;
+      state.focusMode = 'coordinates';
+      state.timestamp = Date.now();
+    },
   },
 });
 
@@ -71,6 +79,7 @@ export const {
   highlightEvents,
   clearSelection,
   setFollowSelection,
+  flyToCoordinates,
 } = eventSelectionSlice.actions;
 
 export default eventSelectionSlice.reducer;

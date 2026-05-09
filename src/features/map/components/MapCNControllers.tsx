@@ -196,11 +196,17 @@ export function MapCNEventFlyTo({ moroccoData, showMoroccoLayer, setMoroccoLayer
             duration: 1500,
           });
         }
+      } else if (eventSelection.flyToCoords) {
+        map.flyTo({
+          center: [eventSelection.flyToCoords.coordinates[0], eventSelection.flyToCoords.coordinates[1]],
+          zoom: eventSelection.flyToCoords.zoom,
+          duration: 1500,
+        });
       }
     }
   }, [
     map, isLoaded, eventSelection.followSelection, eventSelection.selectedEventId, 
-    eventSelection.selectedLocation, eventSelection.timestamp, 
+    eventSelection.selectedLocation, eventSelection.flyToCoords, eventSelection.timestamp, 
     moroccoData, showMoroccoLayer, setShowMoroccoLayer, setMoroccoLayerToggles
   ]);
 

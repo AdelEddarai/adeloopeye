@@ -33,12 +33,24 @@ export function transformNewsToEvents(articles: NewsArticle[]) {
 
     // Extract location from content (simple heuristic)
     let location = 'Unknown';
-    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Rabat', 'Casablanca', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Morocco'];
+    // Strip common Moroccan news datelines (e.g., "Rabat (MAP) -")
+    const cleanContent = content.replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)[a-z0-9\s()]*[-:]\s*/i, ' ');
+    
+    // Put Rabat towards the end so that actual cities take precedence
+    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Casablanca', 'Rabat', 'Morocco'];
+    
+    // Find all matching locations
+    const foundLocations: string[] = [];
     for (const loc of locations) {
-      if (content.includes(loc.toLowerCase())) {
-        location = loc;
-        break;
+      if (cleanContent.includes(loc.toLowerCase())) {
+        foundLocations.push(loc);
       }
+    }
+
+    if (foundLocations.length > 0) {
+      // Prioritize non-Rabat locations if multiple are found
+      const withoutRabat = foundLocations.filter(l => l !== 'Rabat');
+      location = withoutRabat.length > 0 ? withoutRabat[0] : foundLocations[0];
     }
 
     return {
@@ -180,6 +192,13 @@ export function extractLocationCoordinates(location: string): [number, number] |
   return coords[location] || null;
 }
 
+function jitterCoordinate(coord: [number, number], scatterRadius = 0.08): [number, number] {
+  // Add random offset so multiple events in the same city don't stack perfectly on top of each other.
+  const jitterX = (Math.random() - 0.5) * scatterRadius;
+  const jitterY = (Math.random() - 0.5) * scatterRadius;
+  return [coord[0] + jitterX, coord[1] + jitterY];
+}
+
 // Transform news into critical event markers (fires, explosions, attacks)
 export function transformNewsToCriticalEvents(articles: NewsArticle[]) {
   const criticalEvents: any[] = [];
@@ -211,16 +230,23 @@ export function transformNewsToCriticalEvents(articles: NewsArticle[]) {
     if (!eventType) return; // Skip non-critical events
     
     // Extract location
-    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Rabat', 'Casablanca', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Morocco'];
+    const cleanContent = content.replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)[a-z0-9\s()]*[-:]\s*/i, ' ');
+    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Casablanca', 'Rabat', 'Morocco'];
+    
     let location = null;
     let coords: [number, number] | null = null;
     
+    const foundLocations: string[] = [];
     for (const loc of locations) {
-      if (content.includes(loc.toLowerCase())) {
-        location = loc;
-        coords = extractLocationCoordinates(loc);
-        break;
+      if (cleanContent.includes(loc.toLowerCase())) {
+        foundLocations.push(loc);
       }
+    }
+
+    if (foundLocations.length > 0) {
+      const withoutRabat = foundLocations.filter(l => l !== 'Rabat');
+      location = withoutRabat.length > 0 ? withoutRabat[0] : foundLocations[0];
+      coords = extractLocationCoordinates(location);
     }
     
     if (!coords) return; // Skip if no location found
@@ -241,7 +267,7 @@ export function transformNewsToCriticalEvents(articles: NewsArticle[]) {
       status: 'ACTIVE',
       timestamp: article.publishedAt,
       name: article.title.slice(0, 80),
-      position: coords,
+      position: jitterCoordinate(coords, 0.08),
       description: article.description || article.title,
       severity,
       source: article.source,
@@ -258,27 +284,37 @@ export function transformNewsToHeatPoints(articles: NewsArticle[]) {
   articles.forEach((article, idx) => {
     const content = (article.title + ' ' + article.description).toLowerCase();
     
+    const cleanContent = content.replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)[a-z0-9\s()]*[-:]\s*/i, ' ');
     // Extract locations and create heat points
-    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Rabat', 'Casablanca', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Morocco'];
+    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Casablanca', 'Rabat', 'Morocco'];
     
-    for (const location of locations) {
-      if (content.includes(location.toLowerCase())) {
-        const coords = extractLocationCoordinates(location);
-        if (coords) {
-          // Weight based on severity keywords
-          let weight = 1;
-          if (content.includes('attack') || content.includes('strike') || content.includes('killed')) weight = 3;
-          else if (content.includes('tension') || content.includes('military') || content.includes('threat')) weight = 2;
-          
-          heatPoints.push({
-            id: `heat-${location}-${idx}-${Date.now()}`,
-            sourceEventId: null,
-            actor: 'news',
-            priority: 'STANDARD',
-            position: coords,
-            weight,
-          });
-        }
+    const foundLocations: string[] = [];
+    for (const loc of locations) {
+      if (cleanContent.includes(loc.toLowerCase())) {
+        foundLocations.push(loc);
+      }
+    }
+
+    if (foundLocations.length > 0) {
+      // Create heat point for the primary location
+      const withoutRabat = foundLocations.filter(l => l !== 'Rabat');
+      const primaryLoc = withoutRabat.length > 0 ? withoutRabat[0] : foundLocations[0];
+      const coords = extractLocationCoordinates(primaryLoc);
+      
+      if (coords) {
+        // Weight based on severity keywords
+        let weight = 1;
+        if (cleanContent.includes('attack') || cleanContent.includes('strike') || cleanContent.includes('killed')) weight = 3;
+        else if (cleanContent.includes('tension') || cleanContent.includes('military') || cleanContent.includes('threat')) weight = 2;
+        
+        heatPoints.push({
+          id: `heat-${primaryLoc}-${idx}-${Date.now()}`,
+          sourceEventId: null,
+          actor: 'news',
+          priority: 'STANDARD',
+          position: jitterCoordinate(coords, 0.08),
+          weight,
+        });
       }
     }
   });

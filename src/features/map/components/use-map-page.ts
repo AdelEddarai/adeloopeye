@@ -32,7 +32,7 @@ import {
   toggleDataLayer as toggleDataLayerAction,
   setScope as setScopeAction,
 } from '@/features/map/state/map-slice';
-import { selectEvent, selectLocation } from '@/shared/state/event-selection-slice';
+import { selectEvent, selectLocation, flyToCoordinates } from '@/shared/state/event-selection-slice';
 
 import { track } from '@/shared/lib/analytics';
 
@@ -298,13 +298,10 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
       // Zoom level based on distance (closer for nearby countries, farther for distant ones)
       const targetZoom = distance > 50 ? 4 : distance > 20 ? 5 : 6;
 
-      // Animate camera to the target country
-      dispatch(setViewStateAction({
-        ...viewState,
-        longitude: targetLon,
-        latitude: targetLat,
-        zoom: targetZoom,
-        transitionDuration: 2000, // Smooth 2-second animation
+      // Animate camera to the target country using the MapLibre controller
+      dispatch(flyToCoordinates({
+        coordinates: [targetLon, targetLat],
+        zoom: targetZoom
       }));
 
       // Track analytics
