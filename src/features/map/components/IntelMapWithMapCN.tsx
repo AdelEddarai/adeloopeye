@@ -160,6 +160,7 @@ export function IntelMapWithMapCN() {
         <Map
           center={[51.0, 30.0]}
           zoom={4.5}
+          // @ts-ignore
           style={MAP_STYLE_SAT}
           pitch={0}
           bearing={0}
