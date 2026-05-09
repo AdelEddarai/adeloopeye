@@ -51,8 +51,8 @@ export function useMapData(id: string = CONFLICT_ID, enabled: boolean = true) {
     queryKey: queryKeys.map.data(id),
     queryFn: () => api.get<MapDataResponse>(`/conflicts/${id}/map/data`),
     enabled, // Only fetch when enabled
-    staleTime: 12_000,
-    refetchInterval: enabled ? 15_000 : false,
+    staleTime: 5_000,
+    refetchInterval: enabled ? 10_000 : false,
     refetchIntervalInBackground: false, // Don't update when tab not focused
     select: toDataArrays,
   });

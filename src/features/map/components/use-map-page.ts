@@ -286,26 +286,25 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
         return null;
       }
 
-      // Calculate midpoint between source and target
-      const midLon = (relationship.sourcePosition[0] + relationship.targetPosition[0]) / 2;
-      const midLat = (relationship.sourcePosition[1] + relationship.targetPosition[1]) / 2;
+      // Navigate to the TARGET country it connects to
+      const targetLon = relationship.targetPosition[0];
+      const targetLat = relationship.targetPosition[1];
 
-      // Calculate distance to determine zoom level
+      // Calculate distance to determine zoom level (if it's a long distance, zoom out a bit)
       const lonDiff = Math.abs(relationship.sourcePosition[0] - relationship.targetPosition[0]);
       const latDiff = Math.abs(relationship.sourcePosition[1] - relationship.targetPosition[1]);
       const distance = Math.sqrt(lonDiff * lonDiff + latDiff * latDiff);
 
       // Zoom level based on distance (closer for nearby countries, farther for distant ones)
-      const targetZoom = distance > 50 ? 3 : distance > 20 ? 4 : distance > 10 ? 5 : 6;
+      const targetZoom = distance > 50 ? 4 : distance > 20 ? 5 : 6;
 
-      // Animate camera to the relationship region
+      // Animate camera to the target country
       dispatch(setViewStateAction({
         ...viewState,
-        longitude: midLon,
-        latitude: midLat,
+        longitude: targetLon,
+        latitude: targetLat,
         zoom: targetZoom,
         transitionDuration: 2000, // Smooth 2-second animation
-        transitionInterpolator: new FlyToInterpolator(),
       }));
 
       // Track analytics
