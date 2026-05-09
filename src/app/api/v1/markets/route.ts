@@ -6,8 +6,8 @@ import type { MarketResult } from '@/types/domain';
 
 type CacheEntry = { data: unknown; ts: number };
 const cache = new Map<string, CacheEntry>();
-const FRESH_TTL = 2 * 60 * 1000;
-const STALE_TTL = 10 * 60 * 1000;
+const FRESH_TTL = 2 * 1000;
+const STALE_TTL = 5 * 1000;
 const refetching = new Set<string>();
 
 type YFChartResult = {

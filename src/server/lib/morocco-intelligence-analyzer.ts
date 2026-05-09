@@ -110,6 +110,7 @@ const MOROCCO_CITIES: Record<string, [number, number]> = {
   'Essaouira': [-9.7695, 31.5085],
   'Laayoune': [-13.1994, 27.1536],
   'Dakhla': [-15.9582, 23.7158],
+  'Morocco': [-7.0926, 31.7917], // Center of Morocco for national news
 };
 
 // Key infrastructure locations
@@ -416,19 +417,19 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
       eventDetected = true;
     }
 
-    // If we detected an event type, create the event
     if (eventDetected && detectedType) {
       // Extract location
       const location = extractMoroccoLocation(originalContent);
-      const position = location ? MOROCCO_CITIES[location] : MOROCCO_CITIES['Rabat'];
+      const position = location ? MOROCCO_CITIES[location] : MOROCCO_CITIES['Morocco'];
+      const finalLocationName = location || 'Morocco';
 
       if (position) {
         events.push({
-          id: buildMoroccoEventId(article, detectedType, location || 'Morocco'),
+          id: buildMoroccoEventId(article, detectedType, finalLocationName),
           type: detectedType,
           title: article.title,
           description: article.description || article.title,
-          location: location || 'Morocco',
+          location: finalLocationName,
           position,
           severity: calculateSeverity(originalContent, detectedType),
           timestamp: article.publishedAt,
@@ -478,7 +479,14 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
 function extractMoroccoLocation(text: string): string | null {
   const lower = text.toLowerCase();
 
+  // Handle common alternate spellings
+  if (lower.includes('marrakesh')) return 'Marrakech';
+  if (lower.includes('tanger')) return 'Tangier';
+  if (lower.includes('fez')) return 'Fes';
+  if (lower.includes('meknes') || lower.includes('meknès')) return 'Meknes';
+  
   for (const city of Object.keys(MOROCCO_CITIES)) {
+    if (city === 'Morocco') continue; // Skip generic fallback in the loop
     if (lower.includes(city.toLowerCase())) {
       return city;
     }

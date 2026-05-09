@@ -33,7 +33,7 @@ export function transformNewsToEvents(articles: NewsArticle[]) {
 
     // Extract location from content (simple heuristic)
     let location = 'Unknown';
-    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia'];
+    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Rabat', 'Casablanca', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Morocco'];
     for (const loc of locations) {
       if (content.includes(loc.toLowerCase())) {
         location = loc;
@@ -152,7 +152,6 @@ export function transformFlightsToMapFeatures(flights: OpenSkyFlight[]) {
     });
 }
 
-// Generate coordinates for locations mentioned in news
 export function extractLocationCoordinates(location: string): [number, number] | null {
   const coords: Record<string, [number, number]> = {
     'Tehran': [51.3890, 35.6892],
@@ -169,6 +168,13 @@ export function extractLocationCoordinates(location: string): [number, number] |
     'Iraq': [43.6793, 33.2232],
     'Yemen': [48.5164, 15.5527],
     'Saudi Arabia': [45.0792, 23.8859],
+    'Rabat': [-6.8498, 33.9716],
+    'Casablanca': [-7.5898, 33.5731],
+    'Marrakech': [-8.0083, 31.6295],
+    'Tangier': [-5.8340, 35.7595],
+    'Agadir': [-9.5981, 30.4202],
+    'Fes': [-5.0078, 34.0331],
+    'Morocco': [-7.0926, 31.7917],
   };
 
   return coords[location] || null;
@@ -205,7 +211,7 @@ export function transformNewsToCriticalEvents(articles: NewsArticle[]) {
     if (!eventType) return; // Skip non-critical events
     
     // Extract location
-    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia'];
+    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Rabat', 'Casablanca', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Morocco'];
     let location = null;
     let coords: [number, number] | null = null;
     
@@ -253,7 +259,7 @@ export function transformNewsToHeatPoints(articles: NewsArticle[]) {
     const content = (article.title + ' ' + article.description).toLowerCase();
     
     // Extract locations and create heat points
-    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia'];
+    const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Yemen', 'Saudi Arabia', 'Rabat', 'Casablanca', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Morocco'];
     
     for (const location of locations) {
       if (content.includes(location.toLowerCase())) {

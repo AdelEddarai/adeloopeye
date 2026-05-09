@@ -35,8 +35,8 @@ export function useMarketData(
           interval: range.interval,
         }),
       ),
-    staleTime: STALE.LONG,
+    staleTime: 0,
     enabled: tickers.length > 0,
-    refetchInterval: REFETCH.FAST,
+    refetchInterval: 3000, // 3 seconds per user request
   });
 }

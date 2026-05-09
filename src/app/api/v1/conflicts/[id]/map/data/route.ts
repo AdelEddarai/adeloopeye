@@ -90,6 +90,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       { id: 'kyiv', name: 'Kyiv', country: 'Ukraine', position: [30.5234, 50.4501], type: 'CAPITAL' },
       { id: 'rabat', name: 'Rabat', country: 'Morocco', position: [-6.8498, 33.9716], type: 'CAPITAL' },
       { id: 'casablanca', name: 'Casablanca', country: 'Morocco', position: [-7.5898, 33.5731], type: 'MAJOR_CITY' },
+      { id: 'marrakech', name: 'Marrakech', country: 'Morocco', position: [-8.0083, 31.6295], type: 'MAJOR_CITY' },
+      { id: 'tangier', name: 'Tangier', country: 'Morocco', position: [-5.8340, 35.7595], type: 'MAJOR_CITY' },
+      { id: 'agadir', name: 'Agadir', country: 'Morocco', position: [-9.5981, 30.4202], type: 'MAJOR_CITY' },
+      { id: 'fes', name: 'Fes', country: 'Morocco', position: [-5.0078, 34.0331], type: 'MAJOR_CITY' },
     ] as const;
 
     console.log(`[Map Data] Returning ${cyberThreatsData.length} threats, ${criticalEvents.length} events, ${geopoliticalRelationships.length} relationships, ${cities.length} cities`);
