@@ -202,14 +202,10 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
         from_location: [viewState.longitude, viewState.latitude],
       });
 
-      console.log('[Morocco Layer] Enabled - Pausing other API calls');
-    } else {
       track('map_object_clicked', {
         type: 'morocco_layer',
         action: 'disabled',
       });
-
-      console.log('[Morocco Layer] Disabled - Resuming other API calls');
     }
   }, [showMoroccoLayer, viewState, dispatch]);
 

@@ -38,8 +38,13 @@ const FALLBACK_META: ActorMeta = {
 
 function wrap(inner: string) {
   return {
-    html: `<div style="background:var(--bg-app);border:1px solid var(--bd);padding:8px 10px;font-family:'SFMono-Regular',Menlo,monospace;max-width:260px;border-radius:2px">${inner}</div>`,
-    style: { backgroundColor: 'transparent', border: 'none', padding: '0', pointerEvents: 'auto' },
+    html: `<div style="background:var(--bg-app);border:1px solid var(--bd);padding:8px 10px;font-family:'SFMono-Regular',Menlo,monospace;max-width:260px;border-radius:2px;pointer-events:none">${inner}</div>`,
+    style: { 
+      backgroundColor: 'transparent', 
+      border: 'none', 
+      padding: '0', 
+      pointerEvents: 'none' // FIX: Prevent tooltip from capturing mouse events that break hover
+    },
   };
 }
 
@@ -338,11 +343,11 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
       <div style="color:var(--t3);font-size:9px;line-height:1.4;margin-bottom:6px">${d.description.substring(0, 150)}${d.description.length > 150 ? '...' : ''}</div>
       
       ${sourceUrl ? `
-        <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;color:${color};font-size:9px;font-weight:700;text-decoration:none;padding:4px 8px;background:color-mix(in srgb,${color} 15%,transparent);border-radius:2px;margin-top:4px;pointer-events:auto;cursor:pointer">
+        <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;color:${color};font-size:9px;font-weight:700;text-decoration:none;padding:4px 8px;background:color-mix(in srgb,${color} 15%,transparent);border-radius:2px;margin-top:4px;pointer-events:all;cursor:pointer">
           🔗 READ FULL ARTICLE →
         </a>
       ` : `
-        <div style="display:inline-block;color:var(--t4);font-size:9px;font-weight:700;padding:4px 8px;background:var(--bg-2);border:1px solid var(--bd);border-radius:2px;margin-top:4px">
+        <div style="display:inline-block;color:var(--t4);font-size:9px;font-weight:700;padding:4px 8px;background:var(--bg-2);border:1px solid var(--bd);border-radius:2px;margin-top:4px;pointer-events:none">
           SOURCE LINK UNAVAILABLE
         </div>
       `}

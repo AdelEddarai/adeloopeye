@@ -40,15 +40,67 @@ type Props = {
 };
 
 /**
+ * Simple spatial clustering for events
+ * Groups nearby events into clusters when zoomed out
+ */
+function clusterEvents(events: MoroccoEvent[], zoom: number): EventCluster[] {
+  // Only cluster when zoomed out (zoom < 10)
+  if (zoom >= 10 || events.length < 10) return [];
+  
+  const clusterRadius = zoom < 6 ? 0.5 : zoom < 8 ? 0.2 : 0.1; // degrees
+  const clusters: EventCluster[] = [];
+  const used = new Set<string>();
+  
+  events.forEach(event => {
+    if (used.has(event.id)) return;
+    
+    // Find nearby events
+    const nearby = events.filter(e => {
+      if (used.has(e.id)) return false;
+      const dist = Math.sqrt(
+        Math.pow(e.position[0] - event.position[0], 2) +
+        Math.pow(e.position[1] - event.position[1], 2)
+      );
+      return dist < clusterRadius;
+    });
+    
+    if (nearby.length >= 3) {
+      // Create cluster
+      nearby.forEach(e => used.add(e.id));
+      const avgLng = nearby.reduce((sum, e) => sum + e.position[0], 0) / nearby.length;
+      const avgLat = nearby.reduce((sum, e) => sum + e.position[1], 0) / nearby.length;
+      const maxSev = nearby.reduce((max, e) => {
+        const order = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
+        return order[e.severity] > order[max] ? e.severity : max;
+      }, 'LOW' as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL');
+      
+      clusters.push({
+        id: `cluster-${avgLng}-${avgLat}`,
+        position: [avgLng, avgLat],
+        events: nearby,
+        count: nearby.length,
+        maxSeverity: maxSev,
+      });
+    }
+  });
+  
+  return clusters;
+}
+
+/**
  * Offset overlapping events in the same location
  * Creates a spiral pattern for better visibility with many events
+ * 
+ * FIX: Use much tighter grouping (4 decimal places = ~11m precision) to only offset
+ * events that are TRULY at the exact same location, not just in the same ~1km area
  */
 function offsetOverlappingEvents(events: MoroccoEvent[]): (MoroccoEvent & { offsetPosition: [number, number] })[] {
-  // Group events by location (more precise grouping)
+  // Group events by location with HIGH precision (4 decimals = ~11 meter precision)
   const eventsByLocation = new Map<string, MoroccoEvent[]>();
   
   events.forEach(event => {
-    const key = `${event.position[0].toFixed(2)},${event.position[1].toFixed(2)}`;
+    // Use 4 decimal places for precise location matching (~11m grid)
+    const key = `${event.position[0].toFixed(4)},${event.position[1].toFixed(4)}`;
     if (!eventsByLocation.has(key)) {
       eventsByLocation.set(key, []);
     }
@@ -60,14 +112,14 @@ function offsetOverlappingEvents(events: MoroccoEvent[]): (MoroccoEvent & { offs
   
   eventsByLocation.forEach((locationEvents, key) => {
     if (locationEvents.length === 1) {
-      // Single event - no offset needed
+      // Single event - KEEP EXACT position, no offset
       offsetEvents.push({
         ...locationEvents[0],
         offsetPosition: locationEvents[0].position,
       });
     } else if (locationEvents.length <= 8) {
-      // Few events - circular pattern with larger radius
-      const radius = 0.02; // Increased from 0.15 to 0.02 degrees (about 2km)
+      // Few events at exact same spot - circular pattern with SMALLER radius
+      const radius = 0.003; // Reduced from 0.02 to 0.003 degrees (~330m at equator)
       const angleStep = (2 * Math.PI) / locationEvents.length;
       
       locationEvents.forEach((event, index) => {
@@ -81,11 +133,11 @@ function offsetOverlappingEvents(events: MoroccoEvent[]): (MoroccoEvent & { offs
         });
       });
     } else {
-      // Many events - spiral pattern for better distribution
+      // Many events at exact same spot - tighter spiral pattern
       locationEvents.forEach((event, index) => {
         const spiralTurns = Math.ceil(locationEvents.length / 8);
         const angle = (index / locationEvents.length) * spiralTurns * 2 * Math.PI;
-        const radius = 0.01 + (index / locationEvents.length) * 0.03; // 1-4km radius
+        const radius = 0.002 + (index / locationEvents.length) * 0.008; // 220m-1.1km radius (reduced from 1-4km)
         
         const offsetLng = event.position[0] + Math.cos(angle) * radius;
         const offsetLat = event.position[1] + Math.sin(angle) * radius;
@@ -256,17 +308,6 @@ export function useMoroccoLayer({
 }: Props): Layer[] {
   return useMemo(() => {
     const layers: Layer[] = [];
-    
-    // Safe logging with fallback for undefined arrays
-    console.log('[Morocco Layer] Rendering:', 
-      events?.length ?? 0, 'events,', 
-      connections?.length ?? 0, 'connections,', 
-      infrastructure?.length ?? 0, 'infrastructure,', 
-      weather?.length ?? 0, 'weather,', 
-      traffic?.length ?? 0, 'traffic,', 
-      fires?.length ?? 0, 'fires,',
-      routes?.length ?? 0, 'routes', 
-      'zoom:', zoom);
     
     // Offset overlapping events for better UX
     const offsetEvents = offsetOverlappingEvents(events || []);
@@ -1043,8 +1084,6 @@ export function useMoroccoLayer({
         layers.push(routeLabelLayer);
       }
     }
-    
-    console.log('[Morocco Layer] Created', layers.length, 'layers');
     
     return layers;
   }, [events, connections, infrastructure, weather, traffic, commodities, fires, routes, isSatellite, isMobile, pulseTime, selectedEventId, zoom]);

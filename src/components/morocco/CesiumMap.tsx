@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
 import { useMapFilters } from '@/features/map/hooks/use-map-filters';
 import { useCesiumMapBase } from './hooks/useCesiumMapBase';
@@ -18,7 +18,28 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
     cyber: true,
   });
 
-  const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, title: string, details: string } | null>(null);
+  const [hoverInfo, setHoverInfoState] = useState<{ x: number, y: number, title: string, details: string } | null>(null);
+  const hoverInfoRef = useRef<{ x: number, y: number, title: string, details: string } | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const setHoverInfo = useCallback((info: { x: number, y: number, title: string, details: string } | null) => {
+    if (info) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      hoverInfoRef.current = info;
+      setHoverInfoState(info);
+    } else {
+      if (hoverInfoRef.current && !hoverTimeoutRef.current) {
+        hoverTimeoutRef.current = setTimeout(() => {
+          hoverInfoRef.current = null;
+          setHoverInfoState(null);
+          hoverTimeoutRef.current = null;
+        }, 500);
+      }
+    }
+  }, []);
   const [selectedFlightInfo, setSelectedFlightInfo] = useState<{ flightObj: any, x: number, y: number, entity: any } | null>(null);
 
   const toggleLayer = (layer: keyof CesiumToggles) => {
@@ -164,8 +185,21 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
       {/* Hover Info Tooltip */}
       {hoverInfo && (
         <div 
-          className="absolute z-[100] pointer-events-none backdrop-blur-xl bg-slate-950/80 border-l-4 border-cyan-500 border-y border-r border-slate-700/80 text-white p-4 rounded-r-xl shadow-[0_0_30px_rgba(6,182,212,0.2)] min-w-[220px] max-w-md transition-all duration-75"
+          className="absolute z-[100] backdrop-blur-xl bg-slate-950/80 border-l-4 border-cyan-500 border-y border-r border-slate-700/80 text-white p-4 rounded-r-xl shadow-[0_0_30px_rgba(6,182,212,0.2)] min-w-[220px] max-w-md transition-all duration-75"
           style={{ top: hoverInfo.y + 15, left: hoverInfo.x + 15 }}
+          onMouseEnter={() => {
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            hoverTimeoutRef.current = setTimeout(() => {
+              hoverInfoRef.current = null;
+              setHoverInfoState(null);
+              hoverTimeoutRef.current = null;
+            }, 500);
+          }}
         >
           <div className="flex items-center gap-2 mb-2">
             <span className="flex h-2 w-2 min-w-2 relative mt-0.5">

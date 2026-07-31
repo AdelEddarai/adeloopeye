@@ -228,7 +228,7 @@ export function IntelMap() {
     } else {
       hoverTimeoutRef.current = setTimeout(() => {
         setHoverInfo(null);
-      }, 250);
+      }, 500);
     }
   }, []);
   
@@ -406,7 +406,7 @@ export function IntelMap() {
               if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
             }}
             onMouseLeave={() => {
-              hoverTimeoutRef.current = setTimeout(() => setHoverInfo(null), 250);
+              hoverTimeoutRef.current = setTimeout(() => setHoverInfo(null), 500);
             }}
             dangerouslySetInnerHTML={{ __html: hoverInfo.html }}
           />
