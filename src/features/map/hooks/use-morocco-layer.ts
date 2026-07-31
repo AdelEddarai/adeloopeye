@@ -128,18 +128,19 @@ function clusterEvents(events: MoroccoEvent[], zoom: number): EventCluster[] {
 
 /**
  * Offset overlapping events in the same location
- * Creates a spiral pattern for better visibility with many events
+ * Creates a circular pattern for better visibility with multiple events
  * 
- * FIX: Use much tighter grouping (4 decimal places = ~11m precision) to only offset
- * events that are TRULY at the exact same location, not just in the same ~1km area
+ * Uses 3 decimal precision (~111m) to group events at the EXACT same city coordinates
+ * Events with exact city coordinates will be arranged in a tight circle around that point
  */
 function offsetOverlappingEvents(events: MoroccoEvent[]): (MoroccoEvent & { offsetPosition: [number, number] })[] {
-  // Group events by location with HIGH precision (4 decimals = ~11 meter precision)
+  // Group events by EXACT coordinates (3 decimals = ~111m precision)
+  // This catches events that share the exact same city coordinate from MOROCCO_CITIES
   const eventsByLocation = new Map<string, MoroccoEvent[]>();
   
   events.forEach(event => {
-    // Use 4 decimal places for precise location matching (~11m grid)
-    const key = `${event.position[0].toFixed(4)},${event.position[1].toFixed(4)}`;
+    // Use 3 decimal places to group events at exact city coordinates
+    const key = `${event.position[0].toFixed(3)},${event.position[1].toFixed(3)}`;
     if (!eventsByLocation.has(key)) {
       eventsByLocation.set(key, []);
     }
@@ -151,35 +152,23 @@ function offsetOverlappingEvents(events: MoroccoEvent[]): (MoroccoEvent & { offs
   
   eventsByLocation.forEach((locationEvents, key) => {
     if (locationEvents.length === 1) {
-      // Single event - KEEP EXACT position, no offset
+      // Single event at this city - keep EXACT position
       offsetEvents.push({
         ...locationEvents[0],
         offsetPosition: locationEvents[0].position,
       });
-    } else if (locationEvents.length <= 8) {
-      // Few events at exact same spot - circular pattern with SMALLER radius
-      const radius = 0.003; // Reduced from 0.02 to 0.003 degrees (~330m at equator)
+    } else {
+      // Multiple events at same city coordinates - arrange in tight circle
+      // Radius scales with number of events: 2-5 events = 300m, 6-10 = 500m, 10+ = 800m
+      const baseRadius = locationEvents.length <= 5 ? 0.0027 : 
+                        locationEvents.length <= 10 ? 0.0045 : 
+                        0.0072; // 300m / 500m / 800m
       const angleStep = (2 * Math.PI) / locationEvents.length;
       
       locationEvents.forEach((event, index) => {
         const angle = index * angleStep;
-        const offsetLng = event.position[0] + Math.cos(angle) * radius;
-        const offsetLat = event.position[1] + Math.sin(angle) * radius;
-        
-        offsetEvents.push({
-          ...event,
-          offsetPosition: [offsetLng, offsetLat],
-        });
-      });
-    } else {
-      // Many events at exact same spot - tighter spiral pattern
-      locationEvents.forEach((event, index) => {
-        const spiralTurns = Math.ceil(locationEvents.length / 8);
-        const angle = (index / locationEvents.length) * spiralTurns * 2 * Math.PI;
-        const radius = 0.002 + (index / locationEvents.length) * 0.008; // 220m-1.1km radius (reduced from 1-4km)
-        
-        const offsetLng = event.position[0] + Math.cos(angle) * radius;
-        const offsetLat = event.position[1] + Math.sin(angle) * radius;
+        const offsetLng = event.position[0] + Math.cos(angle) * baseRadius;
+        const offsetLat = event.position[1] + Math.sin(angle) * baseRadius;
         
         offsetEvents.push({
           ...event,
@@ -537,6 +526,7 @@ export function useMoroccoLayer({
     
     // ═══════════════════════════════════════════════════════════
     // EVENT MARKERS - Modern radar-style pulses (only visible events)
+    // ALL critical/high events + selected events pulse continuously
     // ═══════════════════════════════════════════════════════════
     if (visibleEvents.length > 0) {
       // 1. Modern Radar Ripple Layer (Bottom layer for pulse effect)
@@ -546,46 +536,63 @@ export function useMoroccoLayer({
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
-          const baseRadius = d.severity === 'CRITICAL' ? 6000 : 
-                           d.severity === 'HIGH' ? 4000 : 2500;
+          const isCriticalOrHigh = d.severity === 'CRITICAL' || d.severity === 'HIGH';
+          const shouldPulse = isSelected || d.status === 'ONGOING' || isCriticalOrHigh;
           
-          if (isSelected || d.status === 'ONGOING' || d.severity === 'CRITICAL') {
-            const pulsePhase = (pulseTime * (d.severity === 'CRITICAL' ? 1.5 : 1.0)) % 1;
-            const selectedBoost = isSelected ? 1.4 : 1;
-            return baseRadius * selectedBoost * pulsePhase * zoomScale;
-          }
-          return 0; 
+          if (!shouldPulse) return 0;
+          
+          // Base radius by severity
+          const baseRadius = d.severity === 'CRITICAL' ? 7000 : 
+                           d.severity === 'HIGH' ? 5000 : 3000;
+          
+          // Pulse calculation
+          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : isCriticalOrHigh ? 1.3 : 1.0;
+          const pulsePhase = (pulseTime * pulseSpeed) % 1;
+          const selectedBoost = isSelected ? 1.6 : 1.0;
+          
+          return baseRadius * selectedBoost * pulsePhase * zoomScale;
         },
         getFillColor: (d): RGBA => {
           const color = getEventColor(d.type, d.severity);
           const isSelected = selectedEventId === d.id;
-          if (isSelected || d.status === 'ONGOING' || d.severity === 'CRITICAL') {
-            const pulsePhase = (pulseTime * (d.severity === 'CRITICAL' ? 1.5 : 1.0)) % 1;
-            const alphaBase = isSelected ? 255 : 200;
-            const alpha = Math.max(0, Math.floor(alphaBase * Math.pow(1 - pulsePhase, 2)));
-            return [color[0], color[1], color[2], alpha];
-          }
-          return [0, 0, 0, 0];
+          const isCriticalOrHigh = d.severity === 'CRITICAL' || d.severity === 'HIGH';
+          const shouldPulse = isSelected || d.status === 'ONGOING' || isCriticalOrHigh;
+          
+          if (!shouldPulse) return [0, 0, 0, 0];
+          
+          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : isCriticalOrHigh ? 1.3 : 1.0;
+          const pulsePhase = (pulseTime * pulseSpeed) % 1;
+          
+          // More visible alpha for critical/selected events
+          const alphaBase = isSelected ? 255 : isCriticalOrHigh ? 220 : 180;
+          const alpha = Math.max(0, Math.floor(alphaBase * Math.pow(1 - pulsePhase, 1.8)));
+          
+          return [color[0], color[1], color[2], alpha];
         },
         stroked: true,
         getLineColor: (d): RGBA => {
           const color = getEventColor(d.type, d.severity);
-          if (d.status === 'ONGOING' || d.severity === 'CRITICAL') {
-            const pulsePhase = (pulseTime * (d.severity === 'CRITICAL' ? 1.5 : 1.0)) % 1;
-            const alpha = Math.max(0, Math.floor(255 * (1 - pulsePhase)));
-            return [color[0], color[1], color[2], alpha];
-          }
-          return [0, 0, 0, 0];
+          const isSelected = selectedEventId === d.id;
+          const isCriticalOrHigh = d.severity === 'CRITICAL' || d.severity === 'HIGH';
+          const shouldPulse = isSelected || d.status === 'ONGOING' || isCriticalOrHigh;
+          
+          if (!shouldPulse) return [0, 0, 0, 0];
+          
+          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : isCriticalOrHigh ? 1.3 : 1.0;
+          const pulsePhase = (pulseTime * pulseSpeed) % 1;
+          const alpha = Math.max(0, Math.floor(255 * (1 - pulsePhase)));
+          
+          return [color[0], color[1], color[2], alpha];
         },
-        lineWidthMinPixels: 1,
-        lineWidthMaxPixels: 3,
+        lineWidthMinPixels: 2,
+        lineWidthMaxPixels: 4,
         pickable: false,
         radiusMinPixels: 0,
-        radiusMaxPixels: 45,
+        radiusMaxPixels: 60,
         updateTriggers: {
-          getRadius: [pulseTime, zoom],
-          getFillColor: [pulseTime],
-          getLineColor: [pulseTime],
+          getRadius: [pulseTime, zoom, selectedEventId],
+          getFillColor: [pulseTime, selectedEventId],
+          getLineColor: [pulseTime, selectedEventId],
         },
       });
 
@@ -596,17 +603,17 @@ export function useMoroccoLayer({
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
-          const baseRadius = d.severity === 'CRITICAL' ? 800 : 
-                           d.severity === 'HIGH' ? 600 : 400;
-          return baseRadius * (isSelected ? 1.8 : 1) * zoomScale;
+          const baseRadius = d.severity === 'CRITICAL' ? 900 : 
+                           d.severity === 'HIGH' ? 700 : 500;
+          return baseRadius * (isSelected ? 2.0 : 1) * zoomScale;
         },
         getFillColor: (d): RGBA => getEventColor(d.type, d.severity),
         stroked: false,
         pickable: true,
         autoHighlight: true,
         radiusUnits: 'meters',
-        radiusMinPixels: 2,
-        radiusMaxPixels: 6,
+        radiusMinPixels: 3,
+        radiusMaxPixels: 8,
         updateTriggers: {
           getRadius: [zoom, selectedEventId],
           getFillColor: [pulseTime],

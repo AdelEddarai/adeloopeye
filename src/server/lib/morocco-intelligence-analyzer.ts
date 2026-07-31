@@ -638,71 +638,83 @@ function extractMoroccoLocation(text: string): string | null {
     const index = cleanText.indexOf(cityLower);
     
     if (index !== -1) {
-      // Calculate priority based on:
-      // 1. Smaller/specific cities get MUCH higher priority (less likely to be false positive)
-      // 2. Earlier mention in text gets boost (mentions in title/beginning more relevant)
-      // 3. Avoid capitals that might just be government mentions
-      let priority = 100 - index / 20; // Earlier = higher priority
+      // Calculate priority - MAJOR improvements to prevent false positives
+      // 1. Context clues (in/near/from + city) = HIGHEST priority
+      // 2. Smaller cities = HIGH priority (less false positives)
+      // 3. Dateline detection penalty for capitals
       
-      // MAJOR boost for smaller, specific cities (these are rarely mentioned unless truly relevant)
+      let priority = 50; // Base priority
+      
+      // HIGHEST PRIORITY: Strong context clues (best indicator of actual location)
+      const contextPatterns = [
+        new RegExp(`\\b(?:in|near|at|from|around)\\s+${cityLower}\\b`, 'i'),
+        new RegExp(`${cityLower}\\s+(?:area|region|city|province)`, 'i'),
+        new RegExp(`${cityLower}[''']s\\s+`, 'i'), // Possessive: "Marrakech's market"
+      ];
+      
+      for (const pattern of contextPatterns) {
+        if (pattern.test(cleanText)) {
+          priority += 100; // HUGE boost for strong context
+          break;
+        }
+      }
+      
+      // HIGH PRIORITY: Small/specific cities (rarely mentioned unless truly relevant)
       const smallCities = ['Ifrane', 'Azrou', 'Chefchaouen', 'Essaouira', 'Ouarzazate', 'Zagora', 
                           'Tinghir', 'Tiznit', 'Sefrou', 'Midelt', 'Tiflet', 'Khemisset', 
                           'Al Hoceima', 'Taroudant', 'Guelmim', 'Tan-Tan', 'Errachidia'];
-      if (smallCities.includes(city)) priority += 80; // HUGE boost
+      if (smallCities.includes(city)) priority += 60;
       
-      // Medium boost for mid-size cities
+      // MEDIUM PRIORITY: Mid-size cities
       const midCities = ['Mohammedia', 'Khouribga', 'Settat', 'Larache', 'Ksar El Kebir', 
                         'Berrechid', 'Tetouan', 'Nador', 'Safi', 'El Jadida', 'Beni Mellal'];
-      if (midCities.includes(city)) priority += 40;
+      if (midCities.includes(city)) priority += 30;
       
-      // Reduce priority for capitals/major cities that might be mentioned in datelines
-      if (['Rabat', 'Casablanca'].includes(city)) priority -= 25;
+      // PENALTY: Capitals/major cities (often datelines or general government mentions)
+      if (['Rabat', 'Casablanca'].includes(city)) {
+        priority -= 40;
+        // Extra check: if in first 100 chars without context, likely dateline
+        if (index < 100 && !contextPatterns.some(p => p.test(cleanText))) {
+          priority -= 40; // Heavy penalty for dateline format
+        }
+      }
       
-      // Regions get much lower priority than cities
+      // PENALTY: Generic regions (should only match if strong context)
       if (city.includes('-') || city.includes('Mountains') || city.includes('Sahara') || city.includes('Region')) {
-        priority -= 50;
+        priority -= 60;
       }
       
-      // Boost if mentioned in title (first 60 chars)
-      if (index < 60) priority += 35;
+      // BOOST: Earlier mention (but not as important as context)
+      const positionBoost = Math.max(0, 25 - index / 40);
+      priority += positionBoost;
       
-      // Check for strong context clues: "in [city]", "near [city]", "from [city]", "[city] area"
-      const contextPattern = new RegExp(`(?:in|near|from|at|around)\\s+${cityLower}|${cityLower}\\s+(?:area|region|city)`, 'i');
-      if (contextPattern.test(cleanText)) {
-        priority += 60; // Strong context = high boost
-      }
+      // BOOST: Mentioned in title (first 60 chars)
+      if (index < 60) priority += 20;
       
       foundCities.push({ city, priority, index });
     }
   }
 
   if (foundCities.length === 0) {
-    // Try to extract from common patterns like "in [City]" or "near [City]"
-    const nearPattern = /(?:in|near|at|from|around)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g;
-    const matches = [...text.matchAll(nearPattern)];
-    for (const match of matches) {
-      const candidate = match[1];
-      for (const city of Object.keys(MOROCCO_CITIES)) {
-        if (city.toLowerCase() === candidate.toLowerCase()) {
-          return city;
-        }
-      }
-    }
-    
-    return null; // Return null = will use generic "Morocco" with spread
+    return null; // No confident match = use generic Morocco spread
   }
 
-  // Sort by priority and return highest
+  // Sort by priority (highest first), then by earlier mention as tiebreaker
   foundCities.sort((a, b) => {
-    // If priority difference is small, prefer earlier mention
     const priorityDiff = b.priority - a.priority;
-    if (Math.abs(priorityDiff) < 10) {
-      return a.index - b.index; // Earlier mention wins
+    if (Math.abs(priorityDiff) < 15) {
+      return a.index - b.index; // Close priorities = prefer earlier mention
     }
     return priorityDiff; // Higher priority wins
   });
   
-  return foundCities[0].city;
+  // Only return city if priority is reasonably high (confident match)
+  const topMatch = foundCities[0];
+  if (topMatch.priority < 40) {
+    return null; // Low confidence = use generic Morocco spread
+  }
+  
+  return topMatch.city;
 }
 
 /**
