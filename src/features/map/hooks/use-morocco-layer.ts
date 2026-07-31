@@ -529,24 +529,22 @@ export function useMoroccoLayer({
     // ALL critical/high events + selected events pulse continuously
     // ═══════════════════════════════════════════════════════════
     if (visibleEvents.length > 0) {
-      // 1. Modern Radar Ripple Layer (Bottom layer for pulse effect)
+      // 1. Modern Radar Ripple Layer (Pulse effect for ALL events)
       const eventRippleLayer = new ScatterplotLayer<typeof visibleEvents[0]>({
         id: 'morocco-events-ripple',
         data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
-          const isCriticalOrHigh = d.severity === 'CRITICAL' || d.severity === 'HIGH';
-          const shouldPulse = isSelected || d.status === 'ONGOING' || isCriticalOrHigh;
-          
-          if (!shouldPulse) return 0;
           
           // Base radius by severity
           const baseRadius = d.severity === 'CRITICAL' ? 7000 : 
-                           d.severity === 'HIGH' ? 5000 : 3000;
+                           d.severity === 'HIGH' ? 5000 : 
+                           d.severity === 'MEDIUM' ? 3500 : 2500;
           
-          // Pulse calculation
-          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : isCriticalOrHigh ? 1.3 : 1.0;
+          // ALL events pulse (critical/high pulse faster)
+          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : 
+                           d.severity === 'HIGH' ? 1.3 : 1.0;
           const pulsePhase = (pulseTime * pulseSpeed) % 1;
           const selectedBoost = isSelected ? 1.6 : 1.0;
           
@@ -555,16 +553,15 @@ export function useMoroccoLayer({
         getFillColor: (d): RGBA => {
           const color = getEventColor(d.type, d.severity);
           const isSelected = selectedEventId === d.id;
-          const isCriticalOrHigh = d.severity === 'CRITICAL' || d.severity === 'HIGH';
-          const shouldPulse = isSelected || d.status === 'ONGOING' || isCriticalOrHigh;
           
-          if (!shouldPulse) return [0, 0, 0, 0];
-          
-          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : isCriticalOrHigh ? 1.3 : 1.0;
+          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : 
+                           d.severity === 'HIGH' ? 1.3 : 1.0;
           const pulsePhase = (pulseTime * pulseSpeed) % 1;
           
-          // More visible alpha for critical/selected events
-          const alphaBase = isSelected ? 255 : isCriticalOrHigh ? 220 : 180;
+          // Alpha based on severity
+          const alphaBase = isSelected ? 255 : 
+                          d.severity === 'CRITICAL' ? 220 : 
+                          d.severity === 'HIGH' ? 180 : 140;
           const alpha = Math.max(0, Math.floor(alphaBase * Math.pow(1 - pulsePhase, 1.8)));
           
           return [color[0], color[1], color[2], alpha];
@@ -572,15 +569,11 @@ export function useMoroccoLayer({
         stroked: true,
         getLineColor: (d): RGBA => {
           const color = getEventColor(d.type, d.severity);
-          const isSelected = selectedEventId === d.id;
-          const isCriticalOrHigh = d.severity === 'CRITICAL' || d.severity === 'HIGH';
-          const shouldPulse = isSelected || d.status === 'ONGOING' || isCriticalOrHigh;
           
-          if (!shouldPulse) return [0, 0, 0, 0];
-          
-          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : isCriticalOrHigh ? 1.3 : 1.0;
+          const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : 
+                           d.severity === 'HIGH' ? 1.3 : 1.0;
           const pulsePhase = (pulseTime * pulseSpeed) % 1;
-          const alpha = Math.max(0, Math.floor(255 * (1 - pulsePhase)));
+          const alpha = Math.max(0, Math.floor(200 * (1 - pulsePhase)));
           
           return [color[0], color[1], color[2], alpha];
         },
@@ -596,24 +589,26 @@ export function useMoroccoLayer({
         },
       });
 
-      // 2. Modern Radar Core Layer (Sharp focal point)
+      // 2. Modern Radar Core Layer (Sharp focal point) - VISIBLE event dots
       const eventCoreLayer = new ScatterplotLayer<typeof visibleEvents[0]>({
         id: 'morocco-events-core',
         data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
-          const baseRadius = d.severity === 'CRITICAL' ? 900 : 
-                           d.severity === 'HIGH' ? 700 : 500;
+          const baseRadius = d.severity === 'CRITICAL' ? 2500 : 
+                           d.severity === 'HIGH' ? 2000 : 1500;
           return baseRadius * (isSelected ? 2.0 : 1) * zoomScale;
         },
         getFillColor: (d): RGBA => getEventColor(d.type, d.severity),
-        stroked: false,
+        stroked: true,
+        getLineColor: [255, 255, 255, 150],
+        lineWidthMinPixels: 1,
         pickable: true,
         autoHighlight: true,
         radiusUnits: 'meters',
-        radiusMinPixels: 3,
-        radiusMaxPixels: 8,
+        radiusMinPixels: 6,
+        radiusMaxPixels: 18,
         updateTriggers: {
           getRadius: [zoom, selectedEventId],
           getFillColor: [pulseTime],
