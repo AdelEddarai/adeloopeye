@@ -341,10 +341,10 @@ export function useMoroccoLayer({
     const clusters = clusterEvents(events || [], zoom);
     const offsetEvents = offsetOverlappingEvents(events || []);
     
-    // Filter out clustered events at low zoom
-    const clusteredEventIds = new Set(clusters.flatMap(c => c.events.map(e => e.id)));
-    const visibleEvents = zoom >= 11 ? offsetEvents : 
-                         offsetEvents.filter(e => !clusteredEventIds.has(e.id));
+    // ALWAYS show individual events, but ALSO show clusters at low zoom
+    // At zoom >= 9: show all individual events with offsets
+    // At zoom < 9: show both clusters AND individual events (for context)
+    const visibleEvents = offsetEvents;
     
     // Calculate zoom-responsive scales (World Monitor style)
     const zoomScale = Math.max(0.5, Math.min(1.2, (12 - zoom) / 6 + 0.7));
@@ -451,9 +451,9 @@ export function useMoroccoLayer({
     }
     
     // ═══════════════════════════════════════════════════════════
-    // EVENT CLUSTERS - World Monitor style numbered clusters
+    // EVENT CLUSTERS - World Monitor style numbered clusters (only at LOW zoom)
     // ═══════════════════════════════════════════════════════════
-    if (clusters.length > 0) {
+    if (clusters.length > 0 && zoom < 9) {
       // Cluster rings (background)
       const clusterRingLayer = new ScatterplotLayer<EventCluster>({
         id: 'morocco-cluster-rings',
