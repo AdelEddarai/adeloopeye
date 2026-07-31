@@ -83,20 +83,14 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
           const icon = getEventIcon(event.type);
           
           toast.error(
-            <div className="flex flex-col gap-1">
-              <div className="font-bold text-sm">
-                {severity} {event.location} - {icon} {event.type}
-              </div>
-              <div className="text-xs text-zinc-400 line-clamp-2">
-                {event.title}
-              </div>
-            </div>,
+            `${severity} ${event.location} - ${icon} ${event.type}: ${event.title}`,
             {
               duration: event.severity === 'CRITICAL' ? 10000 : 6000,
               position: 'top-right',
               className: event.severity === 'CRITICAL' 
                 ? 'border-red-500 border-2 bg-red-950/90' 
                 : 'border-orange-500 border bg-orange-950/80',
+              description: event.description?.substring(0, 100),
             }
           );
         }
