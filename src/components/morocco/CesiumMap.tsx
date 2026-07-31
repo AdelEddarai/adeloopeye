@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
+import { useAlertNotifications } from '@/shared/hooks/use-alert-notifications';
 import { useMapFilters } from '@/features/map/hooks/use-map-filters';
 import { useCesiumMapBase } from './hooks/useCesiumMapBase';
 import { useCesiumData, type CesiumToggles } from './hooks/useCesiumIntelligenceData';
@@ -48,6 +49,12 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
   
   // Fetch local Morocco intelligence
   const { data: moroccoData, isLoading: moroccoLoading, error: moroccoError } = useMoroccoIntelligence(true);
+
+  // Alert notification system - monitors new critical/alert events
+  const { alerts, totalAlerts, criticalAlerts } = useAlertNotifications(
+    moroccoData?.events || [],
+    true // enabled
+  );
 
   // Fetch Global Intelligence (Flights, assets, targets)
   const f = useMapFilters(true);
@@ -107,12 +114,25 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
               <h3 className="font-bold text-lg mb-1 tracking-widest text-cyan-50">GLOBAL 4D ENGINE</h3>
               <p className="text-xs text-cyan-400 font-mono">LIVE OSINT INTELLIGENCE</p>
             </div>
-            <div className="flex items-center gap-2 mt-1 px-2 py-1 bg-cyan-950/50 border border-cyan-800 rounded">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-              </span>
-              <span className="text-[9px] text-cyan-400 font-mono tracking-widest uppercase">Stream: Active</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 px-2 py-1 bg-cyan-950/50 border border-cyan-800 rounded">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                </span>
+                <span className="text-[9px] text-cyan-400 font-mono tracking-widest uppercase">Stream: Active</span>
+              </div>
+              {totalAlerts > 0 && (
+                <div className="flex items-center gap-2 px-2 py-1 bg-red-950/50 border border-red-500 rounded">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                  </span>
+                  <span className="text-[9px] text-red-400 font-mono tracking-widest uppercase">
+                    🚨 {criticalAlerts} Critical • {totalAlerts} Total Alerts
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

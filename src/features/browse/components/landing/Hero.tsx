@@ -14,17 +14,19 @@ export function Hero() {
 
   return (
     <section className="px-5 pt-16 pb-12 max-w-3xl mx-auto">
-      <p className="label mb-4">Open-source intelligence</p>
+      <p className="label mb-4">🇲🇦 Morocco OSINT Intelligence Platform</p>
 
       <h1 className="text-[32px] sm:text-[42px] font-bold text-[var(--t1)] leading-[1.1] tracking-tight mb-4">
-        Real-Time Iran Conflict Intelligence Dashboard
+        AdeloopEye — Real-Time Morocco Intelligence Dashboard
       </h1>
 
       <p className="text-[length:var(--text-subhead)] sm:text-base text-[var(--t2)] leading-[1.7] max-w-xl mb-8">
-        Conflicts.app is an open-source intelligence dashboard built to track
-        the Iran conflict in real time. 30+ sources spanning Western, Iranian,
-        Israeli, Arab, Russian, and Chinese outlets processed through an AI
-        pipeline into interactive maps, daily briefs, and escalation scoring.
+        Developed by <span className="font-bold text-[var(--t1)]">Adeloop AI Lab</span>, 
+        AdeloopEye is Morocco's comprehensive OSINT platform. Real-time monitoring 
+        of news, weather, traffic, fires across 70+ Moroccan cities. Multi-source 
+        aggregation (RSS feeds, news APIs, Telegram channels) with World Monitor-inspired 
+        visualization. 24h news window, adaptive clustering, density heatmaps, and 
+        intelligent event positioning on an interactive map.
       </p>
 
       <div className="flex items-center gap-3">
@@ -47,15 +49,6 @@ export function Hero() {
             Open dashboard &rarr;
           </Link>
         </Button>
-        {/* <Button
-          size="sm"
-          asChild
-          className="bg-[var(--t1)] text-[var(--bg-app)] font-bold hover:bg-[var(--t2)]"
-        >
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-            View on GitHub
-          </a>
-        </Button> */}
       </div>
     </section>
   );

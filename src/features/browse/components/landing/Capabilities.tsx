@@ -1,43 +1,43 @@
 const CAPABILITIES = [
   {
-    title: 'Interactive conflict map',
+    title: 'Live Morocco Intelligence Map',
     description:
-      'Every airstrike, missile launch, and troop movement plotted on a map. Filter by day, severity, or actor. Built with DeckGL and MapLibre.',
+      'Real-time event tracking across 70+ Moroccan cities. World Monitor-inspired visualization with adaptive clustering, density heatmaps, and smart event positioning. Built with DeckGL and MapLibre.',
   },
   {
-    title: 'Event timeline',
+    title: 'Multi-Source News Aggregation',
     description:
-      'Airstrikes, diplomatic moves, field reports. Each event scored by severity with actors involved and source links. Browse by day or search across the full conflict.',
+      'RSS feeds from Moroccan sources (Hespress, Le360, MAP) + 3 news APIs (GNews, NewsData.io, NewsAPI) + Telegram channels. Automatic deduplication and 24h filtering for real-time monitoring.',
   },
   {
-    title: 'AI intelligence briefs',
+    title: 'Weather & Climate Monitoring',
     description:
-      'An AI pipeline continuously processes incoming events and generates situation reports. Key developments, escalation risks, and scenario analysis updated throughout the day.',
+      'Live weather data for 8 major cities via Open-Meteo API. Temperature, conditions, alerts. NASA FIRMS satellite fire detection for wildfire tracking across Morocco.',
   },
   {
-    title: 'Actor intelligence',
+    title: 'Traffic & Transport Intelligence',
     description:
-      'Profiles for every major faction. Iran, Israel, Hezbollah, Houthis, US CENTCOM, NATO, and more. Capabilities, alliances, recent actions, and current stance.',
+      'Real-time traffic incidents, road closures, accidents, and congestion monitoring. Major routes status tracking with disruption alerts and alternative route suggestions.',
   },
   {
-    title: 'OSINT signals',
+    title: 'Event Classification & Severity',
     description:
-      'Curated posts from analysts, journalists, and official accounts on X. Scored by significance and grouped by day so you see what matters, not everything.',
+      '15 event types: Political, Diplomatic, Economic, Infrastructure, Weather, Fire, Protest, Accident, Investment, Trade, Tourism, Agriculture, Energy, Security, Transport. 4 severity levels with smart detection.',
   },
   {
-    title: 'RSS monitor',
+    title: 'Intelligent Location Detection',
     description:
-      '30 feeds from Reuters to Press TV. Western, Iranian, Israeli, Arab, Russian, and Chinese outlets. One place instead of 30 tabs.',
+      'Priority-based city matching with 70+ locations. Context-aware extraction (in/near/at patterns). Exact coordinates for specific cities, smart spread for generic events. No stacking.',
   },
   {
-    title: 'Escalation scoring',
+    title: 'Morocco KPI Dashboard',
     description:
-      'AI calculates a daily escalation score from 0 to 100 based on event severity, frequency, and actor behavior. Currently at 96.',
+      'Live telemetry with event streams, Sankey flows, network graphs, timeline charts. Real-time sync with map. Event selection, location filtering, 24h/7d/30d views. Interactive correlation engine.',
   },
   {
-    title: 'Economic indicators',
+    title: 'Infrastructure & Assets',
     description:
-      'Oil prices, currency rates, and market data tied to the conflict. Tracks sanctions impact and regional disruption.',
+      'Ports (Tanger Med, Casablanca, Agadir), Airports (Mohammed V, Marrakech), Power plants (Noor Solar), Roads, Railways. Status monitoring: Operational, Disrupted, Closed, Under Construction.',
   },
 ] as const;
 
@@ -63,7 +63,7 @@ function CapabilityCard({
 export function Capabilities() {
   return (
     <section className="px-5 py-12 max-w-3xl mx-auto">
-      <h2 className="section-title mb-6">What you can track</h2>
+      <h2 className="section-title mb-6">What you can track in Morocco</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {CAPABILITIES.map((cap) => (

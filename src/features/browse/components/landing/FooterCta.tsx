@@ -13,8 +13,11 @@ export function FooterCta() {
   return (
     <section className="px-5 py-16 max-w-3xl mx-auto text-center">
       <div className="border-t border-[var(--bd-s)] pt-12">
-        <p className="text-sm text-[var(--t2)] mb-4">
-          No login required. No paywall.
+        <p className="text-sm text-[var(--t2)] mb-2">
+          Free Morocco OSINT platform • No login required
+        </p>
+        <p className="text-xs text-[var(--t3)] mb-4 mono">
+          Developed by Adeloop AI Lab 🇲🇦
         </p>
         <Button
           size="sm"
@@ -32,7 +35,7 @@ export function FooterCta() {
               surface: 'browse_landing',
             })}
           >
-            Open the dashboard &rarr;
+            Open AdeloopEye Dashboard &rarr;
           </Link>
         </Button>
       </div>

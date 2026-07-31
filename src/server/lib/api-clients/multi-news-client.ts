@@ -74,6 +74,12 @@ class MultiNewsClient {
     url.searchParams.set('q', query);
     url.searchParams.set('lang', language);
     url.searchParams.set('max', String(Math.min(limit, 100)));
+    
+    // Add date filter - last 24 hours for real-time monitoring
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    url.searchParams.set('from', oneDayAgo);
+    url.searchParams.set('sortby', 'publishedAt'); // Most recent first
+    
     url.searchParams.set('apikey', this.gnewsKey);
 
     const res = await fetch(url.toString(), {
@@ -108,6 +114,12 @@ class MultiNewsClient {
     url.searchParams.set('q', query);
     url.searchParams.set('language', language);
     url.searchParams.set('size', String(Math.min(limit, 50)));
+    
+    // Add date filter - last 24 hours for real-time monitoring
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    url.searchParams.set('from_date', oneDayAgo);
+    url.searchParams.set('prioritydomain', 'top'); // Most recent first
+    
     url.searchParams.set('apikey', this.newsdataKey);
 
     const res = await fetch(url.toString(), {
@@ -147,6 +159,11 @@ class MultiNewsClient {
     url.searchParams.set('pageSize', String(Math.min(limit, 100)));
     url.searchParams.set('language', language);
     url.searchParams.set('sortBy', 'publishedAt');
+    
+    // Add date filter - last 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    url.searchParams.set('from', oneDayAgo);
+    
     url.searchParams.set('apiKey', this.newsapiKey);
 
     const res = await fetch(url.toString(), {

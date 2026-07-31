@@ -19,10 +19,10 @@ export function BrowseFooter() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
             <span className="mono text-xs font-bold text-[var(--t1)] tracking-[0.14em]">
-              PHAROS
+              ADELOOPEYE
             </span>
             <span className="text-xs text-[var(--t4)]">
-              Open-source geopolitical intelligence
+              Morocco OSINT Intelligence Platform • Developed by Adeloop AI Lab 🇲🇦
             </span>
           </div>
 
@@ -80,10 +80,10 @@ export function BrowseFooter() {
 
         <div className="flex flex-col gap-1 border-t border-[var(--bd-s)] pt-3 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-[length:var(--text-body-sm)] text-[var(--t4)]">
-            AGPL-3.0 License
+            AGPL-3.0 License • Open Source
           </span>
           <span className="text-[length:var(--text-body-sm)] text-[var(--t4)]">
-            conflicts.app
+            adeloopeye.com
           </span>
         </div>
       </div>

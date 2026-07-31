@@ -41,7 +41,7 @@ export function BrowseNav({ hamburgerSlot }: Props) {
           {hamburgerSlot}
           <Link href="/browse" className="no-underline">
             <span className="text-[length:var(--text-subhead)] font-bold text-[var(--t1)] tracking-[0.12em]">
-              PHAROS
+              ADELOOPEYE
             </span>
           </Link>
 

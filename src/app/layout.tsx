@@ -12,31 +12,31 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  applicationName: 'Adeloopeye',
+  applicationName: 'AdeloopEye',
   title: {
-    default: 'Adeloopeye - Live Geopolitical Intelligence Dashboard',
-    template: '%s | Adeloopeye',
+    default: 'AdeloopEye — Morocco OSINT Intelligence Platform | Adeloop AI Lab',
+    template: '%s | AdeloopEye',
   },
-  description: 'Adeloopeye is a live geopolitical intelligence dashboard for conflict tracking across events, actors, signals, briefs, and map-based analysis.',
+  description: 'AdeloopEye is Morocco\'s real-time OSINT intelligence platform developed by Adeloop AI Lab. Live event tracking, weather monitoring, traffic intelligence, and fire detection across 70+ Moroccan cities with World Monitor-inspired visualization.',
   openGraph: {
     type: 'website',
     url: SITE_URL,
-    siteName: 'Adeloopeye',
-    title: 'Adeloopeye - Live Geopolitical Intelligence Dashboard',
-    description: 'Adeloopeye is a live geopolitical intelligence dashboard for conflict tracking across events, actors, signals, briefs, and map-based analysis.',
+    siteName: 'AdeloopEye',
+    title: 'AdeloopEye — Morocco OSINT Intelligence Platform',
+    description: 'Real-time Morocco intelligence dashboard by Adeloop AI Lab. Live map, multi-source news aggregation, weather alerts, traffic monitoring, fire detection. 70+ cities, 24h monitoring.',
     images: [
       {
         url: '/og-image-1200x630.jpg',
         width: 1200,
         height: 630,
-        alt: 'Adeloopeye live intelligence dashboard',
+        alt: 'AdeloopEye - Morocco OSINT Intelligence Platform',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Adeloopeye - Live Geopolitical Intelligence Dashboard',
-    description: 'Adeloopeye is a live geopolitical intelligence dashboard for conflict tracking across events, actors, signals, briefs, and map-based analysis.',
+    title: 'AdeloopEye — Morocco OSINT Intelligence Platform',
+    description: 'Real-time Morocco intelligence: events, weather, traffic, fires. World Monitor-inspired visualization. By Adeloop AI Lab 🇲🇦',
     images: ['/og-image-1200x630.jpg'],
   },
   icons: {

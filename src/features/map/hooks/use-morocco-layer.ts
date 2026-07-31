@@ -1,10 +1,12 @@
 /**
  * Morocco Intelligence Visualization Layer
  * Comprehensive visualization of all Morocco-related intelligence
+ * World Monitor-inspired: Adaptive clustering, density heatmaps, smart aggregation
  */
 
 import { useMemo } from 'react';
 
+import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { ArcLayer, IconLayer, PathLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import type { Layer } from '@deck.gl/core';
 
@@ -39,22 +41,41 @@ type Props = {
   selectedEventId?: string | null;
 };
 
+type EventCluster = {
+  id: string;
+  position: [number, number];
+  events: MoroccoEvent[];
+  count: number;
+  maxSeverity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+};
+
 /**
- * Simple spatial clustering for events
- * Groups nearby events into clusters when zoomed out
+ * WorldMonitor-style spatial clustering
+ * Adaptive clustering based on zoom level and event density
  */
 function clusterEvents(events: MoroccoEvent[], zoom: number): EventCluster[] {
-  // Only cluster when zoomed out (zoom < 10)
-  if (zoom >= 10 || events.length < 10) return [];
+  // World Monitor approach: aggressive clustering at low zoom, precise at high zoom
+  if (zoom >= 11) return []; // No clustering at city/street level
   
-  const clusterRadius = zoom < 6 ? 0.5 : zoom < 8 ? 0.2 : 0.1; // degrees
+  // Adaptive radius based on zoom - larger radius for zoomed out views
+  const clusterRadius = zoom < 5 ? 1.5 :   // Country level: ~165km
+                       zoom < 7 ? 0.8 :   // Regional level: ~88km
+                       zoom < 9 ? 0.3 :   // Provincial level: ~33km
+                       0.15;              // City level: ~16km
+  
   const clusters: EventCluster[] = [];
   const used = new Set<string>();
   
-  events.forEach(event => {
+  // Sort by severity to prioritize critical events as cluster centers
+  const sortedEvents = [...events].sort((a, b) => {
+    const order = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
+    return order[b.severity] - order[a.severity];
+  });
+  
+  sortedEvents.forEach(event => {
     if (used.has(event.id)) return;
     
-    // Find nearby events
+    // Find nearby events within radius
     const nearby = events.filter(e => {
       if (used.has(e.id)) return false;
       const dist = Math.sqrt(
@@ -64,18 +85,36 @@ function clusterEvents(events: MoroccoEvent[], zoom: number): EventCluster[] {
       return dist < clusterRadius;
     });
     
-    if (nearby.length >= 3) {
-      // Create cluster
+    // World Monitor style: cluster even 2+ events at low zoom
+    const minClusterSize = zoom < 7 ? 2 : 3;
+    
+    if (nearby.length >= minClusterSize) {
       nearby.forEach(e => used.add(e.id));
-      const avgLng = nearby.reduce((sum, e) => sum + e.position[0], 0) / nearby.length;
-      const avgLat = nearby.reduce((sum, e) => sum + e.position[1], 0) / nearby.length;
+      
+      // Weight cluster center by severity (critical events pull center toward them)
+      let weightedLng = 0;
+      let weightedLat = 0;
+      let totalWeight = 0;
+      
+      nearby.forEach(e => {
+        const weight = e.severity === 'CRITICAL' ? 3 : 
+                      e.severity === 'HIGH' ? 2 : 
+                      e.severity === 'MEDIUM' ? 1.5 : 1;
+        weightedLng += e.position[0] * weight;
+        weightedLat += e.position[1] * weight;
+        totalWeight += weight;
+      });
+      
+      const avgLng = weightedLng / totalWeight;
+      const avgLat = weightedLat / totalWeight;
+      
       const maxSev = nearby.reduce((max, e) => {
         const order = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
         return order[e.severity] > order[max] ? e.severity : max;
       }, 'LOW' as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL');
       
       clusters.push({
-        id: `cluster-${avgLng}-${avgLat}`,
+        id: `cluster-${avgLng.toFixed(4)}-${avgLat.toFixed(4)}`,
         position: [avgLng, avgLat],
         events: nearby,
         count: nearby.length,
@@ -309,24 +348,201 @@ export function useMoroccoLayer({
   return useMemo(() => {
     const layers: Layer[] = [];
     
-    // Offset overlapping events for better UX
+    // World Monitor approach: Smart event rendering based on zoom
+    const clusters = clusterEvents(events || [], zoom);
     const offsetEvents = offsetOverlappingEvents(events || []);
     
-    // Calculate zoom-based scale factor for better visibility
-    // Keep dots visible at all zoom levels
-    // At zoom 6 (Morocco view): scale = 1.0 (full size)
-    // At zoom 10 (city view): scale = 0.7 (70% size) - was 0.4, now larger
-    // At zoom 14 (street view): scale = 0.5 (50% size) - was 0.25, now larger
-    const zoomScale = Math.max(0.5, Math.min(1, (12 - zoom) / 6 + 0.7));
+    // Filter out clustered events at low zoom
+    const clusteredEventIds = new Set(clusters.flatMap(c => c.events.map(e => e.id)));
+    const visibleEvents = zoom >= 11 ? offsetEvents : 
+                         offsetEvents.filter(e => !clusteredEventIds.has(e.id));
+    
+    // Calculate zoom-responsive scales (World Monitor style)
+    const zoomScale = Math.max(0.5, Math.min(1.2, (12 - zoom) / 6 + 0.7));
     
     // ═══════════════════════════════════════════════════════════
-    // EVENT MARKERS - Pulsing circles for events (zoom-responsive)
+    // ALERT CIRCLES - Red warning circles for critical/high severity events
     // ═══════════════════════════════════════════════════════════
-    if (offsetEvents.length > 0) {
+    const alertEvents = visibleEvents.filter(e => 
+      e.severity === 'CRITICAL' || e.severity === 'HIGH' || 
+      e.type === 'FIRE' || e.type === 'SECURITY' || e.type === 'ACCIDENT'
+    );
+    
+    if (alertEvents.length > 0) {
+      // Large pulsing red circles for alerts
+      const alertCircleLayer = new ScatterplotLayer<typeof alertEvents[0]>({
+        id: 'morocco-alert-circles',
+        data: alertEvents,
+        getPosition: (d) => d.offsetPosition,
+        getRadius: (d) => {
+          const baseRadius = d.severity === 'CRITICAL' ? 25000 : 18000;
+          const pulse = Math.sin(pulseTime * 2.5) * 0.4 + 0.6;
+          return baseRadius * pulse * zoomScale;
+        },
+        getFillColor: (d): RGBA => {
+          const pulse = Math.sin(pulseTime * 2.5) * 0.3 + 0.7;
+          const alpha = d.severity === 'CRITICAL' ? 120 : 80;
+          return [255, 0, 0, Math.floor(alpha * pulse)]; // Bright red
+        },
+        stroked: true,
+        getLineColor: (d): RGBA => {
+          const pulse = Math.sin(pulseTime * 2.5) * 0.4 + 0.6;
+          return [255, 50, 50, Math.floor(255 * pulse)];
+        },
+        lineWidthMinPixels: 2,
+        lineWidthMaxPixels: 4,
+        radiusMinPixels: 20,
+        radiusMaxPixels: 80,
+        pickable: false,
+        updateTriggers: {
+          getRadius: [pulseTime, zoom],
+          getFillColor: [pulseTime],
+          getLineColor: [pulseTime],
+        },
+      });
+      
+      // Outer warning ring
+      const alertRingLayer = new ScatterplotLayer<typeof alertEvents[0]>({
+        id: 'morocco-alert-rings',
+        data: alertEvents,
+        getPosition: (d) => d.offsetPosition,
+        getRadius: (d) => {
+          const baseRadius = d.severity === 'CRITICAL' ? 35000 : 25000;
+          const pulse = (pulseTime * 2) % 1;
+          return baseRadius * (0.8 + pulse * 0.5) * zoomScale;
+        },
+        getFillColor: [0, 0, 0, 0],
+        stroked: true,
+        getLineColor: (d): RGBA => {
+          const pulse = (pulseTime * 2) % 1;
+          const alpha = Math.floor(180 * (1 - pulse));
+          return [255, 30, 30, alpha];
+        },
+        lineWidthMinPixels: 3,
+        lineWidthMaxPixels: 5,
+        radiusMinPixels: 25,
+        radiusMaxPixels: 100,
+        pickable: false,
+        updateTriggers: {
+          getRadius: [pulseTime, zoom],
+          getLineColor: [pulseTime],
+        },
+      });
+      
+      layers.push(alertRingLayer, alertCircleLayer);
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // DENSITY HEATMAP - World Monitor style event density visualization
+    // ═══════════════════════════════════════════════════════════
+    if (zoom < 9 && events.length > 20) {
+      const heatmapLayer = new HeatmapLayer({
+        id: 'morocco-event-density',
+        data: events,
+        getPosition: (d: MoroccoEvent) => d.position,
+        getWeight: (d: MoroccoEvent) => {
+          // Weight by severity
+          return d.severity === 'CRITICAL' ? 4 : 
+                 d.severity === 'HIGH' ? 3 : 
+                 d.severity === 'MEDIUM' ? 2 : 1;
+        },
+        radiusPixels: zoom < 6 ? 60 : zoom < 8 ? 40 : 30,
+        intensity: 1.5,
+        threshold: 0.05,
+        colorRange: [
+          [30, 50, 100, 0],      // Transparent
+          [50, 100, 150, 60],    // Low density - blue
+          [100, 180, 220, 100],  // Medium - cyan
+          [255, 200, 100, 140],  // High - orange
+          [255, 100, 50, 180],   // Very high - red
+          [255, 50, 50, 220],    // Critical density - bright red
+        ],
+      });
+      layers.push(heatmapLayer);
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // EVENT CLUSTERS - World Monitor style numbered clusters
+    // ═══════════════════════════════════════════════════════════
+    if (clusters.length > 0) {
+      // Cluster rings (background)
+      const clusterRingLayer = new ScatterplotLayer<EventCluster>({
+        id: 'morocco-cluster-rings',
+        data: clusters,
+        getPosition: (d) => d.position,
+        getRadius: (d) => {
+          // Size based on event count
+          const baseRadius = Math.min(50000, 15000 + d.count * 3000);
+          const pulse = Math.sin(pulseTime * 2) * 0.15 + 0.85;
+          return baseRadius * pulse;
+        },
+        getFillColor: (d): RGBA => {
+          const color = d.maxSeverity === 'CRITICAL' ? [255, 50, 50] :
+                       d.maxSeverity === 'HIGH' ? [255, 150, 50] :
+                       d.maxSeverity === 'MEDIUM' ? [255, 200, 100] : [150, 200, 255];
+          return [color[0], color[1], color[2], 60];
+        },
+        stroked: true,
+        getLineColor: (d): RGBA => {
+          const color = d.maxSeverity === 'CRITICAL' ? [255, 50, 50] :
+                       d.maxSeverity === 'HIGH' ? [255, 150, 50] :
+                       d.maxSeverity === 'MEDIUM' ? [255, 200, 100] : [150, 200, 255];
+          return [color[0], color[1], color[2], 180];
+        },
+        lineWidthMinPixels: 2,
+        radiusMinPixels: 15,
+        radiusMaxPixels: 80,
+        pickable: true,
+        updateTriggers: {
+          getRadius: [pulseTime],
+        },
+      });
+      
+      // Cluster core dots
+      const clusterCoreLayer = new ScatterplotLayer<EventCluster>({
+        id: 'morocco-cluster-cores',
+        data: clusters,
+        getPosition: (d) => d.position,
+        getRadius: 8000,
+        getFillColor: (d): RGBA => {
+          const color = d.maxSeverity === 'CRITICAL' ? [255, 80, 80] :
+                       d.maxSeverity === 'HIGH' ? [255, 180, 80] :
+                       d.maxSeverity === 'MEDIUM' ? [255, 220, 120] : [180, 220, 255];
+          return [color[0], color[1], color[2], 255];
+        },
+        radiusMinPixels: 8,
+        radiusMaxPixels: 16,
+        pickable: true,
+      });
+      
+      // Cluster count labels
+      const clusterLabelLayer = new TextLayer<EventCluster>({
+        id: 'morocco-cluster-labels',
+        data: clusters,
+        getPosition: (d) => d.position,
+        getText: (d) => String(d.count),
+        getSize: zoom < 6 ? 14 : 12,
+        getColor: [255, 255, 255, 255],
+        fontFamily: 'SFMono-Regular, Menlo, monospace',
+        fontWeight: 800,
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'center',
+        outlineWidth: 2,
+        outlineColor: [0, 0, 0, 200],
+        pickable: true,
+      });
+      
+      layers.push(clusterRingLayer, clusterCoreLayer, clusterLabelLayer);
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // EVENT MARKERS - Modern radar-style pulses (only visible events)
+    // ═══════════════════════════════════════════════════════════
+    if (visibleEvents.length > 0) {
       // 1. Modern Radar Ripple Layer (Bottom layer for pulse effect)
-      const eventRippleLayer = new ScatterplotLayer<typeof offsetEvents[0]>({
+      const eventRippleLayer = new ScatterplotLayer<typeof visibleEvents[0]>({
         id: 'morocco-events-ripple',
-        data: offsetEvents,
+        data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
@@ -345,7 +561,6 @@ export function useMoroccoLayer({
           const isSelected = selectedEventId === d.id;
           if (isSelected || d.status === 'ONGOING' || d.severity === 'CRITICAL') {
             const pulsePhase = (pulseTime * (d.severity === 'CRITICAL' ? 1.5 : 1.0)) % 1;
-            // Fade out exponentially for radar fading trail
             const alphaBase = isSelected ? 255 : 200;
             const alpha = Math.max(0, Math.floor(alphaBase * Math.pow(1 - pulsePhase, 2)));
             return [color[0], color[1], color[2], alpha];
@@ -374,10 +589,10 @@ export function useMoroccoLayer({
         },
       });
 
-      // 2. Modern Radar Core Layer (Top layer for sharp focal point)
-      const eventCoreLayer = new ScatterplotLayer<typeof offsetEvents[0]>({
+      // 2. Modern Radar Core Layer (Sharp focal point)
+      const eventCoreLayer = new ScatterplotLayer<typeof visibleEvents[0]>({
         id: 'morocco-events-core',
-        data: offsetEvents,
+        data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
@@ -393,7 +608,7 @@ export function useMoroccoLayer({
         radiusMinPixels: 2,
         radiusMaxPixels: 6,
         updateTriggers: {
-          getRadius: [zoom],
+          getRadius: [zoom, selectedEventId],
           getFillColor: [pulseTime],
         },
       });
@@ -402,19 +617,18 @@ export function useMoroccoLayer({
     }
     
     // ═══════════════════════════════════════════════════════════
-    // EVENT ICONS - Type-specific icons
+    // EVENT ICONS - Type-specific icons (only at high zoom)
     // ═══════════════════════════════════════════════════════════
-    if (offsetEvents.length > 0) {
+    if (visibleEvents.length > 0 && zoom >= 9) {
       // Create SVG atlas with all event icons
       const iconAtlas = createEventIconAtlas();
       
-      const eventIconLayer = new IconLayer<typeof offsetEvents[0]>({
+      const eventIconLayer = new IconLayer<typeof visibleEvents[0]>({
         id: 'morocco-event-icons',
-        data: offsetEvents,
+        data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getIcon: (d) => d.type.toLowerCase(),
         getSize: (d): number => {
-          // Smaller and tighter icons to preserve density at high events
           return d.severity === 'CRITICAL' ? 24 : d.severity === 'HIGH' ? 20 : 16;
         },
         getColor: (d): RGBA => getEventColor(d.type, d.severity),
@@ -428,12 +642,12 @@ export function useMoroccoLayer({
     }
     
     // ═══════════════════════════════════════════════════════════
-    // EVENT LABELS - City and event type
+    // EVENT LABELS - City and event type (only at high zoom)
     // ═══════════════════════════════════════════════════════════
-    if (!isMobile && offsetEvents.length > 0) {
-      const eventLabelLayer = new TextLayer<typeof offsetEvents[0]>({
+    if (!isMobile && visibleEvents.length > 0 && zoom >= 10) {
+      const eventLabelLayer = new TextLayer<typeof visibleEvents[0]>({
         id: 'morocco-event-labels',
-        data: offsetEvents,
+        data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getText: (d): string => `${getEventIcon(d.type)} ${d.location}`,
         getSize: 11,

@@ -478,30 +478,68 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
       // Extract location with improved algorithm
       const location = extractMoroccoLocation(originalContent);
       
-      // IMPORTANT: Only create event if we have a specific location
-      // Avoid creating generic "Morocco" events that cluster at center
-      if (!location) {
-        // Skip this event - no specific location found
-        return;
-      }
-      
-      const basePosition = MOROCCO_CITIES[location];
+      // Use the detected location or fallback to "Morocco" with random spread
+      const finalLocation = location || 'Morocco';
+      const basePosition = MOROCCO_CITIES[finalLocation];
       
       if (!basePosition) {
-        // Location not in our database - skip event
+        // If somehow location not in database, use Morocco center
+        console.warn(`[Morocco Intel] Location "${finalLocation}" not found in database, using Morocco center`);
+        const fallbackPosition = MOROCCO_CITIES['Morocco'];
+        if (!fallbackPosition) return; // Should never happen
+        
+        // Add random spread for unmapped locations
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.random() * 0.015; // ~1.7km
+        const position: [number, number] = [
+          fallbackPosition[0] + Math.cos(angle) * radius,
+          fallbackPosition[1] + Math.sin(angle) * radius,
+        ];
+        
+        try {
+          events.push({
+            id: buildMoroccoEventId(article, detectedType, 'Morocco'),
+            type: detectedType,
+            title: article.title,
+            description: article.description || article.title,
+            location: 'Morocco',
+            position,
+            severity: calculateSeverity(originalContent, detectedType),
+            timestamp: article.publishedAt,
+            source: article.url,
+            image: (article as any).urlToImage || (article as any).image,
+            impact: generateImpactDescription(detectedType, originalContent),
+            status: determineStatus(originalContent),
+          });
+        } catch (error) {
+          console.warn(`[Morocco Intel] Skipped event - error:`, error);
+        }
         return;
       }
 
-      // Use EXACT city coordinates - no jitter/scatter
-      const position = basePosition;
+      // For specific cities: use exact coordinates
+      // For generic "Morocco": add small random offset to prevent stacking
+      let position: [number, number];
+      if (location && location !== 'Morocco') {
+        // Specific city detected - use EXACT coordinates (no offset)
+        position = [basePosition[0], basePosition[1]];
+      } else {
+        // Generic Morocco - add small random spread (1.5km radius) to prevent stacking
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.random() * 0.013; // ~1.5km
+        position = [
+          basePosition[0] + Math.cos(angle) * radius,
+          basePosition[1] + Math.sin(angle) * radius,
+        ];
+      }
 
       try {
         events.push({
-          id: buildMoroccoEventId(article, detectedType, location),
+          id: buildMoroccoEventId(article, detectedType, finalLocation),
           type: detectedType,
           title: article.title,
           description: article.description || article.title,
-          location: location,
+          location: finalLocation,
           position,
           severity: calculateSeverity(originalContent, detectedType),
           timestamp: article.publishedAt,
@@ -512,16 +550,15 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
         });
 
         if (moroccoArticleCount <= 5) {
-          console.log(`[Morocco Intel]   → Detected ${detectedType} event in ${location}${(article as any).urlToImage || (article as any).image ? ' (with image)' : ''}`);
+          console.log(`[Morocco Intel]   → Detected ${detectedType} event in ${finalLocation}${(article as any).urlToImage || (article as any).image ? ' (with image)' : ''}`);
         }
       } catch (error) {
-        // Skip events we can't properly create
-        console.warn(`[Morocco Intel] Skipped event - error creating event object`);
+        console.warn(`[Morocco Intel] Skipped event - error creating event object:`, error);
       }
 
       // Detect international connections
       const foreignCountry = extractForeignCountry(originalContent);
-      if (location && foreignCountry && (detectedType === 'DIPLOMATIC' || detectedType === 'ECONOMIC' || detectedType === 'TRADE')) {
+      if (finalLocation && foreignCountry && (detectedType === 'DIPLOMATIC' || detectedType === 'ECONOMIC' || detectedType === 'TRADE')) {
         connections.push(createDiplomaticConnection(foreignCountry, article, detectedType as any));
 
         if (moroccoArticleCount <= 5) {
@@ -555,6 +592,7 @@ function extractMoroccoLocation(text: string): string | null {
   const lower = text.toLowerCase();
   
   // Remove common dateline patterns to avoid false positives
+  // Example: "RABAT (Reuters) -" or "CASABLANCA:"
   const cleanText = lower
     .replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)\s*\([^)]*\)\s*[-:]\s*/i, ' ')
     .replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)\s*[-:]\s*/i, ' ');
@@ -591,7 +629,7 @@ function extractMoroccoLocation(text: string): string | null {
     }
   }
   
-  const foundCities: Array<{city: string; priority: number}> = [];
+  const foundCities: Array<{city: string; priority: number; index: number}> = [];
   
   for (const city of Object.keys(MOROCCO_CITIES)) {
     if (city === 'Morocco') continue; // Skip generic fallback
@@ -601,31 +639,47 @@ function extractMoroccoLocation(text: string): string | null {
     
     if (index !== -1) {
       // Calculate priority based on:
-      // 1. Smaller/specific cities get higher priority (less likely to be false positive)
-      // 2. Earlier mention in text gets slight boost
+      // 1. Smaller/specific cities get MUCH higher priority (less likely to be false positive)
+      // 2. Earlier mention in text gets boost (mentions in title/beginning more relevant)
       // 3. Avoid capitals that might just be government mentions
-      let priority = 100 - index / 10; // Earlier = higher priority
+      let priority = 100 - index / 20; // Earlier = higher priority
       
-      // Boost smaller cities
-      const smallCities = ['Ifrane', 'Azrou', 'Chefchaouen', 'Essaouira', 'Ouarzazate', 'Zagora', 'Tinghir', 'Tiznit'];
-      if (smallCities.includes(city)) priority += 50;
+      // MAJOR boost for smaller, specific cities (these are rarely mentioned unless truly relevant)
+      const smallCities = ['Ifrane', 'Azrou', 'Chefchaouen', 'Essaouira', 'Ouarzazate', 'Zagora', 
+                          'Tinghir', 'Tiznit', 'Sefrou', 'Midelt', 'Tiflet', 'Khemisset', 
+                          'Al Hoceima', 'Taroudant', 'Guelmim', 'Tan-Tan', 'Errachidia'];
+      if (smallCities.includes(city)) priority += 80; // HUGE boost
+      
+      // Medium boost for mid-size cities
+      const midCities = ['Mohammedia', 'Khouribga', 'Settat', 'Larache', 'Ksar El Kebir', 
+                        'Berrechid', 'Tetouan', 'Nador', 'Safi', 'El Jadida', 'Beni Mellal'];
+      if (midCities.includes(city)) priority += 40;
       
       // Reduce priority for capitals/major cities that might be mentioned in datelines
-      if (['Rabat', 'Casablanca'].includes(city)) priority -= 20;
+      if (['Rabat', 'Casablanca'].includes(city)) priority -= 25;
       
-      // Regions get lower priority than cities
-      if (city.includes('-') || city.includes('Mountains') || city.includes('Sahara')) {
-        priority -= 30;
+      // Regions get much lower priority than cities
+      if (city.includes('-') || city.includes('Mountains') || city.includes('Sahara') || city.includes('Region')) {
+        priority -= 50;
       }
       
-      foundCities.push({ city, priority });
+      // Boost if mentioned in title (first 60 chars)
+      if (index < 60) priority += 35;
+      
+      // Check for strong context clues: "in [city]", "near [city]", "from [city]", "[city] area"
+      const contextPattern = new RegExp(`(?:in|near|from|at|around)\\s+${cityLower}|${cityLower}\\s+(?:area|region|city)`, 'i');
+      if (contextPattern.test(cleanText)) {
+        priority += 60; // Strong context = high boost
+      }
+      
+      foundCities.push({ city, priority, index });
     }
   }
 
   if (foundCities.length === 0) {
-    // Try to extract from common patterns like "in [city]" or "near [city]"
-    const nearPattern = /(?:in|near|at|from)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g;
-    const matches = [...cleanText.matchAll(nearPattern)];
+    // Try to extract from common patterns like "in [City]" or "near [City]"
+    const nearPattern = /(?:in|near|at|from|around)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g;
+    const matches = [...text.matchAll(nearPattern)];
     for (const match of matches) {
       const candidate = match[1];
       for (const city of Object.keys(MOROCCO_CITIES)) {
@@ -635,11 +689,18 @@ function extractMoroccoLocation(text: string): string | null {
       }
     }
     
-    return null; // Return null instead of generic Morocco
+    return null; // Return null = will use generic "Morocco" with spread
   }
 
   // Sort by priority and return highest
-  foundCities.sort((a, b) => b.priority - a.priority);
+  foundCities.sort((a, b) => {
+    // If priority difference is small, prefer earlier mention
+    const priorityDiff = b.priority - a.priority;
+    if (Math.abs(priorityDiff) < 10) {
+      return a.index - b.index; // Earlier mention wins
+    }
+    return priorityDiff; // Higher priority wins
+  });
   
   return foundCities[0].city;
 }

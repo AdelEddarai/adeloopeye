@@ -62,7 +62,8 @@ export function useMoroccoIntelligence(enabled: boolean = false) {
       return json;
     },
     enabled, // Only fetch when enabled
-    refetchInterval: enabled ? 10 * 1000 : false, // Refetch every 10 seconds when enabled
-    staleTime: 5 * 1000, // Consider stale after 5 seconds to ensure fresh data
+    refetchInterval: enabled ? 30 * 1000 : false, // Refetch every 30 seconds (real-time monitoring)
+    staleTime: 15 * 1000, // Consider stale after 15 seconds
+    gcTime: 60 * 1000, // Keep in cache for 1 minute
   });
 }
