@@ -97,8 +97,9 @@ export type MoroccoWeatherAlert = {
   affectedAreas: string[];
 };
 
-// Major Moroccan cities with coordinates
+// Comprehensive Moroccan cities and locations with coordinates
 const MOROCCO_CITIES: Record<string, [number, number]> = {
+  // Major Cities
   'Rabat': [-6.8498, 33.9716],
   'Casablanca': [-7.5898, 33.5731],
   'Marrakech': [-7.9811, 31.6295],
@@ -117,7 +118,56 @@ const MOROCCO_CITIES: Record<string, [number, number]> = {
   'Essaouira': [-9.7695, 31.5085],
   'Laayoune': [-13.1994, 27.1536],
   'Dakhla': [-15.9582, 23.7158],
-  'Morocco': [-7.0926, 31.7917], // Center of Morocco for national news
+  
+  // Additional Major Cities
+  'Mohammedia': [-7.3833, 33.6866],
+  'Khouribga': [-6.9063, 32.8811],
+  'Settat': [-7.6167, 33.0000],
+  'Larache': [-6.1561, 35.1933],
+  'Ksar El Kebir': [-5.9008, 35.0017],
+  'Guelmim': [-10.0574, 28.9870],
+  'Berrechid': [-7.5833, 33.2650],
+  'Khemisset': [-6.0661, 33.8242],
+  'Errachidia': [-4.4244, 31.9314],
+  'Ouarzazate': [-6.9370, 30.9335],
+  'Tiznit': [-9.7316, 29.6974],
+  'Tan-Tan': [-11.1031, 28.4378],
+  'Sidi Kacem': [-5.7089, 34.2214],
+  'Sidi Slimane': [-5.9264, 34.2642],
+  'Sidi Bennour': [-8.4278, 32.6497],
+  'Taroudant': [-8.8778, 30.4728],
+  'Al Hoceima': [-3.9317, 35.2517],
+  'Chefchaouen': [-5.2686, 35.1686],
+  'Azrou': [-5.2222, 33.4344],
+  'Ifrane': [-5.1106, 33.5228],
+  'Midelt': [-4.7372, 32.6800],
+  'Zagora': [-5.8372, 30.3297],
+  'Tinghir': [-5.5328, 31.5147],
+  'Sefrou': [-4.8292, 33.8306],
+  'Tiflet': [-6.3167, 33.8978],
+  'Youssoufia': [-8.5297, 32.2453],
+  'Bouarfa': [-1.9628, 32.5194],
+  'Figuig': [-1.2289, 32.1089],
+  
+  // Regions (for broader area references)
+  'Souss-Massa': [-9.5981, 30.4278],
+  'Marrakech-Safi': [-7.9811, 31.6295],
+  'Casablanca-Settat': [-7.5898, 33.5731],
+  'Rabat-Sale-Kenitra': [-6.8498, 33.9716],
+  'Fes-Meknes': [-5.0003, 34.0181],
+  'Tangier-Tetouan-Al Hoceima': [-5.8134, 35.7595],
+  'Oriental': [-1.9085, 34.6814],
+  'Draa-Tafilalet': [-4.4244, 31.9314],
+  'Beni Mellal-Khenifra': [-6.3498, 32.3373],
+  
+  // Strategic Areas
+  'Rif Mountains': [-4.5000, 35.0000],
+  'Atlas Mountains': [-7.9213, 31.0587],
+  'Sahara': [-10.0000, 27.0000],
+  'Western Sahara': [-13.0000, 24.0000],
+  
+  // DO NOT use generic Morocco as primary - only as last resort
+  'Morocco': [-7.0926, 31.7917],
 };
 
 // Key infrastructure locations
@@ -425,21 +475,33 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
     }
 
     if (eventDetected && detectedType) {
-      // Extract location
+      // Extract location with improved algorithm
       const location = extractMoroccoLocation(originalContent);
-      const basePosition = location ? MOROCCO_CITIES[location] : MOROCCO_CITIES['Morocco'];
-      const finalLocationName = location || 'Morocco';
+      
+      // IMPORTANT: Only create event if we have a specific location
+      // Avoid creating generic "Morocco" events that cluster at center
+      if (!location) {
+        // Skip this event - no specific location found
+        return;
+      }
+      
+      const basePosition = MOROCCO_CITIES[location];
+      
+      if (!basePosition) {
+        // Location not in our database - skip event
+        return;
+      }
 
-      if (basePosition) {
-        // Scatter events within an 8km radius of the city center so they don't perfectly stack
-        const position = jitterCoordinate(basePosition, 0.08);
+      // Use EXACT city coordinates - no jitter/scatter
+      const position = basePosition;
 
+      try {
         events.push({
-          id: buildMoroccoEventId(article, detectedType, finalLocationName),
+          id: buildMoroccoEventId(article, detectedType, location),
           type: detectedType,
           title: article.title,
           description: article.description || article.title,
-          location: finalLocationName,
+          location: location,
           position,
           severity: calculateSeverity(originalContent, detectedType),
           timestamp: article.publishedAt,
@@ -450,13 +512,16 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
         });
 
         if (moroccoArticleCount <= 5) {
-          console.log(`[Morocco Intel]   → Detected ${detectedType} event in ${location || 'Morocco'}${(article as any).urlToImage || (article as any).image ? ' (with image)' : ''}`);
+          console.log(`[Morocco Intel]   → Detected ${detectedType} event in ${location}${(article as any).urlToImage || (article as any).image ? ' (with image)' : ''}`);
         }
+      } catch (error) {
+        // Skip events we can't properly create
+        console.warn(`[Morocco Intel] Skipped event - error creating event object`);
       }
 
       // Detect international connections
       const foreignCountry = extractForeignCountry(originalContent);
-      if (foreignCountry && (detectedType === 'DIPLOMATIC' || detectedType === 'ECONOMIC' || detectedType === 'TRADE')) {
+      if (location && foreignCountry && (detectedType === 'DIPLOMATIC' || detectedType === 'ECONOMIC' || detectedType === 'TRADE')) {
         connections.push(createDiplomaticConnection(foreignCountry, article, detectedType as any));
 
         if (moroccoArticleCount <= 5) {
@@ -484,38 +549,99 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
 }
 
 /**
- * Extract Moroccan city from text
+ * Extract Moroccan city from text with improved accuracy
  */
 function extractMoroccoLocation(text: string): string | null {
-  // Strip common Moroccan news datelines (e.g., "Rabat (MAP) -" or "Rabat -")
-  // so the reporter's city doesn't override the actual story's location.
-  const cleanText = text.toLowerCase().replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)[a-z0-9\s()]*[-:]\s*/i, ' ');
-
-  // Handle common alternate spellings
-  if (cleanText.includes('marrakesh')) return 'Marrakech';
-  if (cleanText.includes('tanger')) return 'Tangier';
-  if (cleanText.includes('fez')) return 'Fes';
-  if (cleanText.includes('meknes') || cleanText.includes('meknès')) return 'Meknes';
+  const lower = text.toLowerCase();
   
-  const foundCities: string[] = [];
+  // Remove common dateline patterns to avoid false positives
+  const cleanText = lower
+    .replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)\s*\([^)]*\)\s*[-:]\s*/i, ' ')
+    .replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)\s*[-:]\s*/i, ' ');
+
+  // Handle alternate spellings and common variations
+  const spellingMap: Record<string, string> = {
+    'marrakesh': 'Marrakech',
+    'tanger': 'Tangier',
+    'tangiers': 'Tangier',
+    'fez': 'Fes',
+    'fès': 'Fes',
+    'meknès': 'Meknes',
+    'meknas': 'Meknes',
+    'ouarzazate': 'Ouarzazate',
+    'aghadir': 'Agadir',
+    'al-hoceima': 'Al Hoceima',
+    'al hoceima': 'Al Hoceima',
+    'alhucemas': 'Al Hoceima',
+    'chaouen': 'Chefchaouen',
+    'xauen': 'Chefchaouen',
+    'el-jadida': 'El Jadida',
+    'mazagan': 'El Jadida',
+    'laayoune': 'Laayoune',
+    'layoune': 'Laayoune',
+    'el aaiun': 'Laayoune',
+    'saidia': 'Oujda',
+    'berkane': 'Oujda',
+  };
+
+  // Check alternate spellings first
+  for (const [variant, canonical] of Object.entries(spellingMap)) {
+    if (cleanText.includes(variant)) {
+      return canonical;
+    }
+  }
+  
+  const foundCities: Array<{city: string; priority: number}> = [];
   
   for (const city of Object.keys(MOROCCO_CITIES)) {
-    if (city === 'Morocco') continue; // Skip generic fallback in the loop
-    if (cleanText.includes(city.toLowerCase())) {
-      foundCities.push(city);
+    if (city === 'Morocco') continue; // Skip generic fallback
+    
+    const cityLower = city.toLowerCase();
+    const index = cleanText.indexOf(cityLower);
+    
+    if (index !== -1) {
+      // Calculate priority based on:
+      // 1. Smaller/specific cities get higher priority (less likely to be false positive)
+      // 2. Earlier mention in text gets slight boost
+      // 3. Avoid capitals that might just be government mentions
+      let priority = 100 - index / 10; // Earlier = higher priority
+      
+      // Boost smaller cities
+      const smallCities = ['Ifrane', 'Azrou', 'Chefchaouen', 'Essaouira', 'Ouarzazate', 'Zagora', 'Tinghir', 'Tiznit'];
+      if (smallCities.includes(city)) priority += 50;
+      
+      // Reduce priority for capitals/major cities that might be mentioned in datelines
+      if (['Rabat', 'Casablanca'].includes(city)) priority -= 20;
+      
+      // Regions get lower priority than cities
+      if (city.includes('-') || city.includes('Mountains') || city.includes('Sahara')) {
+        priority -= 30;
+      }
+      
+      foundCities.push({ city, priority });
     }
   }
 
-  if (foundCities.length === 0) return null;
-  if (foundCities.length === 1) return foundCities[0];
-
-  // If multiple cities are found, prioritize non-Rabat cities since Rabat is often a dateline or government mention
-  const withoutRabat = foundCities.filter(c => c.toLowerCase() !== 'rabat');
-  if (withoutRabat.length > 0) {
-    return withoutRabat[0]; // Return the first non-Rabat city
+  if (foundCities.length === 0) {
+    // Try to extract from common patterns like "in [city]" or "near [city]"
+    const nearPattern = /(?:in|near|at|from)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g;
+    const matches = [...cleanText.matchAll(nearPattern)];
+    for (const match of matches) {
+      const candidate = match[1];
+      for (const city of Object.keys(MOROCCO_CITIES)) {
+        if (city.toLowerCase() === candidate.toLowerCase()) {
+          return city;
+        }
+      }
+    }
+    
+    return null; // Return null instead of generic Morocco
   }
 
-  return foundCities[0];
+  // Sort by priority and return highest
+  foundCities.sort((a, b) => b.priority - a.priority);
+  
+  return foundCities[0].city;
 }
 
 /**

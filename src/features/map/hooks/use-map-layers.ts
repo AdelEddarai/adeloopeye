@@ -172,7 +172,7 @@ export function useMapLayers({
     return () => clearInterval(interval);
   }, [needsPulseAnimation]);
 
-  // OPTIMIZATION: Memoize Morocco layers separately - only rebuild when Morocco data changes
+  // Morocco intelligence layers (outside useMemo)
   const moroccoLayers = useMoroccoLayer({
     events: showMoroccoLayer && moroccoIntelligence ? moroccoIntelligence.events : [],
     connections: showMoroccoLayer && moroccoIntelligence ? moroccoIntelligence.connections : [],
@@ -188,99 +188,6 @@ export function useMapLayers({
     zoom: viewState.zoom,
     selectedEventId,
   });
-
-  // OPTIMIZATION: Adaptive LOD - Determine detail level based on zoom
-  const detailLevel = useMemo(() => {
-    const z = viewState.zoom;
-    if (z < 6) return 'country';  // 0-5: Country aggregates
-    if (z < 9) return 'region';   // 6-8: Regional clusters
-    if (z < 12) return 'city';    // 9-11: City-level details
-    return 'full';                // 12+: Full details
-  }, [viewState.zoom]);
-
-  // OPTIMIZATION: Calculate visible item limits based on zoom and mobile
-  const visibilityLimits = useMemo(() => {
-    const z = viewState.zoom;
-    const mobileFactor = isMobile ? 0.5 : 1;
-    
-    return {
-      maxTargets: Math.floor((z < 8 ? 100 : z < 10 ? 300 : 1000) * mobileFactor),
-      maxAssets: Math.floor((z < 8 ? 50 : z < 10 ? 150 : 500) * mobileFactor),
-      showLabels: !isMobile && z >= 9,
-      showIcons: z >= 7,
-      showRipples: !isMobile && z >= 8,
-    };
-  }, [viewState.zoom, isMobile]);
-
-  // OPTIMIZATION: Memoize filtered data separately to prevent circular deps
-  const targetsToRender = useMemo(() => {
-    if (!showEvents || filtered.targets.length === 0) return [];
-    
-    const limit = visibilityLimits.maxTargets;
-    if (filtered.targets.length <= limit) return filtered.targets;
-    
-    const highlighted = filtered.targets.filter(d => 
-      activeStory?.highlightTargetIds?.includes(d.id)
-    );
-    const remaining = filtered.targets
-      .filter(d => !activeStory?.highlightTargetIds?.includes(d.id))
-      .sort((a, b) => {
-        const aCrit = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(a.type) ? 1 : 0;
-        const bCrit = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(b.type) ? 1 : 0;
-        if (aCrit !== bCrit) return bCrit - aCrit;
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-      })
-      .slice(0, limit - highlighted.length);
-    
-    return [...highlighted, ...remaining];
-  }, [filtered.targets, activeStory?.highlightTargetIds, visibilityLimits.maxTargets, showEvents]);
-
-  const assetsToRender = useMemo(() => {
-    if (!showFlights) return [];
-    
-    const flightAssets: Asset[] = globalFlights.map(f => {
-      let actor = 'unknown';
-      const country = (f.origin_country || '').toLowerCase();
-      if (country.includes('united states') || country.includes('usa')) actor = 'us';
-      else if (country.includes('israel')) actor = 'israel';
-      else if (country.includes('iran')) actor = 'iran';
-      else if (country.includes('russia')) actor = 'russia';
-      else if (country.includes('china')) actor = 'china';
-
-      return {
-        id: `flight-${f.icao24}`,
-        sourceEventId: null,
-        actor: actor as any,
-        priority: (f.baro_altitude && f.baro_altitude > 10000) ? 'P2' : 'P3',
-        category: 'INSTALLATION',
-        type: 'AIRCRAFT',
-        status: 'ACTIVE',
-        name: f.callsign?.trim() || f.icao24,
-        position: [f.longitude!, f.latitude!],
-        heading: f.true_track || 0,
-        description: `${f.origin_country} - Alt: ${Math.round(f.baro_altitude || 0)}m, Speed: ${Math.round(f.velocity || 0)}m/s`,
-      };
-    });
-    
-    const combined = [...filtered.assets, ...flightAssets];
-    const limit = visibilityLimits.maxAssets;
-    if (combined.length <= limit) return combined;
-    
-    const carriers = combined.filter(d => d.type === 'CARRIER');
-    const highlighted = combined.filter(d => 
-      d.type !== 'CARRIER' && activeStory?.highlightAssetIds?.includes(d.id)
-    );
-    const remaining = combined
-      .filter(d => d.type !== 'CARRIER' && !activeStory?.highlightAssetIds?.includes(d.id))
-      .sort((a, b) => {
-        const aPrio = a.priority === 'P1' ? 3 : a.priority === 'P2' ? 2 : 1;
-        const bPrio = b.priority === 'P1' ? 3 : b.priority === 'P2' ? 2 : 1;
-        return bPrio - aPrio;
-      })
-      .slice(0, limit - carriers.length - highlighted.length);
-    
-    return [...carriers, ...highlighted, ...remaining];
-  }, [filtered.assets, globalFlights, activeStory?.highlightAssetIds, visibilityLimits.maxAssets, showFlights]);
 
   return useMemo(() => {
     const activeEventIds = activeStory
@@ -333,49 +240,7 @@ export function useMapLayers({
       showAllLabels,
     );
 
-    // Event density heatmap (NEW - show activity hotspots)
-    const eventHeatmapData = useMemo(() => {
-      if (!showEvents) return [];
-      
-      // Combine targets and Morocco events for comprehensive heatmap
-      const worldEvents = filtered.targets.map(t => ({
-        position: t.position,
-        weight: ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(t.type) ? 3 :
-                t.status === 'DESTROYED' ? 2 : 1,
-      }));
-      
-      const moroccoEvents = (showMoroccoLayer && moroccoIntelligence?.events) 
-        ? moroccoIntelligence.events.map(e => ({
-            position: e.position,
-            weight: e.severity === 'CRITICAL' ? 3 : e.severity === 'HIGH' ? 2 : 1,
-          }))
-        : [];
-      
-      return [...worldEvents, ...moroccoEvents];
-    }, [filtered.targets, moroccoIntelligence?.events, showEvents, showMoroccoLayer]);
-
-    const eventDensityHeatmap = showEvents && eventHeatmapData.length > 0 && new HeatmapLayer({
-      id: 'event-density-heatmap',
-      data: eventHeatmapData,
-      getPosition: (d: any) => d.position,
-      getWeight: (d: any) => d.weight,
-      radiusPixels: 40,
-      intensity: 1.5,
-      threshold: 0.03,
-      colorRange: [
-        [255, 255, 204, 0],    // Transparent yellow
-        [255, 237, 160, 80],   // Light yellow
-        [254, 217, 118, 120],  // Yellow
-        [254, 178, 76, 160],   // Orange
-        [253, 141, 60, 200],   // Dark orange
-        [252, 78, 42, 230],    // Red-orange
-        [227, 26, 28, 255],    // Red
-        [189, 0, 38, 255],     // Dark red
-      ],
-      aggregation: 'SUM',
-    });
-
-    // Heat map (existing, for backward compat)
+    // Heat map
     const heatLayer = filtered.heat.length > 0 && new HeatmapLayer<HeatPoint>({
       id: 'heat',
       data: filtered.heat,
@@ -460,9 +325,9 @@ export function useMapLayers({
     });
 
     // Target scatter (includes critical events)
-    const targetLayer = targetsToRender.length > 0 && new ScatterplotLayer<Target>({
+    const targetLayer = showEvents && filtered.targets.length > 0 && new ScatterplotLayer<Target>({
       id: 'targets',
-      data: targetsToRender,
+      data: filtered.targets,
       getPosition:  (d: Target): [number, number] => d.position,
       getRadius:    (d: Target): number => {
         // Larger radius for critical events
@@ -487,10 +352,38 @@ export function useMapLayers({
       },
     });
 
+    // Transform OpenSkyFlights into Asset format on the fly
+    const flightAssets: Asset[] = globalFlights.map(f => {
+      let actor = 'unknown';
+      const country = (f.origin_country || '').toLowerCase();
+      if (country.includes('united states') || country.includes('usa')) actor = 'us';
+      else if (country.includes('israel')) actor = 'israel';
+      else if (country.includes('iran')) actor = 'iran';
+      else if (country.includes('russia')) actor = 'russia';
+      else if (country.includes('china')) actor = 'china';
+
+      return {
+        id: `flight-${f.icao24}`,
+        sourceEventId: null,
+        actor: actor as any,
+        priority: (f.baro_altitude && f.baro_altitude > 10000) ? 'P2' : 'P3',
+        category: 'INSTALLATION',
+        type: 'AIRCRAFT',
+        status: 'ACTIVE',
+        name: f.callsign?.trim() || f.icao24,
+        position: [f.longitude!, f.latitude!],
+        heading: f.true_track || 0,
+        description: `${f.origin_country} - Alt: ${Math.round(f.baro_altitude || 0)}m, Speed: ${Math.round(f.velocity || 0)}m/s`,
+      };
+    });
+
+    // Combine any non-flight assets from the map engine (like Aircraft Carriers) with live flights
+    const allAssets = [...filtered.assets, ...flightAssets];
+
     // Asset layer with airplane icons for flights
-    const assetLayer = assetsToRender.length > 0 && new IconLayer<Asset>({
+    const assetLayer = showFlights && allAssets.length > 0 && new IconLayer<Asset>({
       id: 'assets',
-      data: assetsToRender,
+      data: allAssets,
       getPosition: (d: Asset): [number, number] => d.position,
       getIcon: (d: Asset) => d.type === 'CARRIER' ? 'carrier' : 'airplane',
       getSize: (d: Asset): number => (d.type === 'CARRIER' ? 48 : 36),
@@ -530,7 +423,7 @@ export function useMapLayers({
       updateTriggers: {
         getColor: [mergedActiveStory?.id, mergedActiveStory?.highlightAssetIds.join('|'), isSatellite],
         getSize: [isSatellite],
-        getAngle: [assetsToRender.map(a => a.heading).join(',')], // Update when headings change
+        getAngle: [allAssets.map(a => a.heading).join(',')], // Update when headings change
       },
     });
 
@@ -996,7 +889,6 @@ export function useMapLayers({
     // Morocco layers are created outside useMemo and passed in
 
     const layers = [
-      eventDensityHeatmap,  // NEW: Event density heatmap (when toggled)
       heatLayer,
       zoneLayer,
       strikeLayer,
@@ -1020,28 +912,7 @@ export function useMapLayers({
     ].filter(Boolean);
 
     return layers as Layer[];
-  }, [
-    filtered, 
-    actorMeta, 
-    activeStory, 
-    selectedItem, 
-    viewState, 
-    isSatellite, 
-    isMobile, 
-    showAllLabels, 
-    showFlights, 
-    showEvents, 
-    showCyberThreats, 
-    showMaritime, 
-    showZones,
-    pulseTime, 
-    cyberThreats, 
-    showMoroccoLayer, 
-    moroccoLayers,
-    moroccoIntelligence,
-    targetsToRender,
-    assetsToRender,
-  ]);
+  }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights]);
 }
 
 // Re-export so tooltip handler can share STATUS_META without another import

@@ -54,7 +54,6 @@ export type MapState = {
     fires: boolean;
     infrastructure: boolean;
     maritime: boolean;
-    eventHeatmap: boolean;  // NEW: Event density heatmap
   };
 
   // Data scope (can enable both)
@@ -85,7 +84,6 @@ type PersistedMapPrefs = {
     fires: boolean;
     infrastructure: boolean;
     maritime: boolean;
-    eventHeatmap: boolean;
   };
   scope: {
     world: boolean;
@@ -162,7 +160,6 @@ const DEFAULT_DATA_LAYERS: MapState['dataLayers'] = {
   fires: false,
   infrastructure: false,
   maritime: false,
-  eventHeatmap: false,
 };
 
 function buildInitialState(): MapState {
