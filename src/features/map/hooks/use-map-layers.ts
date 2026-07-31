@@ -212,6 +212,76 @@ export function useMapLayers({
     };
   }, [viewState.zoom, isMobile]);
 
+  // OPTIMIZATION: Memoize filtered data separately to prevent circular deps
+  const targetsToRender = useMemo(() => {
+    if (!showEvents || filtered.targets.length === 0) return [];
+    
+    const limit = visibilityLimits.maxTargets;
+    if (filtered.targets.length <= limit) return filtered.targets;
+    
+    const highlighted = filtered.targets.filter(d => 
+      activeStory?.highlightTargetIds?.includes(d.id)
+    );
+    const remaining = filtered.targets
+      .filter(d => !activeStory?.highlightTargetIds?.includes(d.id))
+      .sort((a, b) => {
+        const aCrit = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(a.type) ? 1 : 0;
+        const bCrit = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(b.type) ? 1 : 0;
+        if (aCrit !== bCrit) return bCrit - aCrit;
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      })
+      .slice(0, limit - highlighted.length);
+    
+    return [...highlighted, ...remaining];
+  }, [filtered.targets, activeStory?.highlightTargetIds, visibilityLimits.maxTargets, showEvents]);
+
+  const assetsToRender = useMemo(() => {
+    if (!showFlights) return [];
+    
+    const flightAssets: Asset[] = globalFlights.map(f => {
+      let actor = 'unknown';
+      const country = (f.origin_country || '').toLowerCase();
+      if (country.includes('united states') || country.includes('usa')) actor = 'us';
+      else if (country.includes('israel')) actor = 'israel';
+      else if (country.includes('iran')) actor = 'iran';
+      else if (country.includes('russia')) actor = 'russia';
+      else if (country.includes('china')) actor = 'china';
+
+      return {
+        id: `flight-${f.icao24}`,
+        sourceEventId: null,
+        actor: actor as any,
+        priority: (f.baro_altitude && f.baro_altitude > 10000) ? 'P2' : 'P3',
+        category: 'INSTALLATION',
+        type: 'AIRCRAFT',
+        status: 'ACTIVE',
+        name: f.callsign?.trim() || f.icao24,
+        position: [f.longitude!, f.latitude!],
+        heading: f.true_track || 0,
+        description: `${f.origin_country} - Alt: ${Math.round(f.baro_altitude || 0)}m, Speed: ${Math.round(f.velocity || 0)}m/s`,
+      };
+    });
+    
+    const combined = [...filtered.assets, ...flightAssets];
+    const limit = visibilityLimits.maxAssets;
+    if (combined.length <= limit) return combined;
+    
+    const carriers = combined.filter(d => d.type === 'CARRIER');
+    const highlighted = combined.filter(d => 
+      d.type !== 'CARRIER' && activeStory?.highlightAssetIds?.includes(d.id)
+    );
+    const remaining = combined
+      .filter(d => d.type !== 'CARRIER' && !activeStory?.highlightAssetIds?.includes(d.id))
+      .sort((a, b) => {
+        const aPrio = a.priority === 'P1' ? 3 : a.priority === 'P2' ? 2 : 1;
+        const bPrio = b.priority === 'P1' ? 3 : b.priority === 'P2' ? 2 : 1;
+        return bPrio - aPrio;
+      })
+      .slice(0, limit - carriers.length - highlighted.length);
+    
+    return [...carriers, ...highlighted, ...remaining];
+  }, [filtered.assets, globalFlights, activeStory?.highlightAssetIds, visibilityLimits.maxAssets, showFlights]);
+
   return useMemo(() => {
     const activeEventIds = activeStory
       ? new Set<string>(
@@ -390,34 +460,6 @@ export function useMapLayers({
     });
 
     // Target scatter (includes critical events)
-    // OPTIMIZATION: Apply LOD-based limits to prevent rendering too many targets
-    const targetsToRender = useMemo(() => {
-      if (!showEvents || filtered.targets.length === 0) return [];
-      
-      // Apply visibility limits based on zoom
-      const limit = visibilityLimits.maxTargets;
-      if (filtered.targets.length <= limit) return filtered.targets;
-      
-      // Priority: highlighted > critical severity > recent timestamp
-      const highlighted = filtered.targets.filter(d => 
-        mergedActiveStory?.highlightTargetIds?.includes(d.id)
-      );
-      const remaining = filtered.targets
-        .filter(d => !mergedActiveStory?.highlightTargetIds?.includes(d.id))
-        .sort((a, b) => {
-          // Critical first
-          const aCrit = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(a.type) ? 1 : 0;
-          const bCrit = ['FIRE', 'EXPLOSION', 'ATTACK', 'STRIKE'].includes(b.type) ? 1 : 0;
-          if (aCrit !== bCrit) return bCrit - aCrit;
-          
-          // Then by timestamp
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        })
-        .slice(0, limit - highlighted.length);
-      
-      return [...highlighted, ...remaining];
-    }, [filtered.targets, mergedActiveStory?.highlightTargetIds, visibilityLimits.maxTargets, showEvents]);
-
     const targetLayer = targetsToRender.length > 0 && new ScatterplotLayer<Target>({
       id: 'targets',
       data: targetsToRender,
@@ -445,57 +487,7 @@ export function useMapLayers({
       },
     });
 
-    // Transform OpenSkyFlights into Asset format on the fly
-    const flightAssets: Asset[] = globalFlights.map(f => {
-      let actor = 'unknown';
-      const country = (f.origin_country || '').toLowerCase();
-      if (country.includes('united states') || country.includes('usa')) actor = 'us';
-      else if (country.includes('israel')) actor = 'israel';
-      else if (country.includes('iran')) actor = 'iran';
-      else if (country.includes('russia')) actor = 'russia';
-      else if (country.includes('china')) actor = 'china';
-
-      return {
-        id: `flight-${f.icao24}`,
-        sourceEventId: null,
-        actor: actor as any,
-        priority: (f.baro_altitude && f.baro_altitude > 10000) ? 'P2' : 'P3',
-        category: 'INSTALLATION',
-        type: 'AIRCRAFT',
-        status: 'ACTIVE',
-        name: f.callsign?.trim() || f.icao24,
-        position: [f.longitude!, f.latitude!],
-        heading: f.true_track || 0,
-        description: `${f.origin_country} - Alt: ${Math.round(f.baro_altitude || 0)}m, Speed: ${Math.round(f.velocity || 0)}m/s`,
-      };
-    });
-
-    // OPTIMIZATION: Apply LOD-based limits for assets/flights
-    const assetsToRender = useMemo(() => {
-      if (!showFlights) return [];
-      const combined = [...filtered.assets, ...flightAssets];
-      
-      const limit = visibilityLimits.maxAssets;
-      if (combined.length <= limit) return combined;
-      
-      // Priority: carriers > highlighted > recent
-      const carriers = combined.filter(d => d.type === 'CARRIER');
-      const highlighted = combined.filter(d => 
-        d.type !== 'CARRIER' && mergedActiveStory?.highlightAssetIds?.includes(d.id)
-      );
-      const remaining = combined
-        .filter(d => d.type !== 'CARRIER' && !mergedActiveStory?.highlightAssetIds?.includes(d.id))
-        .sort((a, b) => {
-          // Priority by type
-          const aPrio = a.priority === 'P1' ? 3 : a.priority === 'P2' ? 2 : 1;
-          const bPrio = b.priority === 'P1' ? 3 : b.priority === 'P2' ? 2 : 1;
-          return bPrio - aPrio;
-        })
-        .slice(0, limit - carriers.length - highlighted.length);
-      
-      return [...carriers, ...highlighted, ...remaining];
-    }, [filtered.assets, flightAssets, mergedActiveStory?.highlightAssetIds, visibilityLimits.maxAssets, showFlights]);
-
+    // Asset layer with airplane icons for flights
     const assetLayer = assetsToRender.length > 0 && new IconLayer<Asset>({
       id: 'assets',
       data: assetsToRender,
@@ -1045,13 +1037,10 @@ export function useMapLayers({
     pulseTime, 
     cyberThreats, 
     showMoroccoLayer, 
-    moroccoLayers, 
-    globalFlights,
+    moroccoLayers,
     moroccoIntelligence,
-    visibilityLimits,
     targetsToRender,
     assetsToRender,
-    eventHeatmapData,
   ]);
 }
 
