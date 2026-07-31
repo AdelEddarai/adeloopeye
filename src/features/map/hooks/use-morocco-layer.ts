@@ -529,7 +529,7 @@ export function useMoroccoLayer({
     // ALL critical/high events + selected events pulse continuously
     // ═══════════════════════════════════════════════════════════
     if (visibleEvents.length > 0) {
-      // 1. Modern Radar Ripple Layer (Pulse effect for ALL events)
+      // 1. Modern Radar Ripple Layer (Small pulse effect for ALL events)
       const eventRippleLayer = new ScatterplotLayer<typeof visibleEvents[0]>({
         id: 'morocco-events-ripple',
         data: visibleEvents,
@@ -537,16 +537,16 @@ export function useMoroccoLayer({
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
           
-          // Base radius by severity
-          const baseRadius = d.severity === 'CRITICAL' ? 7000 : 
-                           d.severity === 'HIGH' ? 5000 : 
-                           d.severity === 'MEDIUM' ? 3500 : 2500;
+          // SMALL base radius for pulses
+          const baseRadius = d.severity === 'CRITICAL' ? 3500 : 
+                           d.severity === 'HIGH' ? 2500 : 
+                           d.severity === 'MEDIUM' ? 1800 : 1200;
           
           // ALL events pulse (critical/high pulse faster)
           const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : 
                            d.severity === 'HIGH' ? 1.3 : 1.0;
           const pulsePhase = (pulseTime * pulseSpeed) % 1;
-          const selectedBoost = isSelected ? 1.6 : 1.0;
+          const selectedBoost = isSelected ? 1.4 : 1.0;
           
           return baseRadius * selectedBoost * pulsePhase * zoomScale;
         },
@@ -559,10 +559,10 @@ export function useMoroccoLayer({
           const pulsePhase = (pulseTime * pulseSpeed) % 1;
           
           // Alpha based on severity
-          const alphaBase = isSelected ? 255 : 
-                          d.severity === 'CRITICAL' ? 220 : 
-                          d.severity === 'HIGH' ? 180 : 140;
-          const alpha = Math.max(0, Math.floor(alphaBase * Math.pow(1 - pulsePhase, 1.8)));
+          const alphaBase = isSelected ? 200 : 
+                          d.severity === 'CRITICAL' ? 180 : 
+                          d.severity === 'HIGH' ? 150 : 100;
+          const alpha = Math.max(0, Math.floor(alphaBase * Math.pow(1 - pulsePhase, 2)));
           
           return [color[0], color[1], color[2], alpha];
         },
@@ -573,15 +573,15 @@ export function useMoroccoLayer({
           const pulseSpeed = d.severity === 'CRITICAL' ? 1.8 : 
                            d.severity === 'HIGH' ? 1.3 : 1.0;
           const pulsePhase = (pulseTime * pulseSpeed) % 1;
-          const alpha = Math.max(0, Math.floor(200 * (1 - pulsePhase)));
+          const alpha = Math.max(0, Math.floor(150 * (1 - pulsePhase)));
           
           return [color[0], color[1], color[2], alpha];
         },
-        lineWidthMinPixels: 2,
-        lineWidthMaxPixels: 4,
+        lineWidthMinPixels: 1,
+        lineWidthMaxPixels: 2,
         pickable: false,
         radiusMinPixels: 0,
-        radiusMaxPixels: 60,
+        radiusMaxPixels: 30,
         updateTriggers: {
           getRadius: [pulseTime, zoom, selectedEventId],
           getFillColor: [pulseTime, selectedEventId],
@@ -589,26 +589,26 @@ export function useMoroccoLayer({
         },
       });
 
-      // 2. Modern Radar Core Layer (Sharp focal point) - VISIBLE event dots
+      // 2. Small Event Dots (Sharp focal point)
       const eventCoreLayer = new ScatterplotLayer<typeof visibleEvents[0]>({
         id: 'morocco-events-core',
         data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getRadius: (d): number => {
           const isSelected = selectedEventId === d.id;
-          const baseRadius = d.severity === 'CRITICAL' ? 2500 : 
-                           d.severity === 'HIGH' ? 2000 : 1500;
-          return baseRadius * (isSelected ? 2.0 : 1) * zoomScale;
+          const baseRadius = d.severity === 'CRITICAL' ? 1200 : 
+                           d.severity === 'HIGH' ? 1000 : 800;
+          return baseRadius * (isSelected ? 1.5 : 1) * zoomScale;
         },
         getFillColor: (d): RGBA => getEventColor(d.type, d.severity),
         stroked: true,
-        getLineColor: [255, 255, 255, 150],
+        getLineColor: [255, 255, 255, 120],
         lineWidthMinPixels: 1,
         pickable: true,
         autoHighlight: true,
         radiusUnits: 'meters',
-        radiusMinPixels: 6,
-        radiusMaxPixels: 18,
+        radiusMinPixels: 4,
+        radiusMaxPixels: 10,
         updateTriggers: {
           getRadius: [zoom, selectedEventId],
           getFillColor: [pulseTime],
@@ -619,7 +619,7 @@ export function useMoroccoLayer({
     }
     
     // ═══════════════════════════════════════════════════════════
-    // EVENT ICONS - Type-specific icons (only at high zoom)
+    // EVENT ICONS - Small type-specific icons (only at high zoom)
     // ═══════════════════════════════════════════════════════════
     if (visibleEvents.length > 0 && zoom >= 9) {
       // Create SVG atlas with all event icons
@@ -631,7 +631,7 @@ export function useMoroccoLayer({
         getPosition: (d): [number, number] => d.offsetPosition,
         getIcon: (d) => d.type.toLowerCase(),
         getSize: (d): number => {
-          return d.severity === 'CRITICAL' ? 24 : d.severity === 'HIGH' ? 20 : 16;
+          return d.severity === 'CRITICAL' ? 18 : d.severity === 'HIGH' ? 16 : 14;
         },
         getColor: (d): RGBA => getEventColor(d.type, d.severity),
         iconAtlas,
