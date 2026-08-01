@@ -1,5 +1,5 @@
 'use client';
-export const dynamic = 'force-dynamic';
+
 import { Suspense } from 'react';
 
 import { BriefContent } from '@/features/brief/components/BriefContent';

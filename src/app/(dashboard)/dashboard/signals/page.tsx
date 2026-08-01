@@ -1,5 +1,5 @@
 'use client';
-export const dynamic = 'force-dynamic';
+
 import { Suspense } from 'react';
 
 import { SignalsContent } from '@/features/signals/components/SignalsContent';
