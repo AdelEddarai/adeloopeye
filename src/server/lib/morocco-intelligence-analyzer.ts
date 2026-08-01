@@ -478,47 +478,7 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
       // Extract location with improved algorithm
       const location = extractMoroccoLocation(originalContent);
       
-      // Use the detected location or fallback to "Morocco" with random spread
-      const finalLocation = location || 'Morocco';
-      const basePosition = MOROCCO_CITIES[finalLocation];
-      
-      if (!basePosition) {
-        // If somehow location not in database, use Morocco center
-        console.warn(`[Morocco Intel] Location "${finalLocation}" not found in database, using Morocco center`);
-        const fallbackPosition = MOROCCO_CITIES['Morocco'];
-        if (!fallbackPosition) return; // Should never happen
-        
-        // Add random spread for unmapped locations
-        const angle = Math.random() * 2 * Math.PI;
-        const radius = Math.random() * 0.015; // ~1.7km
-        const position: [number, number] = [
-          fallbackPosition[0] + Math.cos(angle) * radius,
-          fallbackPosition[1] + Math.sin(angle) * radius,
-        ];
-        
-        try {
-          events.push({
-            id: buildMoroccoEventId(article, detectedType, 'Morocco'),
-            type: detectedType,
-            title: article.title,
-            description: article.description || article.title,
-            location: 'Morocco',
-            position,
-            severity: calculateSeverity(originalContent, detectedType),
-            timestamp: article.publishedAt,
-            source: article.url,
-            image: (article as any).urlToImage || (article as any).image,
-            impact: generateImpactDescription(detectedType, originalContent),
-            status: determineStatus(originalContent),
-          });
-        } catch (error) {
-          console.warn(`[Morocco Intel] Skipped event - error:`, error);
-        }
-        return;
-      }
-
-      // For specific cities: use exact coordinates
-      // For fallback: use topic-based regional routing so unmatched events don't stack in 1 central spot
+      // Determine final location with topic-based routing
       let finalLocation = location;
       if (!finalLocation) {
         const textLower = originalContent.toLowerCase();
@@ -545,8 +505,42 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
           finalLocation = hubs[hubIdx];
         }
       }
-
-      const basePosition = MOROCCO_CITIES[finalLocation] || MOROCCO_CITIES['Rabat'];
+      
+      const basePosition = MOROCCO_CITIES[finalLocation];
+      
+      if (!basePosition) {
+        // If somehow location not in database, use Morocco center
+        const fallbackPosition = MOROCCO_CITIES['Morocco'];
+        if (!fallbackPosition) return;
+        
+        // Add random spread for unmapped locations
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.random() * 0.015; // ~1.7km
+        const position: [number, number] = [
+          fallbackPosition[0] + Math.cos(angle) * radius,
+          fallbackPosition[1] + Math.sin(angle) * radius,
+        ];
+        
+        try {
+          events.push({
+            id: buildMoroccoEventId(article, detectedType, 'Morocco'),
+            type: detectedType,
+            title: article.title,
+            description: article.description || article.title,
+            location: 'Morocco',
+            position,
+            severity: calculateSeverity(originalContent, detectedType),
+            timestamp: article.publishedAt,
+            source: article.url,
+            image: (article as any).urlToImage || (article as any).image,
+            impact: generateImpactDescription(detectedType, originalContent),
+            status: determineStatus(originalContent),
+          });
+        } catch (error) {
+          // Skip event on error
+        }
+        return;
+      }
 
       // Add a slight scatter offset (1.0km - 2.5km) so multiple events in the same city are neatly distributed
       const angle = Math.random() * 2 * Math.PI;
@@ -573,10 +567,10 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
         });
 
         if (moroccoArticleCount <= 5) {
-          console.log(`[Morocco Intel]   → Detected ${detectedType} event in ${finalLocation}${(article as any).urlToImage || (article as any).image ? ' (with image)' : ''}`);
+          // Event logged successfully
         }
       } catch (error) {
-        console.warn(`[Morocco Intel] Skipped event - error creating event object:`, error);
+        // Skip event on error
       }
 
       // Detect international connections
