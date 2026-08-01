@@ -57,7 +57,7 @@ function getTimeAgo(timestamp: string): string {
 }
 
 export function MoroccoKPIDashboard() {
-  const { data, isLoading } = useMoroccoIntelligence(true);
+  const { data, isLoading, error } = useMoroccoIntelligence(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
   const [activeTab, setActiveTab] = useState('overview');
   const dispatch = useDispatch();
@@ -76,7 +76,6 @@ export function MoroccoKPIDashboard() {
   // Handle event selection from network graph
   const handleEventSelect = (eventId: string, location?: string) => {
     dispatch(selectEvent({ eventId, location }));
-    console.log('🎯 Event selected from network graph:', eventId);
   };
 
   // Handle location selection from Sankey
@@ -86,7 +85,6 @@ export function MoroccoKPIDashboard() {
       data?.events?.filter((e: any) => e.location === location).map((e: any) => e.id) || [];
 
     dispatch(selectLocation({ location, eventIds: eventsAtLocation }));
-    console.log('📍 Location selected from Sankey:', location, 'Events:', eventsAtLocation.length);
   };
 
   // Clear selection button
@@ -205,6 +203,36 @@ export function MoroccoKPIDashboard() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-[var(--blue)] border-t-transparent rounded-full animate-spin" />
           <span className="text-sm text-[var(--t3)] mono">Loading Morocco KPIs...</span>
+          {error && (
+            <div className="mt-2 text-xs text-red-400 max-w-md text-center">
+              <p className="font-mono">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
+              <p className="text-[10px] text-zinc-500 mt-1">Check console for details</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle empty data case
+  if (!data.events || data.events.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center gap-3 text-center max-w-md">
+          <div className="w-12 h-12 rounded-full bg-zinc-800/50 flex items-center justify-center">
+            <MapPin className="w-6 h-6 text-zinc-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-zinc-300 mb-1">No Morocco Data Available</h3>
+            <p className="text-xs text-zinc-500 mono">
+              No intelligence data found. This could mean:
+            </p>
+            <ul className="text-[10px] text-zinc-600 mt-2 text-left space-y-1">
+              <li>• News sources are currently unavailable</li>
+              <li>• API keys may need to be configured</li>
+              <li>• No recent Morocco-related events detected</li>
+            </ul>
+          </div>
         </div>
       </div>
     );

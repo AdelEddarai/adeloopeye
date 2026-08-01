@@ -49,21 +49,35 @@ export function useMoroccoIntelligence(enabled: boolean = false) {
   return useQuery({
     queryKey: ['morocco-intelligence'],
     queryFn: async (): Promise<MoroccoIntelligenceResponse> => {
-      const res = await fetch('/api/v1/morocco/intelligence');
-      if (!res.ok) throw new Error('Failed to fetch Morocco intelligence');
-      
-      const json = await res.json();
-      
-      // Unwrap the API response envelope
-      if (json.ok && json.data) {
-        return json.data;
+      try {
+        const res = await fetch('/api/v1/morocco/intelligence', {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch Morocco intelligence: ${res.status}`);
+        }
+        
+        const json = await res.json();
+        
+        // Unwrap the API response envelope
+        if (json.ok && json.data) {
+          return json.data;
+        }
+        
+        // If response doesn't have expected structure, return it as-is
+        return json;
+      } catch (error) {
+        throw error;
       }
-      
-      return json;
     },
-    enabled, // Only fetch when enabled
-    refetchInterval: enabled ? 30 * 1000 : false, // Refetch every 30 seconds (real-time monitoring)
-    staleTime: 15 * 1000, // Consider stale after 15 seconds
-    gcTime: 60 * 1000, // Keep in cache for 1 minute
+    enabled,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchInterval: enabled ? 30 * 1000 : false,
+    staleTime: 15 * 1000,
+    gcTime: 60 * 1000,
   });
 }

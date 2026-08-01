@@ -518,20 +518,43 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
       }
 
       // For specific cities: use exact coordinates
-      // For generic "Morocco": add small random offset to prevent stacking
-      let position: [number, number];
-      if (location && location !== 'Morocco') {
-        // Specific city detected - use EXACT coordinates (no offset)
-        position = [basePosition[0], basePosition[1]];
-      } else {
-        // Generic Morocco - add small random spread (1.5km radius) to prevent stacking
-        const angle = Math.random() * 2 * Math.PI;
-        const radius = Math.random() * 0.013; // ~1.5km
-        position = [
-          basePosition[0] + Math.cos(angle) * radius,
-          basePosition[1] + Math.sin(angle) * radius,
-        ];
+      // For fallback: use topic-based regional routing so unmatched events don't stack in 1 central spot
+      let finalLocation = location;
+      if (!finalLocation) {
+        const textLower = originalContent.toLowerCase();
+        if (textLower.includes('bank') || textLower.includes('finance') || textLower.includes('stock') || textLower.includes('bourse') || textLower.includes('market') || textLower.includes('financial')) {
+          finalLocation = 'Casablanca';
+        } else if (textLower.includes('port') || textLower.includes('maritime') || textLower.includes('strait') || textLower.includes('shipping') || textLower.includes('vessel')) {
+          finalLocation = 'Tangier';
+        } else if (textLower.includes('tourist') || textLower.includes('hotel') || textLower.includes('festival') || textLower.includes('culture') || textLower.includes('visit')) {
+          finalLocation = 'Marrakech';
+        } else if (textLower.includes('solar') || textLower.includes('energy') || textLower.includes('renewable') || textLower.includes('desert') || textLower.includes('mine')) {
+          finalLocation = 'Ouarzazate';
+        } else if (textLower.includes('farm') || textLower.includes('crop') || textLower.includes('drought') || textLower.includes('water') || textLower.includes('rain')) {
+          finalLocation = 'Agadir';
+        } else if (textLower.includes('sahara') || textLower.includes('southern') || textLower.includes('dakhla') || textLower.includes('laayoune')) {
+          finalLocation = 'Laayoune';
+        } else if (textLower.includes('east') || textLower.includes('border') || textLower.includes('algeria') || textLower.includes('oriental')) {
+          finalLocation = 'Oujda';
+        } else if (textLower.includes('university') || textLower.includes('school') || textLower.includes('craft') || textLower.includes('heritage')) {
+          finalLocation = 'Fes';
+        } else {
+          // Distributed fallback across major administrative hubs
+          const hubs = ['Rabat', 'Casablanca', 'Tangier', 'Marrakech', 'Fes', 'Agadir', 'Oujda', 'Laayoune'];
+          const hubIdx = Math.abs(stableId(article.title || article.url || 'morocco')) % hubs.length;
+          finalLocation = hubs[hubIdx];
+        }
       }
+
+      const basePosition = MOROCCO_CITIES[finalLocation] || MOROCCO_CITIES['Rabat'];
+
+      // Add a slight scatter offset (1.0km - 2.5km) so multiple events in the same city are neatly distributed
+      const angle = Math.random() * 2 * Math.PI;
+      const radius = 0.008 + Math.random() * 0.012; // ~1km - 2.5km
+      const position: [number, number] = [
+        basePosition[0] + Math.cos(angle) * radius,
+        basePosition[1] + Math.sin(angle) * radius,
+      ];
 
       try {
         events.push({
@@ -591,130 +614,119 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
 function extractMoroccoLocation(text: string): string | null {
   const lower = text.toLowerCase();
   
-  // Remove common dateline patterns to avoid false positives
-  // Example: "RABAT (Reuters) -" or "CASABLANCA:"
-  const cleanText = lower
-    .replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)\s*\([^)]*\)\s*[-:]\s*/i, ' ')
-    .replace(/^(?:<[^>]+>\s*)*\s*(rabat|casablanca|marrakech|tangier|agadir|fes)\s*[-:]\s*/i, ' ');
-
   // Handle alternate spellings and common variations
   const spellingMap: Record<string, string> = {
     'marrakesh': 'Marrakech',
+    'marrakech': 'Marrakech',
     'tanger': 'Tangier',
     'tangiers': 'Tangier',
+    'tangier': 'Tangier',
+    'tanja': 'Tangier',
     'fez': 'Fes',
     'fès': 'Fes',
+    'fes': 'Fes',
+    'casablanca': 'Casablanca',
+    'casa': 'Casablanca',
+    'rabat': 'Rabat',
+    'agadir': 'Agadir',
+    'aghadir': 'Agadir',
+    'oujda': 'Oujda',
     'meknès': 'Meknes',
     'meknas': 'Meknes',
+    'meknes': 'Meknes',
     'ouarzazate': 'Ouarzazate',
-    'aghadir': 'Agadir',
     'al-hoceima': 'Al Hoceima',
     'al hoceima': 'Al Hoceima',
     'alhucemas': 'Al Hoceima',
+    'chefchaouen': 'Chefchaouen',
     'chaouen': 'Chefchaouen',
     'xauen': 'Chefchaouen',
     'el-jadida': 'El Jadida',
+    'el jadida': 'El Jadida',
     'mazagan': 'El Jadida',
     'laayoune': 'Laayoune',
+    'laâyoune': 'Laayoune',
     'layoune': 'Laayoune',
     'el aaiun': 'Laayoune',
-    'saidia': 'Oujda',
-    'berkane': 'Oujda',
+    'dakhla': 'Dakhla',
+    'nador': 'Nador',
+    'tetouan': 'Tetouan',
+    'tétouan': 'Tetouan',
+    'larache': 'Larache',
+    'essaouira': 'Essaouira',
+    'safi': 'Safi',
+    'berkane': 'Berkane',
+    'guelmim': 'Guelmim',
+    'errachidia': 'Errachidia',
+    'kenitra': 'Kenitra',
+    'kénitra': 'Kenitra',
+    'ifrane': 'Ifrane',
+    'azrou': 'Azrou',
+    'midelt': 'Midelt',
+    'zagora': 'Zagora',
+    'tinghir': 'Tinghir',
+    'taroudant': 'Taroudant',
+    'tiznit': 'Tiznit',
+    'tan-tan': 'Tan-Tan',
+    'tantan': 'Tan-Tan',
+    'khouribga': 'Khouribga',
+    'settat': 'Settat',
+    'mohammedia': 'Mohammedia',
+    'beni mellal': 'Beni Mellal',
+    'taza': 'Taza',
   };
 
-  // Check alternate spellings first
-  for (const [variant, canonical] of Object.entries(spellingMap)) {
-    if (cleanText.includes(variant)) {
-      return canonical;
-    }
-  }
-  
   const foundCities: Array<{city: string; priority: number; index: number}> = [];
   
+  // Check explicit spelling dictionary first
+  for (const [variant, canonical] of Object.entries(spellingMap)) {
+    const idx = lower.indexOf(variant);
+    if (idx !== -1) {
+      let priority = 80;
+      // Context boost
+      if (new RegExp(`\\b(?:in|near|at|from|around|to|of)\\s+${variant}\\b`, 'i').test(lower)) {
+        priority += 50;
+      }
+      if (idx < 80) priority += 30; // Mentioned in title/header
+      foundCities.push({ city: canonical, priority, index: idx });
+    }
+  }
+
+  // Check general MOROCCO_CITIES registry
   for (const city of Object.keys(MOROCCO_CITIES)) {
-    if (city === 'Morocco') continue; // Skip generic fallback
+    if (city === 'Morocco') continue;
     
     const cityLower = city.toLowerCase();
-    const index = cleanText.indexOf(cityLower);
+    const index = lower.indexOf(cityLower);
     
     if (index !== -1) {
-      // Calculate priority - MAJOR improvements to prevent false positives
-      // 1. Context clues (in/near/from + city) = HIGHEST priority
-      // 2. Smaller cities = HIGH priority (less false positives)
-      // 3. Dateline detection penalty for capitals
+      let priority = 70;
       
-      let priority = 50; // Base priority
-      
-      // HIGHEST PRIORITY: Strong context clues (best indicator of actual location)
       const contextPatterns = [
-        new RegExp(`\\b(?:in|near|at|from|around)\\s+${cityLower}\\b`, 'i'),
-        new RegExp(`${cityLower}\\s+(?:area|region|city|province)`, 'i'),
-        new RegExp(`${cityLower}[''']s\\s+`, 'i'), // Possessive: "Marrakech's market"
+        new RegExp(`\\b(?:in|near|at|from|around|to|of)\\s+${cityLower}\\b`, 'i'),
+        new RegExp(`${cityLower}\\s+(?:area|region|city|province|port|airport)`, 'i'),
+        new RegExp(`${cityLower}[''']s\\s+`, 'i'),
       ];
       
       for (const pattern of contextPatterns) {
-        if (pattern.test(cleanText)) {
-          priority += 100; // HUGE boost for strong context
+        if (pattern.test(lower)) {
+          priority += 40;
           break;
         }
       }
       
-      // HIGH PRIORITY: Small/specific cities (rarely mentioned unless truly relevant)
-      const smallCities = ['Ifrane', 'Azrou', 'Chefchaouen', 'Essaouira', 'Ouarzazate', 'Zagora', 
-                          'Tinghir', 'Tiznit', 'Sefrou', 'Midelt', 'Tiflet', 'Khemisset', 
-                          'Al Hoceima', 'Taroudant', 'Guelmim', 'Tan-Tan', 'Errachidia'];
-      if (smallCities.includes(city)) priority += 60;
-      
-      // MEDIUM PRIORITY: Mid-size cities
-      const midCities = ['Mohammedia', 'Khouribga', 'Settat', 'Larache', 'Ksar El Kebir', 
-                        'Berrechid', 'Tetouan', 'Nador', 'Safi', 'El Jadida', 'Beni Mellal'];
-      if (midCities.includes(city)) priority += 30;
-      
-      // PENALTY: Capitals/major cities (often datelines or general government mentions)
-      if (['Rabat', 'Casablanca'].includes(city)) {
-        priority -= 40;
-        // Extra check: if in first 100 chars without context, likely dateline
-        if (index < 100 && !contextPatterns.some(p => p.test(cleanText))) {
-          priority -= 40; // Heavy penalty for dateline format
-        }
-      }
-      
-      // PENALTY: Generic regions (should only match if strong context)
-      if (city.includes('-') || city.includes('Mountains') || city.includes('Sahara') || city.includes('Region')) {
-        priority -= 60;
-      }
-      
-      // BOOST: Earlier mention (but not as important as context)
-      const positionBoost = Math.max(0, 25 - index / 40);
-      priority += positionBoost;
-      
-      // BOOST: Mentioned in title (first 60 chars)
-      if (index < 60) priority += 20;
-      
+      if (index < 80) priority += 25; // Title boost
       foundCities.push({ city, priority, index });
     }
   }
 
   if (foundCities.length === 0) {
-    return null; // No confident match = use generic Morocco spread
+    return null;
   }
 
-  // Sort by priority (highest first), then by earlier mention as tiebreaker
-  foundCities.sort((a, b) => {
-    const priorityDiff = b.priority - a.priority;
-    if (Math.abs(priorityDiff) < 15) {
-      return a.index - b.index; // Close priorities = prefer earlier mention
-    }
-    return priorityDiff; // Higher priority wins
-  });
-  
-  // Only return city if priority is reasonably high (confident match)
-  const topMatch = foundCities[0];
-  if (topMatch.priority < 40) {
-    return null; // Low confidence = use generic Morocco spread
-  }
-  
-  return topMatch.city;
+  // Sort by priority (highest first)
+  foundCities.sort((a, b) => b.priority - a.priority || a.index - b.index);
+  return foundCities[0].city;
 }
 
 /**

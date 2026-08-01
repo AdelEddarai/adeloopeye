@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 
 import { SITE_URL } from '@/features/browse/constants';
 import { CookieConsentProvider } from '@/shared/components/privacy/CookieConsentProvider';
+import { GoogleAnalytics } from '@/lib/analytics';
 
 import { QueryProvider } from '@/shared/lib/query-provider';
 import { ReduxProvider } from '@/shared/state/redux-provider';
@@ -52,9 +53,12 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
   return (
     <html lang="en">
       <body>
+        {gaId && <GoogleAnalytics measurementId={gaId} />}
         <CookieConsentProvider>
           <ReduxProvider>
             <QueryProvider>

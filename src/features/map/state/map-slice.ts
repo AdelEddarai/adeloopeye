@@ -151,7 +151,7 @@ const EMPTY_FILTERS: SerializableFilterState = {
 
 // Initial state
 
-const INITIAL_VIEW: MapViewState = { longitude: 51.0, latitude: 30.0, zoom: 4.5, pitch: 0, bearing: 0 };
+const INITIAL_VIEW: MapViewState = { longitude: -7.0926, latitude: 31.7917, zoom: 6, pitch: 0, bearing: 0 };
 
 const DEFAULT_DATA_LAYERS: MapState['dataLayers'] = {
   flights: false,
@@ -182,8 +182,8 @@ function buildInitialState(): MapState {
     show3DBuildings: persisted?.show3DBuildings ?? false,
     dataLayers: { ...DEFAULT_DATA_LAYERS, ...persisted?.dataLayers },
     scope: persisted?.scope ?? {
-      world: true,
-      morocco: false,
+      world: false,
+      morocco: true,
     },
     _filtersFingerprint: null,
   };

@@ -106,7 +106,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   }, [dataLayers.maritime, dispatch]);
 
   const [trackedFlightId, setTrackedFlightId] = useState<string | null>(null);
-  const [showMoroccoLayer, setShowMoroccoLayer] = useState(false);
+  const [showMoroccoLayer, setShowMoroccoLayer] = useState(scope.morocco);
   const prevMoroccoScopeRef = useRef(scope.morocco);
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
       ...prev,
       events: true,
       routes: true,
-      weather: true,
+      weather: false,
       fires: true,
       infrastructure: true,
       connections: true,
@@ -142,7 +142,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const [moroccoLayerToggles, setMoroccoLayerToggles] = useState({
     events: true,
     routes: true,
-    weather: true,
+    weather: false,
     fires: true,
     infrastructure: true,
     connections: true,
@@ -153,7 +153,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const enableOtherAPIs = scope.world;
 
   // Fetch Morocco intelligence data - only when enabled
-  const { data: moroccoData } = useMoroccoIntelligence(showMoroccoLayer);
+  const { data: moroccoData, isLoading: moroccoLoading, error: moroccoError } = useMoroccoIntelligence(showMoroccoLayer);
   const { data: stories = [], isLoading: storiesLoading } = useMapStories(undefined, enableOtherAPIs);
 
   // Dynamic Live Flights fetching based on Viewport
