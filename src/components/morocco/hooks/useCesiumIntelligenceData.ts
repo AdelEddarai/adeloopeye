@@ -158,12 +158,13 @@ function getPulseRadius(time?: any) {
         // Pure, deterministic physics frame based on JulianDate
         const ms = (time.dayNumber * 86400 + time.secondsOfDay) * 1000;
         const smoothOscillator = (Math.sin(ms / 1500) + 1) / 2;
-        return 8000 + smoothOscillator * 4000;
+        // Compact radar pulse: ~1.8km to ~3.6km radius (was 8-12km, too dominating)
+        return 1800 + smoothOscillator * 1800;
     }
     // Fallback
     const now = Date.now();
     const smoothOscillator = (Math.sin(now / 1500) + 1) / 2;
-    return 8000 + smoothOscillator * 4000;
+    return 1800 + smoothOscillator * 1800;
 }
 
 // Applies a spiral offset to events sharing exact same coordinates
@@ -357,7 +358,7 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
             // Modern Hex/Circle Cluster Hub
             cluster.label.show = true;
             cluster.label.text = clusteredEntities.length.toString();
-            cluster.label.font = 'bold 15px sans-serif';
+            cluster.label.font = 'bold 11px sans-serif';
             cluster.label.fillColor = Cesium.Color.WHITE;
             cluster.label.style = Cesium.LabelStyle.FILL_AND_OUTLINE;
             cluster.label.outlineColor = Cesium.Color.BLACK;
@@ -367,8 +368,8 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
             cluster.point.show = true;
             cluster.point.color = Cesium.Color.fromCssColorString('#0f172a'); 
             cluster.point.outlineColor = Cesium.Color.CYAN;
-            cluster.point.outlineWidth = 3;
-            cluster.point.pixelSize = 34;
+            cluster.point.outlineWidth = 2;
+            cluster.point.pixelSize = 20;
             
             // Critical OSINT safeguarding
             cluster.point.disableDepthTestDistance = Number.POSITIVE_INFINITY;
@@ -519,15 +520,15 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                 name: 'Cyber Threat',
                 position: Cesium.Cartesian3.fromDegrees(Number(threat.position[0]), Number(threat.position[1]), 0),
                 point: {
-                  pixelSize: 20,
+                  pixelSize: 12,
                   color: Cesium.Color.MAGENTA.withAlpha(0.6),
                   outlineColor: Cesium.Color.WHITE,
-                  outlineWidth: 2,
+                  outlineWidth: 1,
                   disableDepthTestDistance: Number.POSITIVE_INFINITY
                 },
                 label: {
                   text: '💻',
-                  font: '16px sans-serif',
+                  font: '11px sans-serif',
                   verticalOrigin: Cesium.VerticalOrigin.CENTER,
                   disableDepthTestDistance: Number.POSITIVE_INFINITY
                 },
@@ -547,10 +548,10 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                    name: target.name || 'Target',
                    position: Cesium.Cartesian3.fromDegrees(Number(target.position[0]), Number(target.position[1]), 0),
                    point: {
-                      pixelSize: target.status === 'DESTROYED' ? 24 : 16,
+                      pixelSize: target.status === 'DESTROYED' ? 12 : 8,
                       color: target.status === 'DESTROYED' ? Cesium.Color.RED : Cesium.Color.ORANGE,
                       outlineColor: Cesium.Color.WHITE,
-                      outlineWidth: 2,
+                      outlineWidth: 1,
                       disableDepthTestDistance: Number.POSITIVE_INFINITY
                    },
                    description: `<strong>Type:</strong> ${target.type}<br/><strong>Status:</strong> ${target.status}`
@@ -661,32 +662,32 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                 name: ev.title,
                 position: position,
                 point: {
-                  pixelSize: ev.severity === 'CRITICAL' ? 22 : 16,
+                  pixelSize: ev.severity === 'CRITICAL' ? 10 : 7,
                   color: eventColor,
                   outlineColor: Cesium.Color.WHITE,
-                  outlineWidth: 3,
+                  outlineWidth: 2,
                   disableDepthTestDistance: Number.POSITIVE_INFINITY
                 },
                 ellipse: showRing ? {
                   // Uses the strict Cesium simulation time for mathematical purity.
                   // This provides a mathematical guarantee that major >= minor axis, completely destroying the DeveloperError.
-                  semiMajorAxis: new Cesium.CallbackProperty((time: any) => getPulseRadius(time) + 50, false),
+                  semiMajorAxis: new Cesium.CallbackProperty((time: any) => getPulseRadius(time) + 40, false),
                   semiMinorAxis: new Cesium.CallbackProperty((time: any) => getPulseRadius(time), false),
-                  material: new Cesium.ColorMaterialProperty(eventColor.withAlpha(0.15)),
+                  material: new Cesium.ColorMaterialProperty(eventColor.withAlpha(0.12)),
                   outline: true,
-                  outlineColor: eventColor.withAlpha(0.8),
-                  outlineWidth: 2,
+                  outlineColor: eventColor.withAlpha(0.7),
+                  outlineWidth: 1,
                   height: 10
                 } : undefined,
                 label: {
-                  text: `${getEventIcon(ev.type)} ${ev.title.substring(0, 15)}...`,
-                  font: 'bold 12px sans-serif',
-                  pixelOffset: new Cesium.Cartesian2(0, -25),
+                  text: `${getEventIcon(ev.type)} ${ev.title.substring(0, 12)}...`,
+                  font: 'bold 9px sans-serif',
+                  pixelOffset: new Cesium.Cartesian2(0, -18),
                   disableDepthTestDistance: Number.POSITIVE_INFINITY,
                   fillColor: Cesium.Color.WHITE,
                   style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                   outlineColor: Cesium.Color.BLACK,
-                  outlineWidth: 3
+                  outlineWidth: 2
                 },
                 description: `<div style="font-size: 11px;">
                   <img src="${ev.image || getPlaceholderImage(ev.type)}" onerror="this.src='${getPlaceholderImage(ev.type)}'" class="w-full h-24 object-cover rounded mb-2 border border-slate-700/50" />
@@ -710,16 +711,16 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                 name: infra.name,
                 position: Cesium.Cartesian3.fromDegrees(Number(infra.position[0]), Number(infra.position[1]), 0),
                 point: {
-                  pixelSize: 16,
+                  pixelSize: 9,
                   color: getInfrastructureColor(Cesium, infra.status),
                   outlineColor: Cesium.Color.WHITE,
-                  outlineWidth: 2,
+                  outlineWidth: 1,
                   disableDepthTestDistance: Number.POSITIVE_INFINITY
                 },
                 label: {
                   text: `🏗️ ${infra.name}`,
-                  font: 'bold 11px sans-serif',
-                  pixelOffset: new Cesium.Cartesian2(0, -20),
+                  font: 'bold 9px sans-serif',
+                  pixelOffset: new Cesium.Cartesian2(0, -14),
                   disableDepthTestDistance: Number.POSITIVE_INFINITY,
                   fillColor: Cesium.Color.WHITE,
                   style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -807,17 +808,17 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                 position: Cesium.Cartesian3.fromDegrees(Number(fire.position[0]), Number(fire.position[1]), 0),
                 point: {
                   pixelSize: new Cesium.CallbackProperty(() => {
-                    return 18 + Math.abs(Math.sin(Date.now() / 200)) * 6;
+                    return 10 + Math.abs(Math.sin(Date.now() / 200)) * 4;
                   }, false),
                   color: Cesium.Color.ORANGERED.withAlpha(0.7),
                   outlineColor: Cesium.Color.YELLOW,
-                  outlineWidth: 2,
+                  outlineWidth: 1,
                   disableDepthTestDistance: Number.POSITIVE_INFINITY
                 },
                 label: {
                   text: '🔥',
-                  font: '18px sans-serif',
-                  pixelOffset: new Cesium.Cartesian2(0, -10),
+                  font: '12px sans-serif',
+                  pixelOffset: new Cesium.Cartesian2(0, -8),
                   disableDepthTestDistance: Number.POSITIVE_INFINITY
                 },
                 name: `Fire near ${fire.location}`,
@@ -867,16 +868,16 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                    name: traffic.location || 'Traffic Incident',
                    position: Cesium.Cartesian3.fromDegrees(Number(traffic.position[0]), Number(traffic.position[1]), 0),
                    point: {
-                      pixelSize: traffic.severity === 'CRITICAL' ? 18 : 12,
+                      pixelSize: traffic.severity === 'CRITICAL' ? 9 : 7,
                       color: getTrafficColor(Cesium, traffic.type),
                       outlineColor: Cesium.Color.WHITE,
-                      outlineWidth: 2,
+                      outlineWidth: 1,
                       disableDepthTestDistance: Number.POSITIVE_INFINITY
                    },
                    label: {
                       text: '🚧',
-                      font: '16px sans-serif',
-                      pixelOffset: new Cesium.Cartesian2(0, -15),
+                      font: '11px sans-serif',
+                      pixelOffset: new Cesium.Cartesian2(0, -10),
                       disableDepthTestDistance: Number.POSITIVE_INFINITY
                    },
                    description: `<strong>Type:</strong> ${traffic.type}<br/><strong>Severity:</strong> ${traffic.severity}`

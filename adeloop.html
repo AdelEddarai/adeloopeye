@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adeloop — OSINT & Data Analytics Intelligence</title>
+    <meta name="description" content="Adeloop is a data analytics OSINT platform for signal intelligence, geospatial tracking, and open-source threat analysis." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #05070d;
+            --bg-2: #090d18;
+            --surface: #0d1220;
+            --surface-2: #111827;
+            --border: #1b2437;
+            --text: #e6eaf3;
+            --text-dim: #94a3b8;
+            --text-mute: #64748b;
+            --accent: #22d3ee;
+            --accent-2: #34d399;
+            --accent-3: #f472b6;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --glow: rgba(34, 211, 238, 0.25);
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'Space Grotesk', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 40% at 70% -10%, rgba(34, 211, 238, 0.12), transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 20%, rgba(244, 114, 182, 0.07), transparent 60%),
+                radial-gradient(ellipse 50% 40% at 90% 90%, rgba(52, 211, 153, 0.06), transparent 60%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            z-index: -1;
+            pointer-events: none;
+            -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+        }
+
+        a { color: var(--accent); text-decoration: none; }
+
+        .container {
+            width: min(1180px, 92%);
+            margin: 0 auto;
+        }
+
+        /* ── Navbar ─────────────────────────────── */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            backdrop-filter: blur(14px);
+            background: rgba(5, 7, 13, 0.6);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 68px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+
+        .logo-mark {
+            width: 36px; height: 36px;
+            border-radius: 9px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #041018;
+            font-family: var(--mono);
+            font-weight: 700;
+            box-shadow: 0 0 20px var(--glow);
+        }
+
+        .logo span.accent { color: var(--accent); }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: var(--text); }
+
+        .nav-cta {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #041018 !important;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        /* ── Hero ───────────────────────────────── */
+        .hero {
+            padding: 180px 0 100px;
+            text-align: center;
+            position: relative;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 28px;
+        }
+
+        .badge .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent-2);
+            box-shadow: 0 0 10px var(--accent-2);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.6rem, 6vw, 4.6rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 .grad {
+            background: linear-gradient(120deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero h1 .outline {
+            color: transparent;
+            -webkit-text-stroke: 1px var(--text-dim);
+        }
+
+        .hero p.sub {
+            max-width: 640px;
+            margin: 0 auto 40px;
+            color: var(--text-dim);
+            font-size: 1.12rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn:hover { transform: translateY(-2px); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #041018;
+            box-shadow: 0 8px 30px var(--glow);
+        }
+
+        .btn-primary:hover { box-shadow: 0 12px 40px var(--glow); }
+
+        .btn-ghost {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover { border-color: var(--accent); }
+
+        /* terminal */
+        .terminal {
+            max-width: 720px;
+            margin: 72px auto 0;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            text-align: left;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .terminal-head .t-dot {
+            width: 11px; height: 11px; border-radius: 50%;
+        }
+        .t-dot:nth-child(1) { background: var(--danger); }
+        .t-dot:nth-child(2) { background: var(--warning); }
+        .t-dot:nth-child(3) { background: var(--accent-2); }
+
+        .terminal-head .t-title {
+            margin-left: 8px;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--text-mute);
+        }
+
+        .terminal-body {
+            padding: 24px;
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            line-height: 1.9;
+            color: var(--text-dim);
+        }
+
+        .terminal-body .c { color: var(--accent); }
+        .terminal-body .g { color: var(--accent-2); }
+        .terminal-body .y { color: var(--warning); }
+        .terminal-body .r { color: var(--danger); }
+        .terminal-body .m { color: var(--accent-3); }
+
+        .cursor {
+            display: inline-block;
+            width: 9px; height: 18px;
+            background: var(--accent);
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* ── Stats ──────────────────────────────── */
+        .stats {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-2);
+        }
+
+        .stats .inner {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .stat {
+            padding: 40px 24px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+        .stat:last-child { border-right: none; }
+
+        .stat .num {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: var(--mono);
+            color: var(--accent);
+        }
+
+        .stat .label {
+            color: var(--text-mute);
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+
+        /* ── Sections ───────────────────────────── */
+        section { padding: 110px 0; }
+
+        .section-head {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-head .kicker {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--accent);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        .section-head h2 {
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            letter-spacing: -0.02em;
+            margin-bottom: 14px;
+        }
+
+        .section-head p {
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* features grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+        }
+
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 30px;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .feature:hover {
+            transform: translateY(-4px);
+            border-color: rgba(34, 211, 238, 0.4);
+            box-shadow: 0 12px 40px rgba(34, 211, 238, 0.08);
+        }
+
+        .feature .icon {
+            width: 46px; height: 46px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            font-size: 1.3rem;
+            margin-bottom: 18px;
+            background: rgba(34, 211, 238, 0.08);
+            border: 1px solid rgba(34, 211, 238, 0.2);
+        }
+
+        .feature h3 { font-size: 1.05rem; margin-bottom: 10px; }
+        .feature p { color: var(--text-dim); font-size: 0.92rem; }
+
+        /* data sources strip */
+        .sources {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            justify-content: center;
+        }
+
+        .source-chip {
+            padding: 12px 22px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            transition: all 0.2s;
+        }
+
+        .source-chip:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--glow);
+        }
+
+        /* timeline */
+        .timeline {
+            position: relative;
+            max-width: 720px;
+            margin: 0 auto;
+            padding-left: 36px;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(var(--accent), var(--accent-2), transparent);
+        }
+
+        .tl-item {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .tl-item::before {
+            content: "";
+            position: absolute;
+            left: -32px;
+            top: 6px;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--bg);
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 12px var(--glow);
+        }
+
+        .tl-item h4 {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--accent);
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .tl-item h3 { font-size: 1.05rem; margin-bottom: 6px; }
+        .tl-item p { color: var(--text-dim); font-size: 0.92rem; }
+
+        /* CTA */
+        .cta {
+            text-align: center;
+            padding: 90px 0;
+            border-top: 1px solid var(--border);
+            background:
+                radial-gradient(ellipse 50% 100% at 50% 100%, rgba(34, 211, 238, 0.08), transparent);
+        }
+
+        .cta h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: 14px; letter-spacing: -0.02em; }
+        .cta p { color: var(--text-dim); max-width: 560px; margin: 0 auto 36px; }
+
+        /* footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 0;
+            color: var(--text-mute);
+            font-size: 0.85rem;
+        }
+
+        footer .inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        footer .logo { font-size: 1rem; }
+        footer .mono { font-family: var(--mono); font-size: 0.78rem; }
+
+        .backdrop-panel {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--surface);
+            padding: 30px;
+        }
+
+        .code-block {
+            background: #0a0f1a;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 22px;
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            color: var(--text-dim);
+        }
+
+        .code-block .k { color: var(--accent-3); }
+        .code-block .s { color: var(--accent-2); }
+        .code-block .n { color: var(--warning); }
+
+        /* ── Responsive ─────────────────────────── */
+        @media (max-width: 900px) {
+            .features { grid-template-columns: 1fr 1fr; }
+            .stats .inner { grid-template-columns: repeat(2, 1fr); }
+            .stat:nth-child(2) { border-right: none; }
+            .stat:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+            .nav-links { display: none; }
+        }
+
+        @media (max-width: 560px) {
+            .features { grid-template-columns: 1fr; }
+            .stats .inner { grid-template-columns: 1fr; }
+            .stat { border-right: none; border-bottom: 1px solid var(--border); }
+            .stat:last-child { border-bottom: none; }
+            .hero { padding: 140px 0 70px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-overlay"></div>
+
+    <!-- Navbar -->
+    <nav>
+        <div class="container inner">
+            <a class="logo" href="#">
+                <div class="logo-mark">A</div>
+                ade<span class="accent">loop</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Capabilities</a>
+                <a href="#data">Data Sources</a>
+                <a href="#workflow">Workflow</a>
+                <a href="#pipeline">Pipeline</a>
+                <a class="nav-cta" href="#cta">Get Access</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero">
+        <div class="container">
+            <div class="badge"><span class="dot"></span> OSINT INTELLIGENCE PLATFORM</div>
+            <h1>
+                Analyze the signals.<br />
+                <span class="grad">Reveal the pattern.</span><br />
+                <span class="outline">Own the picture.</span>
+            </h1>
+            <p class="sub">
+                Adeloop fuses open-source data — aircraft transponder feeds, satellite imagery, geospatial metadata and public records — into a unified analytical workspace for data analysts and threat-intelligence researchers.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="#cta">Request Access →</a>
+                <a class="btn btn-ghost" href="#features">Explore Capabilities</a>
+            </div>
+
+            <div class="terminal">
+                <div class="terminal-head">
+                    <span class="t-dot"></span><span class="t-dot"></span><span class="t-dot"></span>
+                    <span class="t-title">adeloop — intel workspace</span>
+                </div>
+                <div class="terminal-body">
+                    <span class="c">$</span> adeloop ingest --source adsb.live --region NW-AFRICA<br />
+                    <span class="g">✓</span> 1,284 aircraft transponders captured<br />
+                    <span class="g">✓</span> 312 flight routes correlated with geospatial layers<br />
+                    <span class="y">⚠</span> 14 uncorrelated tracks flagged for review<br />
+                    <span class="c">$</span> adeloop enrich --threat-model maritime_evasion<br />
+                    <span class="g">✓</span> pattern matched: <span class="m">AIS + ADSB shadow routing</span><br />
+                    <span class="c">$</span> adeloop report --format pdf --classify restricted<br />
+                    <span class="g">✓</span> analyst-ready brief generated<span class="cursor"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="container inner">
+            <div class="stat"><div class="num">1.2B+</div><div class="label">Open-source records indexed</div></div>
+            <div class="stat"><div class="num">40K+</div><div class="label">Live transponder feeds per day</div></div>
+            <div class="stat"><div class="num">180+</div><div class="label">Countries with entity coverage</div></div>
+            <div class="stat"><div class="num">&lt;3s</div><div class="label">Time-to-intel on new signals</div></div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <section id="features">
+        <div class="container">
+            <div class="section-head">
+                <div class="kicker">Capabilities</div>
+                <h2>One workspace, every source</h2>
+                <p>Every analysis tool a data analyst needs to turn open-source noise into operational intelligence.</p>
+            </div>
+            <div class="features">
+                <div class="feature">
+                    <div class="icon">🛰️</div>
+                    <h3>Signal & Track Intelligence</h3>
+                    <p>Real-time ADSB flight tracking, AIS maritime monitoring and satellite pass correlation merged into a single temporal picture.</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">🗺️</div>
+                    <h3>Geospatial Correlation</h3>
+                    <p>Overlay track data on basemaps, export GeoJSON, and detect route anomalies, loitering patterns and decoy behavior.</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">🔎</div>
+                    <h3>Entity & Network Analysis</h3>
+                    <p>Build entity graphs linking addresses, phone numbers, corporate registries and domain data from open records.</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">📡</div>
+                    <h3>Threat Pattern Detection</h3>
+                    <p>Configurable rule engines that flag evasion tactics, shadow routing, sanctions evasion and anomalous mobility.</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">🧠</div>
+                    <h3>ML-assisted Discovery</h3>
+                    <p>Unsupervised clustering and embeddings surface relationships a manual analyst would take weeks to find.</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">📦</div>
+                    <h3>Automated Reporting</h3>
+                    <p>One-click briefs in PDF, CSV and STIX format with source citations and confidence scoring baked in.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Data sources -->
+    <section id="data" style="background: var(--bg-2); border-block: 1px solid var(--border);">
+        <div class="container">
+            <div class="section-head">
+                <div class="kicker">Data Sources</div>
+                <h2>Fusion across open-source layers</h2>
+                <p>Adeloop normalizes heterogeneous feeds into one queryable intelligence graph.</p>
+            </div>
+            <div class="sources">
+                <span class="source-chip">ADS-B Flight Feeds</span>
+                <span class="source-chip">AIS Maritime Traffic</span>
+                <span class="source-chip">Satellite Imagery Index</span>
+                <span class="source-chip">Public Corporate Registries</span>
+                <span class="source-chip">Domain & DNS Records</span>
+                <span class="source-chip">Telecom & BGP Prefixes</span>
+                <span class="source-chip">Open CVE & Threat Feeds</span>
+                <span class="source-chip">News & Media Archive</span>
+                <span class="source-chip">Geospatial Basemaps</span>
+                <span class="source-chip">Sanctions & Watchlists</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Workflow -->
+    <section id="workflow">
+        <div class="container">
+            <div class="section-head">
+                <div class="kicker">Analyst Workflow</div>
+                <h2>From raw signal to finished brief</h2>
+                <p>A disciplined pipeline that keeps a full audit trail on every conclusion.</p>
+            </div>
+            <div class="timeline">
+                <div class="tl-item">
+                    <h4>01 · INGEST</h4>
+                    <h3>Capture & normalize</h3>
+                    <p>Streams from public transponder and registry sources are ingested, de-duplicated and normalized into typed records.</p>
+                </div>
+                <div class="tl-item">
+                    <h4>02 · ENRICH</h4>
+                    <h3>Correlate across layers</h3>
+                    <p>Automatic entity resolution links a flight track to a registered operator, its ownership chain and its network footprint.</p>
+                </div>
+                <div class="tl-item">
+                    <h4>03 · DETECT</h4>
+                    <h3>Apply detection rules</h3>
+                    <p>Rules flag anomalies — squawk switches near borders, extended loitering, AIS gaps — and rank them by risk score.</p>
+                </div>
+                <div class="tl-item">
+                    <h4>04 · REPORT</h4>
+                    <h3>Brief with evidence</h3>
+                    <p>Every finding exports with timestamps, source URLs and confidence so the analyst can defend the conclusion.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pipeline snippet -->
+    <section id="pipeline" style="background: var(--bg-2); border-block: 1px solid var(--border);">
+        <div class="container">
+            <div class="section-head">
+                <div class="kicker">Engineering</div>
+                <h2>Built on a composable pipeline</h2>
+            </div>
+            <div class="backdrop-panel">
+                <div class="code-block">
+                    <span class="k">const</span> pipeline = adeloop.<span class="k">create</span>({ mode: <span class="s">'analyst'</span> });<br />
+                    <br />
+                    pipeline<br />
+                    &nbsp;&nbsp;.source(<span class="s">'adsb.live'</span>)                    <span class="k">// live flight transponders</span><br />
+                    &nbsp;&nbsp;.source(<span class="s">'ais.maritime'</span>)                  <span class="k">// vessel positions</span><br />
+                    &nbsp;&nbsp;.enrich(<span class="s">'entity'</span>, { depth: <span class="n">3</span> })      <span class="k">// ownership resolution</span><br />
+                    &nbsp;&nbsp;.geo()                                  <span class="k">// geospatial correlation</span><br />
+                    &nbsp;&nbsp;.detect(<span class="s">'evasion'</span>)                       <span class="k">// threat-pattern rules</span><br />
+                    &nbsp;&nbsp;.report(<span class="s">'pdf'</span>, { classify: <span class="s">'restricted'</span> });<br />
+                    <br />
+                    <span class="k">// Output:</span> analyst-ready brief with full evidence chain
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <div id="cta" class="cta">
+        <div class="container">
+            <h2>Start seeing the full picture</h2>
+            <p>Adeloop is available to verified data analysts, researchers and intelligence professionals. Join the access list for evaluation credentials.</p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="mailto:access@adeloop.io">Request Access →</a>
+                <a class="btn btn-ghost" href="#data">Review Data Sources</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container inner">
+            <div class="logo">
+                <div class="logo-mark" style="width:28px;height:28px;font-size:0.85rem;">A</div>
+                ade<span class="accent">loop</span>
+            </div>
+            <span class="mono">adeloop v1.0 · osint intelligence workspace · est. 2026</span>
+        </div>
+    </footer>
+</body>
+</html>
