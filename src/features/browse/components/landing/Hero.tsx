@@ -7,8 +7,6 @@ import { Button } from '@/components/ui/button';
 import { trackNavigationClicked } from '@/shared/lib/analytics';
 import { useAnalyticsLayoutMode } from '@/shared/hooks/use-analytics-layout-mode';
 
-import { GITHUB_URL } from '@/data/external-links';
-
 export function Hero() {
   const layoutMode = useAnalyticsLayoutMode();
 

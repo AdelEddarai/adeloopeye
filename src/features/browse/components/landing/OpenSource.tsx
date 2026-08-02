@@ -1,7 +1,3 @@
-import { Button } from '@/components/ui/button';
-
-import { GITHUB_URL } from '@/data/external-links';
-
 const TECH_STACK = [
   'Next.js App Router',
   'TypeScript',
@@ -20,20 +16,10 @@ export function OpenSource() {
 
       <div className="flex flex-col gap-4">
         <p className="text-sm text-[var(--t2)] leading-relaxed">
-          Pharos is the open-source project behind conflicts.app. The entire
-          codebase is public on GitHub. Dashboard, API routes, data pipelines,
-          AI brief generation. Licensed under AGPL-3.0.
+          AdeloopEye is a comprehensive open-source OSINT platform developed by Adeloop AI Lab.
+          The entire codebase includes dashboard, API routes, data pipelines,
+          and AI intelligence generation. Licensed under AGPL-3.0.
         </p>
-
-        <Button
-          size="sm"
-          asChild
-          className="self-start bg-[var(--t1)] text-[var(--bg-app)] font-bold hover:bg-[var(--t2)]"
-        >
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-            View on GitHub
-          </a>
-        </Button>
 
         <div className="mt-4">
           <p className="label mb-3">Tech stack</p>

@@ -1,20 +1,20 @@
 const STEPS = [
   {
     step: 1,
-    title: 'Open conflicts.app/dashboard.',
+    title: 'Open adeloopeye.com/dashboard.',
     description: 'No account needed.',
   },
   {
     step: 2,
-    title: 'Pick a conflict day.',
+    title: 'Explore the map.',
     description:
-      'Every day is tracked independently with its own events, briefs, and scores.',
+      'View real-time events across Morocco with adaptive clustering and density heatmaps.',
   },
   {
     step: 3,
-    title: 'Read the brief or explore the map.',
+    title: 'Read briefs or dive into details.',
     description:
-      'Start with the situation summary or go straight to the interactive map and dig into individual events.',
+      'Start with intelligence summaries or explore individual events on the interactive map.',
   },
 ] as const;
 

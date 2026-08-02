@@ -59,7 +59,7 @@ export function ActorIntelTab({
         </div>
 
         <div className="mb-5">
-          <SectionDivider label="PHAROS ASSESSMENT" />
+          <SectionDivider label="ADELOOPEYE ASSESSMENT" />
           <div className="border-l-[3px] border-[var(--blue)] pl-3">
             <p className="text-[length:var(--text-body)] text-[var(--t1)] leading-relaxed">{snap.assessment}</p>
           </div>
@@ -114,7 +114,7 @@ export function ActorIntelTab({
             <div className="label mb-1 text-[length:var(--text-tiny)] text-[var(--t4)]">LEADERSHIP STRUCTURE</div>
             <div className="section-title mb-2 text-[length:var(--text-body-sm)] text-[var(--t1)]">Loading leadership tree...</div>
             <p className="text-[length:var(--text-body-sm)] leading-relaxed text-[var(--t3)]">
-              Pharos is resolving the command structure for this actor.
+              AdeloopEye is resolving the command structure for this actor.
             </p>
           </div>
         )}

@@ -28,7 +28,7 @@ export function ChatMessage({ message }: Props) {
         }`}
       >
         {!isUser && (
-          <span className="label mb-1 block text-[var(--blue-l)]">PHAROS INTEL</span>
+          <span className="label mb-1 block text-[var(--blue-l)]">ADELOOPEYE INTEL</span>
         )}
         {!message.content && (
           <span className="inline-flex items-center gap-1 text-[var(--t4)]">

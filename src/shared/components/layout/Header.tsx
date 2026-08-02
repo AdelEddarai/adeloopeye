@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { Github, Heart, MoreHorizontal } from 'lucide-react';
+import { Heart, MoreHorizontal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +28,7 @@ import { useIsLandscapePhone } from '@/shared/hooks/use-is-landscape-phone';
 import { useIsMobile } from '@/shared/hooks/use-is-mobile';
 import { useLandscapeHeaderVisibility } from '@/shared/hooks/use-landscape-header-visibility';
 
-import { GITHUB_URL, KOFI_URL } from '@/data/external-links';
+import { KOFI_URL } from '@/data/external-links';
 
 import { SHOW_COOKIE_CONTROLS } from '@/shared/config/privacy';
 
@@ -115,20 +115,10 @@ export function Header() {
                 asChild
                 className="h-6 shrink-0 rounded border border-[var(--blue)] bg-[var(--blue-dim)] px-1.5 text-[var(--blue-l)] hover:bg-[var(--blue)] hover:text-[var(--t1)]"
               >
-                <a href={KOFI_URL} target="_blank" rel="noopener noreferrer" aria-label="Support Adeloopeye server costs on Ko-fi">
+                <a href={KOFI_URL} target="_blank" rel="noopener noreferrer" aria-label="Support AdeloopEye server costs on Ko-fi">
                   <Heart size={11} fill="currentColor" strokeWidth={0} />
                 </a>
               </Button>
-              {/* <Button
-                variant="ghost"
-                asChild
-                className="h-6 shrink-0 gap-1 rounded bg-[var(--t1)] pl-2 pr-1.5 text-[var(--bg-app)] hover:bg-[var(--t2)] hover:text-[var(--bg-app)]"
-              >
-                <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="View Adeloopeye on GitHub">
-                  <Github size={12} fill="currentColor" strokeWidth={0} />
-                  <span className="mono text-[length:var(--text-caption)] font-bold tracking-[0.04em] text-[var(--bg-app)]">STAR</span>
-                </a>
-              </Button> */}
             </div>
           </div>
           <nav
@@ -235,7 +225,7 @@ export function Header() {
               {displayDate} · UTC
             </span>
 
-            {/* <Button
+            <Button
               variant="ghost"
               asChild
               className="h-auto rounded border border-[var(--blue)] bg-[var(--blue-dim)] px-2 py-1 text-[var(--blue-l)] hover:bg-[var(--blue)] hover:text-[var(--t1)]"
@@ -248,17 +238,6 @@ export function Header() {
               >
                 <Heart size={12} fill="currentColor" strokeWidth={0} />
                 <span className="mono text-[length:var(--text-label)] font-bold tracking-[0.04em]">SUPPORT SERVER COSTS</span>
-              </a>
-            </Button> */}
-
-            <Button
-              variant="ghost"
-              asChild
-              className="h-auto rounded bg-[var(--t1)] px-2 py-1 text-[var(--bg-app)] hover:bg-[var(--t2)] hover:text-[var(--bg-app)]"
-            >
-              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-                <Github size={13} fill="currentColor" strokeWidth={0} />
-                <span className="mono text-[length:var(--text-label)] font-bold tracking-[0.04em] text-[var(--bg-app)]">STAR</span>
               </a>
             </Button>
           </div>

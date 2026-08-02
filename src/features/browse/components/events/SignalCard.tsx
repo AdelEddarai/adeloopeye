@@ -60,7 +60,7 @@ export function SignalCard({
 
       {pharosNote && (
         <div className="px-3 py-2 border-t border-[var(--bd-s)] bg-[var(--blue-dim)]">
-          <span className="label text-[var(--blue-l)] mr-2">PHAROS NOTE</span>
+          <span className="label text-[var(--blue-l)] mr-2">ADELOOPEYE NOTE</span>
           <span className="text-xs text-[var(--t2)]">{pharosNote}</span>
         </div>
       )}

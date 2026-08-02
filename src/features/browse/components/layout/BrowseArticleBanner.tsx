@@ -18,11 +18,11 @@ function subscribe(callback: () => void) {
 
   const handleChange = () => callback();
   window.addEventListener('storage', handleChange);
-  window.addEventListener('pharos-cookie-consent-changed', handleChange);
+  window.addEventListener('adeloopeye-cookie-consent-changed', handleChange);
 
   return () => {
     window.removeEventListener('storage', handleChange);
-    window.removeEventListener('pharos-cookie-consent-changed', handleChange);
+    window.removeEventListener('adeloopeye-cookie-consent-changed', handleChange);
   };
 }
 
@@ -50,7 +50,7 @@ export function BrowseArticleBanner() {
     }
 
     localStorage.setItem(BROWSE_ARTICLE_BANNER_STORAGE_KEY, '1');
-    window.dispatchEvent(new CustomEvent('pharos-cookie-consent-changed'));
+    window.dispatchEvent(new CustomEvent('adeloopeye-cookie-consent-changed'));
     setIsLocallyDismissed(true);
   }
 

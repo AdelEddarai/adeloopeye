@@ -92,10 +92,10 @@ export function ChatWidget() {
               <div className="p-3 safe-px">
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <p className="mb-1 text-[length:var(--text-body)] text-[var(--t3)]">Pharos Intel Assistant</p>
+                    <p className="mb-1 text-[length:var(--text-body)] text-[var(--t3)]">AdeloopEye Intel Assistant</p>
                     <p className="max-w-[260px] text-[length:var(--text-body-sm)] text-[var(--t4)]">
                       {isReady
-                        ? 'Ask about events, actors, signals, or any intelligence in the conflict database.'
+                        ? 'Ask about events, intelligence data, or any information in the database.'
                         : 'Loading prior session...'}
                     </p>
                   </div>

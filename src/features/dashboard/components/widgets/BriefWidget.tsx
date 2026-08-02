@@ -33,7 +33,7 @@ export function BriefWidget() {
     <div className="h-full overflow-y-auto">
       {/* classification banner */}
       <div className="px-4 py-2.5 bg-[var(--bg-2)] border-b border-[var(--bd)]">
-        <div className="mono text-[length:var(--text-tiny)] text-[var(--t4)] tracking-[0.14em] mb-1">UNCLASSIFIED // PHAROS ANALYTICAL</div>
+        <div className="mono text-[length:var(--text-tiny)] text-[var(--t4)] tracking-[0.14em] mb-1">UNCLASSIFIED // ADELOOPEYE ANALYTICAL</div>
         <div className="mono text-[length:var(--text-body)] font-bold text-[var(--t1)] tracking-[0.04em]">DAILY INTELLIGENCE BRIEF</div>
         <div className="flex items-center gap-3 mt-1.5">
           <span className="mono text-[length:var(--text-caption)] text-[var(--t3)]">{snap.dayLabel} — OPERATIONS ONGOING</span>

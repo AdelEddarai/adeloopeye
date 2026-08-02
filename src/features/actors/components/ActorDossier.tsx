@@ -86,7 +86,7 @@ export function ActorDossier({ actor, tab, onTabChange, currentDay, compact = fa
       {/* Header */}
       <div className={cn('border-b border-[var(--bd)] bg-[var(--bg-2)] shrink-0', compact ? (pageScroll ? 'safe-px py-2' : 'px-3 py-2') : 'px-5 py-3')}>
         <div className="label text-[length:var(--text-tiny)] text-[var(--t3)] mb-2">
-          ACTOR INTELLIGENCE DOSSIER // PHAROS THREAT ANALYSIS // OPERATION EPIC FURY
+          ACTOR INTELLIGENCE DOSSIER // ADELOOPEYE THREAT ANALYSIS // OPERATION EPIC FURY
         </div>
         <div className="flex items-start gap-3.5 mb-2.5">
           <Flag actorId={actor.id} code={actor.countryCode} size={36} />
@@ -217,7 +217,7 @@ export function ActorDossier({ actor, tab, onTabChange, currentDay, compact = fa
                   <>
                     <div className="mb-2.5">
                       <span className="label text-[length:var(--text-tiny)]">
-                        {posts.length} POSTS · PHAROS-CURATED · {actor.name.toUpperCase()}
+                        {posts.length} POSTS · ADELOOPEYE-CURATED · {actor.name.toUpperCase()}
                       </span>
                     </div>
                     {posts.map(p => <XPostCard key={p.id} post={p as XPost} />)}

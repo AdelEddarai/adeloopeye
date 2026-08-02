@@ -41,7 +41,7 @@ export function BriefContent() {
       <div className="text-center mb-8 pb-5 border-b-2 border-[var(--bd)]">
         <div className="mb-2">
           <span className="mono text-[length:var(--text-caption)] font-bold tracking-[0.16em] text-[var(--t4)] uppercase">
-            UNCLASSIFIED // PHAROS ANALYTICAL
+            UNCLASSIFIED // ADELOOPEYE ANALYTICAL
           </span>
         </div>
         <h1 className="mono text-[22px] font-bold text-[var(--t1)] tracking-[0.04em] mb-[6px]">

@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 
 import { useCookieConsent } from '@/shared/components/privacy/CookieConsentProvider';
 
-import { GITHUB_URL } from '@/data/external-links';
-
 import { SHOW_COOKIE_CONTROLS } from '@/shared/config/privacy';
 
 export function BrowseFooter() {
@@ -39,14 +37,6 @@ export function BrowseFooter() {
             >
               Dashboard
             </Link>
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="no-underline text-xs text-[var(--t3)] hover:text-[var(--t1)] transition-colors"
-            >
-              GitHub
-            </a>
             <Link
               href="/privacy"
               className="no-underline text-xs text-[var(--t3)] hover:text-[var(--t1)] transition-colors"

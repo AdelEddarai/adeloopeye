@@ -1,7 +1,7 @@
 const FAQ_ITEMS = [
   {
-    q: 'What is Conflicts.app?',
-    a: 'Conflicts.app is a free, open-source intelligence dashboard for tracking the Iran conflict in real time. Built under the project name Pharos, it combines an interactive strike map, AI-generated situation briefs, escalation scoring, actor tracking, and an OSINT signal feed into one interface.',
+    q: 'What is AdeloopEye?',
+    a: 'AdeloopEye is a free, open-source OSINT intelligence platform for tracking real-time events across Morocco. Developed by Adeloop AI Lab, it combines an interactive map, AI-generated intelligence briefs, event tracking across 70+ cities, and multi-source aggregation into one comprehensive dashboard.',
   },
   {
     q: 'Is it free?',
@@ -9,19 +9,19 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Where does the data come from?',
-    a: "Conflicts.app monitors 30+ RSS feeds spanning Western, Iranian, Israeli, Arab, Russian, and Chinese media outlets. An AI agent pipeline processes incoming articles, extracts structured events, scores severity, identifies actors, and generates intelligence briefs. It's not just raw feeds, it's processed intelligence.",
+    a: "AdeloopEye monitors multiple data sources including RSS feeds from Moroccan news outlets, news APIs, and Telegram channels. An AI agent pipeline processes incoming information, extracts structured events, and generates intelligence briefs. It's not just raw feeds, it's processed intelligence.",
   },
   {
-    q: 'What is the escalation score?',
-    a: 'The escalation score is a 0\u2013100 metric calculated by AI based on event severity, attack frequency, actor behavior changes, and diplomatic signals. A score above 90 indicates active military conflict with high risk of further escalation.',
+    q: 'What types of events are tracked?',
+    a: 'AdeloopEye tracks various event types across Morocco including news, weather conditions, traffic incidents, fires, and other significant events. Events are monitored in real-time with adaptive clustering and density heatmaps for visualization.',
   },
   {
     q: 'How often is it updated?',
-    a: 'Events are logged as they happen. Intelligence briefs and escalation scores are updated continuously throughout the day as new information comes in.',
+    a: 'Events are logged as they happen with a 24-hour news window. Intelligence briefs and event data are updated continuously throughout the day as new information comes in from multiple sources.',
   },
   {
     q: 'Who built this?',
-    a: 'Conflicts.app was built by Julius Olsson as an open-source project. The goal was to make conflict intelligence accessible to everyone, not just people with access to expensive OSINT platforms.',
+    a: 'AdeloopEye was built by Adeloop AI Lab as an open-source project. The goal was to create a comprehensive OSINT platform for Morocco that makes intelligence accessible to everyone.',
   },
   {
     q: 'What tech stack is it built with?',

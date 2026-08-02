@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { Github, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
@@ -12,7 +12,7 @@ import { BROWSE_SECTIONS } from '@/features/browse/constants';
 import { trackNavigationClicked } from '@/shared/lib/analytics';
 import { useAnalyticsLayoutMode } from '@/shared/hooks/use-analytics-layout-mode';
 
-import { GITHUB_URL, KOFI_URL } from '@/data/external-links';
+import { KOFI_URL } from '@/data/external-links';
 
 type Props = {
   hamburgerSlot?: React.ReactNode;
@@ -107,21 +107,10 @@ export function BrowseNav({ hamburgerSlot }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               title="Help cover hosting and data infrastructure"
-              aria-label="Support Pharos server costs on Ko-fi"
+              aria-label="Support AdeloopEye server costs on Ko-fi"
             >
               <Heart size={12} fill="currentColor" strokeWidth={0} />
               <span className="mono hidden text-[length:var(--text-label)] font-bold tracking-[0.04em] md:inline">SUPPORT</span>
-            </a>
-          </Button>
-
-          <Button
-            variant="ghost"
-            asChild
-            className="h-auto rounded bg-[var(--t1)] px-2 py-1 text-[var(--bg-app)] hover:bg-[var(--t2)] hover:text-[var(--bg-app)]"
-          >
-            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-              <Github size={13} fill="currentColor" strokeWidth={0} />
-              <span className="mono text-[length:var(--text-label)] font-bold tracking-[0.04em] text-[var(--bg-app)]">STAR</span>
             </a>
           </Button>
         </div>
