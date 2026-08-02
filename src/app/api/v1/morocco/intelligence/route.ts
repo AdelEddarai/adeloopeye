@@ -8,38 +8,72 @@ import { fetchMoroccanRSSNews, convertRSSToNewsArticle } from '@/server/lib/api-
 import { fetchAllMoroccoLocalData } from '@/server/lib/api-clients/morocco-local-data';
 import { fetchMoroccoRoutes } from '@/server/lib/api-clients/morocco-routes-client';
 
+// Increase max duration for this API route to handle multiple external API calls
+export const maxDuration = 60; // 60 seconds
+export const dynamic = 'force-dynamic'; // Always run dynamically (don't cache)
+
 export async function GET(req: NextRequest) {
   try {
     console.log('[Morocco Intel] ========================================');
     console.log('[Morocco Intel] Fetching comprehensive Morocco intelligence...');
     console.log('[Morocco Intel] ========================================');
     
-    // Strategy 1: Fetch from Moroccan RSS feeds (primary source)
-    console.log('[Morocco Intel] 📰 Strategy 1: Fetching from Moroccan RSS feeds...');
-    const rssArticles = await fetchMoroccanRSSNews(20000); // 20 second timeout for RSS feeds
-    const rssConverted = rssArticles.map(convertRSSToNewsArticle);
+    // OPTIMIZATION: Run all strategies in parallel with Promise.allSettled
+    // This prevents one slow API from blocking others and reduces total time
     
-    // Strategy 2: Fetch from news APIs with multiple queries
-    console.log('[Morocco Intel] 🌐 Strategy 2: Fetching from news APIs...');
-    const searchQueries = [
-      'Morocco',
-      'Moroccan',
-      'Rabat OR Casablanca OR Marrakech',
-      'Morocco economy OR Morocco business',
-      'Morocco tourism OR Morocco investment',
-    ];
+    const [rssResult, apiResult, localDataResult, telegramResult, routesResult] = await Promise.allSettled([
+      // Strategy 1: Fetch from Moroccan RSS feeds (primary source)
+      (async () => {
+        console.log('[Morocco Intel] 📰 Strategy 1: Fetching from Moroccan RSS feeds...');
+        const articles = await fetchMoroccanRSSNews(8000); // Reduced from 20s to 8s timeout
+        return articles.map(convertRSSToNewsArticle);
+      })(),
+      
+      // Strategy 2: Fetch from news APIs with multiple queries
+      (async () => {
+        console.log('[Morocco Intel] 🌐 Strategy 2: Fetching from news APIs...');
+        const searchQueries = [
+          'Morocco',
+          'Moroccan',
+          'Rabat OR Casablanca OR Marrakech',
+        ];
+        
+        const apiArticles: any[] = [];
+        
+        // Run queries in parallel instead of sequentially
+        const queryResults = await Promise.allSettled(
+          searchQueries.map(query => multiNewsClient.searchNews(query, 15, 'en'))
+        );
+        
+        queryResults.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            apiArticles.push(...result.value);
+            console.log(`[Morocco Intel]   ✓ API query "${searchQueries[index]}" returned ${result.value.length} articles`);
+          } else {
+            console.error(`[Morocco Intel]   ✗ API query "${searchQueries[index]}" failed:`, result.reason);
+          }
+        });
+        
+        return apiArticles;
+      })(),
+      
+      // Strategy 3: Fetch local data placeholder (will be populated after articles are ready)
+      Promise.resolve({ weather: [], traffic: [], commodities: [], fires: [] }),
+      
+      // Strategy 4: Fetch real-time Telegram intelligence
+      (async () => {
+        console.log('[Morocco Intel] 📱 Strategy 4: Fetching Telegram intelligence...');
+        return await telegramIntelligenceAnalyzer.collectMoroccoIntelligence();
+      })(),
+      
+      // Strategy 5: Routes placeholder (will be populated after articles are ready)
+      Promise.resolve([]),
+    ]);
     
-    const apiArticles: any[] = [];
-    
-    for (const query of searchQueries) {
-      try {
-        const articles = await multiNewsClient.searchNews(query, 20, 'en');
-        apiArticles.push(...articles);
-        console.log(`[Morocco Intel]   ✓ API query "${query}" returned ${articles.length} articles`);
-      } catch (err) {
-        console.error(`[Morocco Intel]   ✗ API query failed:`, err);
-      }
-    }
+    // Extract results with fallbacks
+    const rssConverted = rssResult.status === 'fulfilled' ? rssResult.value : [];
+    const apiArticles = apiResult.status === 'fulfilled' ? apiResult.value : [];
+    const telegramData = telegramResult.status === 'fulfilled' ? telegramResult.value : { events: [], channels: { monitored: 0, active: 0 } };
     
     // Combine all sources
     const allArticles = [...rssConverted, ...apiArticles];
@@ -51,17 +85,20 @@ export async function GET(req: NextRequest) {
     
     console.log(`[Morocco Intel] 📊 Combined total: ${uniqueArticles.length} unique articles (${rssConverted.length} from RSS, ${apiArticles.length} from APIs)`);
     
-    // Strategy 3: Fetch local data (weather, traffic, commodities, fires)
-    console.log('[Morocco Intel] 🌍 Strategy 3: Fetching local data sources...');
-    const localData = await fetchAllMoroccoLocalData(uniqueArticles);
+    // Now fetch local data and routes with the articles
+    const [localDataFinal, routesFinal] = await Promise.allSettled([
+      (async () => {
+        console.log('[Morocco Intel] 🌍 Strategy 3: Fetching local data sources...');
+        return await fetchAllMoroccoLocalData(uniqueArticles);
+      })(),
+      (async () => {
+        console.log('[Morocco Intel] 🛣️  Strategy 5: Analyzing routes and logistics...');
+        return await fetchMoroccoRoutes(uniqueArticles);
+      })(),
+    ]);
     
-    // Strategy 4: Fetch real-time Telegram intelligence
-    console.log('[Morocco Intel] 📱 Strategy 4: Fetching Telegram intelligence...');
-    const telegramData = await telegramIntelligenceAnalyzer.collectMoroccoIntelligence();
-    
-    // Strategy 5: Fetch routes and logistics
-    console.log('[Morocco Intel] 🛣️  Strategy 5: Analyzing routes and logistics...');
-    const routes = await fetchMoroccoRoutes(uniqueArticles);
+    const localData = localDataFinal.status === 'fulfilled' ? localDataFinal.value : { weather: [], traffic: [], commodities: [], fires: [] };
+    const routes = routesFinal.status === 'fulfilled' ? routesFinal.value : [];
     
     // Analyze intelligence from articles
     console.log('[Morocco Intel] 🔍 Analyzing intelligence from articles...');

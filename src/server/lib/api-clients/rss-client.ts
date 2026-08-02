@@ -78,13 +78,13 @@ function parseRSSFeed(xml: string, sourceName: string): RSSArticle[] {
 /**
  * Fetch and parse RSS feed
  */
-async function fetchRSSFeed(url: string, sourceName: string, timeoutMs: number = 15000): Promise<RSSArticle[]> {
+async function fetchRSSFeed(url: string, sourceName: string, timeoutMs: number = 8000): Promise<RSSArticle[]> {
   try {
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)',
       },
-      signal: AbortSignal.timeout(timeoutMs), // Configurable timeout (default 15s)
+      signal: AbortSignal.timeout(timeoutMs), // Configurable timeout (default 8s)
     });
     
     if (!response.ok) {
@@ -186,7 +186,7 @@ const MOROCCO_RSS_FEEDS = [
 /**
  * Fetch news from all Moroccan RSS feeds
  */
-export async function fetchMoroccanRSSNews(timeoutMs: number = 15000): Promise<RSSArticle[]> {
+export async function fetchMoroccanRSSNews(timeoutMs: number = 8000): Promise<RSSArticle[]> {
   console.log(`[RSS] Fetching from ${MOROCCO_RSS_FEEDS.length} Moroccan RSS feeds (timeout: ${timeoutMs}ms)...`);
   
   const results = await Promise.allSettled(
