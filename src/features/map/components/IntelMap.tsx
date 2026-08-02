@@ -302,6 +302,38 @@ export function IntelMap() {
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', display: 'inline-block', marginLeft: 4 }} />
         <span style={{ color: 'var(--success)', fontSize: 'var(--text-caption)', fontFamily: 'monospace' }}>LIVE</span>
 
+        {/* Quick City Locator HUD */}
+        <div className="flex items-center gap-1.5 ml-3 overflow-x-auto hide-scrollbar max-w-[420px]">
+          <span className="text-[9px] text-[var(--t3)] font-mono font-bold tracking-wider mr-0.5">LOCATE:</span>
+          {[
+            { name: 'RABAT', lat: 33.9716, lng: -6.8498 },
+            { name: 'CASA', lat: 33.5731, lng: -7.5898 },
+            { name: 'TANGER', lat: 35.7595, lng: -5.8134 },
+            { name: 'KECH', lat: 31.6295, lng: -7.9811 },
+            { name: 'AGADIR', lat: 30.4278, lng: -9.5981 },
+            { name: 'FES', lat: 34.0181, lng: -5.0003 },
+            { name: 'OUJDA', lat: 34.6814, lng: -1.9085 },
+            { name: 'LAAYOUNE', lat: 27.1536, lng: -13.1994 },
+            { name: 'DAKHLA', lat: 23.7158, lng: -15.9582 },
+          ].map(city => (
+            <button
+              key={city.name}
+              onClick={() => {
+                setViewState(prev => ({
+                  ...prev,
+                  longitude: city.lng,
+                  latitude: city.lat,
+                  zoom: 10.5,
+                  transitionDuration: 1200,
+                }));
+              }}
+              className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--bg-2)] hover:bg-[var(--blue-dim)] text-[var(--t2)] hover:text-[var(--blue-l)] border border-[var(--bd)] transition-colors shrink-0"
+            >
+              {city.name}
+            </button>
+          ))}
+        </div>
+
         {/* Selection Badge */}
         {eventSelection.selectedEventId && (
           <Badge 

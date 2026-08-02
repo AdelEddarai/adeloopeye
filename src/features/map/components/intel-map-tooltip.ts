@@ -67,6 +67,24 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:4px">${d.name}</div>
       <div style="color:${zoneColor};font-size:10px">TYPE: ${d.type}</div>
     `;
+  } else if (layerId.includes('morocco') || (object as any).severity || (object as any).location) {
+    const d = object as any;
+    const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : d.severity === 'MEDIUM' ? 'var(--blue-l)' : 'var(--teal)';
+    const typeIcon = d.type === 'POLITICAL' ? '🏛️' : d.type === 'DIPLOMATIC' ? '🤝' : d.type === 'ECONOMIC' ? '💼' : d.type === 'INFRASTRUCTURE' ? '🏗️' : d.type === 'WEATHER' ? '🌤️' : d.type === 'FIRE' ? '🔥' : d.type === 'SECURITY' ? '🛡️' : '📍';
+    const title = d.title || d.name || d.label || 'Intel Event';
+    const loc = d.location || d.city || 'Morocco';
+    const coords = d.position ? `[${d.position[0].toFixed(4)}, ${d.position[1].toFixed(4)}]` : '';
+    
+    html = `
+      <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px;line-height:1.3">${typeIcon} ${title}</div>
+      <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="border:1px solid var(--blue);color:var(--blue-l);font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700">📍 ${loc}</span>
+        <span style="border:1px solid ${sevColor};color:${sevColor};font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700">${d.severity || 'INFO'}</span>
+        ${coords ? `<span style="border:1px solid var(--bd);color:var(--t3);font-size:8px;padding:1px 5px;border-radius:2px">GPS: ${coords}</span>` : ''}
+      </div>
+      ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.4;margin-bottom:4px">${d.description}</div>` : ''}
+      ${d.impact ? `<div style="color:var(--warning);font-size:9px;margin-top:4px;font-weight:600">IMPACT: ${d.impact}</div>` : ''}
+    `;
   } else {
     const obj = object as unknown as Record<string, unknown>;
     const hasContent = obj.label || obj.name;

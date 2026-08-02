@@ -1,14 +1,14 @@
 'use client';
 
-import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 
-import { ActorsContent } from '@/features/actors/components/ActorsContent';
 import { ListDetailScreenSkeleton } from '@/shared/components/loading/screen-skeletons';
 
+const ActorsContent = dynamic(
+  () => import('@/features/actors/components/ActorsContent').then(m => ({ default: m.ActorsContent })),
+  { ssr: false, loading: () => <ListDetailScreenSkeleton /> },
+);
+
 export default function ActorsPage() {
-  return (
-    <Suspense fallback={<ListDetailScreenSkeleton />}>
-      <ActorsContent />
-    </Suspense>
-  );
+  return <ActorsContent />;
 }

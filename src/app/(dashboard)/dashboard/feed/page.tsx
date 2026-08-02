@@ -1,14 +1,14 @@
 'use client';
 
-import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 
-import { FeedContent } from '@/features/events/components/FeedContent';
 import { ListDetailScreenSkeleton } from '@/shared/components/loading/screen-skeletons';
 
+const FeedContent = dynamic(
+  () => import('@/features/events/components/FeedContent').then(m => ({ default: m.FeedContent })),
+  { ssr: false, loading: () => <ListDetailScreenSkeleton /> },
+);
+
 export default function IntelFeedPage() {
-  return (
-    <Suspense fallback={<ListDetailScreenSkeleton />}>
-      <FeedContent />
-    </Suspense>
-  );
+  return <FeedContent />;
 }
