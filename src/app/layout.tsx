@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 
 import { Toaster } from '@/components/ui/sonner';
 
@@ -58,7 +59,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {gaId && <GoogleAnalytics measurementId={gaId} />}
+        {gaId && (
+          <Suspense fallback={null}>
+            <GoogleAnalytics measurementId={gaId} />
+          </Suspense>
+        )}
         <CookieConsentProvider>
           <ReduxProvider>
             <QueryProvider>
