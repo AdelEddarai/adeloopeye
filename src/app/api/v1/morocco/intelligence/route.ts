@@ -36,6 +36,13 @@ export async function GET(req: NextRequest) {
           'Morocco',
           'Moroccan',
           'Rabat OR Casablanca OR Marrakech',
+          'Casablanca OR Rabat OR Tangier OR Agadir OR Fes OR Oujda',
+          'Morocco earthquake OR seismic OR tremors',
+          'Morocco flood OR storm OR rainfall OR climate',
+          'Morocco wildfire OR fire OR blaze',
+          'Morocco economy OR phosphate OR trade OR port',
+          'Morocco security OR protest OR border OR military',
+          'Western Sahara OR Sahrawi',
         ];
         
         const apiArticles: any[] = [];

@@ -11,6 +11,7 @@ import { adsbfiClient } from '@/server/lib/api-clients/adsbfi-client';
  * - bbox: bounding box as "minLat,minLon,maxLat,maxLon" (optional)
  * - icao24: specific aircraft ICAO24 address
  * - global: set to "true" for global flights
+ * - scope: set to "morocco" for flights over/near Morocco
  * 
  * Default: GLOBAL flights (multiple search points worldwide)
  */
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
     const bboxParam = req.nextUrl.searchParams.get('bbox');
     const icao24 = req.nextUrl.searchParams.get('icao24');
     const globalParam = req.nextUrl.searchParams.get('global');
+    const scopeParam = req.nextUrl.searchParams.get('scope');
 
     // If specific aircraft requested
     if (icao24) {
@@ -55,6 +57,32 @@ export async function GET(req: NextRequest) {
           count: validFlights.length,
           fetchedAt: new Date().toISOString(),
           scope: 'global',
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, max-age=10, stale-while-revalidate=30',
+          },
+        }
+      );
+    }
+
+    // Morocco-focused flights (multi-hub coverage)
+    if (scopeParam === 'morocco') {
+      const aircraftList = await adsbfiClient.getMoroccoFlights();
+
+      const flights = aircraftList.map(ac => adsbfiClient.parseAircraft(ac));
+
+      const validFlights = flights.filter(
+        f => f.latitude !== null && f.longitude !== null
+      );
+
+      return ok(
+        {
+          flights: validFlights,
+          bbox: [21, -17, 36, -1],
+          count: validFlights.length,
+          fetchedAt: new Date().toISOString(),
+          scope: 'morocco',
         },
         {
           headers: {

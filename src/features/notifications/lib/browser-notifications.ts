@@ -1,6 +1,6 @@
 'use client';
 
-const SW_PATH = '/adeloopeye-notifications-sw.js';
+const SW_PATH = '/pharos-notifications-sw.js';
 const CHANNEL_NAME = 'adeloopeye-notifications';
 
 export function getNotificationSupport() {

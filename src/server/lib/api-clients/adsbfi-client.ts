@@ -106,6 +106,53 @@ export class ADSBFiClient {
   }
 
   /**
+   * Get live flights over / near Morocco by searching multiple Moroccan hubs
+   * and merging unique aircraft. Covers mainland Morocco plus Western Sahara.
+   */
+  async getMoroccoFlights(): Promise<ADSBFiAircraft[]> {
+    const hubs = [
+      { lat: 33.5731, lon: -7.5898 },  // Casablanca
+      { lat: 33.9716, lon: -6.8498 },  // Rabat
+      { lat: 31.6295, lon: -7.9811 },  // Marrakech
+      { lat: 35.7595, lon: -5.8134 },  // Tangier
+      { lat: 34.0181, lon: -5.0003 },  // Fes
+      { lat: 30.4278, lon: -9.5981 },  // Agadir
+      { lat: 34.6814, lon: -1.9085 },  // Oujda
+      { lat: 27.1536, lon: -13.1994 }, // Laayoune
+      { lat: 23.7158, lon: -15.9582 }, // Dakhla
+      { lat: 35.2517, lon: -3.9372 },  // Al Hoceima
+    ];
+
+    const cacheKey = 'morocco-flights';
+    const cached = this.getCache<ADSBFiAircraft[]>(cacheKey);
+    if (cached) return cached;
+
+    const allAircraft: ADSBFiAircraft[] = [];
+    const seenHexes = new Set<string>();
+
+    for (let i = 0; i < hubs.length; i++) {
+      const hub = hubs[i];
+      try {
+        const aircraft = await this.getFlightsByLocation(hub.lat, hub.lon, 250);
+        for (const ac of aircraft) {
+          if (!seenHexes.has(ac.hex) && ac.lat !== null && ac.lon !== null) {
+            seenHexes.add(ac.hex);
+            allAircraft.push(ac);
+          }
+        }
+        if (i < hubs.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1100));
+        }
+      } catch (err) {
+        // Silently continue if one hub fails
+      }
+    }
+
+    this.setCache(cacheKey, allAircraft);
+    return allAircraft;
+  }
+
+  /**
    * Get specific aircraft by ICAO hex code
    * @param hex ICAO 24-bit address (hex string)
    */

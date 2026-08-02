@@ -12,9 +12,9 @@ type FlightsResponse = {
   error?: string;
 };
 
-export function useLiveFlights(bbox?: [number, number, number, number], enabled: boolean = true, global: boolean = true) {
+export function useLiveFlights(bbox?: [number, number, number, number], enabled: boolean = true, global: boolean = true, scope?: 'morocco') {
   return useQuery({
-    queryKey: ['live-flights', bbox, global],
+    queryKey: ['live-flights', bbox, global, scope],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (bbox) {
@@ -22,6 +22,9 @@ export function useLiveFlights(bbox?: [number, number, number, number], enabled:
       }
       if (global) {
         params.set('global', 'true');
+      }
+      if (scope) {
+        params.set('scope', scope);
       }
 
       const res = await fetch(`/api/v1/live/flights?${params}`);

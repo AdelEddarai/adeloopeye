@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
+import { useLiveFlights } from '@/shared/hooks/use-live-flights';
 import { useAlertNotifications } from '@/shared/hooks/use-alert-notifications';
 import { useMapFilters } from '@/features/map/hooks/use-map-filters';
 import { useCesiumMapBase } from './hooks/useCesiumMapBase';
 import { useCesiumData, type CesiumToggles } from './hooks/useCesiumIntelligenceData';
+import AlertCenter from './AlertCenter';
 
 type LayerToggleConfig = {
   key: keyof CesiumToggles;
@@ -53,7 +55,7 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
     routes: true,
     fires: true,
     weather: true,
-    flights: false,
+    flights: true,
     cyber: true,
   });
 
@@ -89,7 +91,7 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
   const { data: moroccoData, isLoading: moroccoLoading, error: moroccoError } = useMoroccoIntelligence(true);
 
   // Alert notification system - monitors new critical/alert events
-  const { alerts, totalAlerts, criticalAlerts } = useAlertNotifications(
+  const { alerts, totalAlerts, criticalAlerts, unreadCount, soundMuted, pushGranted, markAllRead, toggleSound, enableNotifications } = useAlertNotifications(
     moroccoData?.events || [],
     true // enabled
   );
@@ -99,7 +101,34 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
   const globalData = f.filtered;
   const globalLoading = f.isLoading;
 
-  const isDataLoading = moroccoLoading || globalLoading;
+  // Live flights over Morocco (adsb.fi, free, no key) — refetches every 10s
+  const liveFlights = useLiveFlights(undefined, toggles.flights, false, 'morocco');
+
+  // Merge live Morocco flights into the asset layer so they render as planes
+  const mergedGlobalData = useMemo(() => {
+    const liveAssets = (liveFlights.data?.flights ?? []).map((flight) => ({
+      id: `live-${flight.icao24}`,
+      actor: 'SYSTEM',
+      priority: 'ROUTINE',
+      category: 'INSTALLATION',
+      type: 'AIRCRAFT',
+      status: 'OPERATIONAL',
+      name: flight.callsign ? flight.callsign.trim() : flight.icao24,
+      position: [flight.longitude, flight.latitude] as [number, number],
+      heading: flight.true_track ?? 0,
+      velocity: flight.velocity,
+      altitude: flight.baro_altitude,
+      description: `Live ADS-B position from adsb.fi feeders. Speed: ${flight.velocity ?? 'N/A'} kt`,
+      source: 'ADSB_FI',
+      timestamp: new Date().toISOString(),
+    }));
+    return {
+      ...globalData,
+      assets: [...(globalData?.assets ?? []), ...liveAssets],
+    };
+  }, [globalData, liveFlights.data]);
+
+  const isDataLoading = moroccoLoading || globalLoading || liveFlights.isLoading;
 
   // Initialize the clean, perf-focused Cesium Viewer
   const { cesiumContainer, viewer, isInitializing } = useCesiumMapBase();
@@ -108,7 +137,7 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
   useCesiumData({ 
       viewer, 
       moroccoData, 
-      globalData, 
+      globalData: mergedGlobalData, 
       toggles, 
       setHoverInfo,
       onSelectFlight: setSelectedFlightInfo
@@ -173,7 +202,7 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
     conns: moroccoData?.connections?.length ?? 0,
     routes: moroccoData?.routes?.length ?? 0,
     weather: moroccoData?.weather?.length ?? 0,
-    flights: globalData?.assets?.length ?? 0,
+    flights: mergedGlobalData?.assets?.length ?? 0,
   };
 
   return (
@@ -236,6 +265,11 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
                     </span>
                   </div>
                 )}
+                {!soundMuted && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-400/10 border border-emerald-400/30 rounded-md">
+                    <span className="text-[8px] text-emerald-300 font-mono tracking-widest uppercase">🔊 Sound On</span>
+                  </div>
+                )}
               </div>
             </div>
             {/* Gradient hairline */}
@@ -249,6 +283,21 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Top-right Alert Center bell ─────────────────────────── */}
+      {!embedded && (
+        <div className="absolute top-4 right-4 z-40">
+          <AlertCenter
+            alerts={alerts}
+            unreadCount={unreadCount}
+            criticalAlerts={criticalAlerts}
+            soundMuted={soundMuted}
+            pushGranted={pushGranted}
+            onMarkAllRead={markAllRead}
+            onToggleSound={toggleSound}
+            onEnableNotifications={enableNotifications}
+          />        </div>
       )}
 
       {/* ── Layer Controls ───────────────────────────────────────── */}
