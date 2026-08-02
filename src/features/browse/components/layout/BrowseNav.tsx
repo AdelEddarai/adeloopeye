@@ -3,16 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { Heart } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 
 import { BROWSE_SECTIONS } from '@/features/browse/constants';
 
 import { trackNavigationClicked } from '@/shared/lib/analytics';
 import { useAnalyticsLayoutMode } from '@/shared/hooks/use-analytics-layout-mode';
-
-import { KOFI_URL } from '@/data/external-links';
 
 type Props = {
   hamburgerSlot?: React.ReactNode;
@@ -95,23 +91,6 @@ export function BrowseNav({ hamburgerSlot }: Props) {
             >
               Dashboard &rarr;
             </Link>
-          </Button>
-
-          <Button
-            variant="ghost"
-            asChild
-            className="h-auto rounded border border-[var(--blue)] bg-[var(--blue-dim)] px-1.5 py-1 text-[var(--blue-l)] hover:bg-[var(--blue)] hover:text-[var(--t1)] md:px-2"
-          >
-            <a
-              href={KOFI_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Help cover hosting and data infrastructure"
-              aria-label="Support AdeloopEye server costs on Ko-fi"
-            >
-              <Heart size={12} fill="currentColor" strokeWidth={0} />
-              <span className="mono hidden text-[length:var(--text-label)] font-bold tracking-[0.04em] md:inline">SUPPORT</span>
-            </a>
           </Button>
         </div>
       </div>

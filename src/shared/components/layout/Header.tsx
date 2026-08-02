@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { Heart, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,8 +27,6 @@ import { useHorizontalWheelScroll } from '@/shared/hooks/use-horizontal-wheel-sc
 import { useIsLandscapePhone } from '@/shared/hooks/use-is-landscape-phone';
 import { useIsMobile } from '@/shared/hooks/use-is-mobile';
 import { useLandscapeHeaderVisibility } from '@/shared/hooks/use-landscape-header-visibility';
-
-import { KOFI_URL } from '@/data/external-links';
 
 import { SHOW_COOKIE_CONTROLS } from '@/shared/config/privacy';
 
@@ -110,15 +108,6 @@ export function Header() {
             </Link>
             <div className="flex items-center gap-2 min-w-0 shrink-0">
               <span className="mono text-[length:var(--text-tiny)] text-[var(--t4)] truncate">{displayDate} · UTC</span>
-              <Button
-                variant="ghost"
-                asChild
-                className="h-6 shrink-0 rounded border border-[var(--blue)] bg-[var(--blue-dim)] px-1.5 text-[var(--blue-l)] hover:bg-[var(--blue)] hover:text-[var(--t1)]"
-              >
-                <a href={KOFI_URL} target="_blank" rel="noopener noreferrer" aria-label="Support AdeloopEye server costs on Ko-fi">
-                  <Heart size={11} fill="currentColor" strokeWidth={0} />
-                </a>
-              </Button>
             </div>
           </div>
           <nav
@@ -224,22 +213,6 @@ export function Header() {
             <span className="mono text-[length:var(--text-label)] text-[var(--t4)] tracking-[0.02em]">
               {displayDate} · UTC
             </span>
-
-            <Button
-              variant="ghost"
-              asChild
-              className="h-auto rounded border border-[var(--blue)] bg-[var(--blue-dim)] px-2 py-1 text-[var(--blue-l)] hover:bg-[var(--blue)] hover:text-[var(--t1)]"
-            >
-              <a
-                href={KOFI_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Help cover hosting and data infrastructure"
-              >
-                <Heart size={12} fill="currentColor" strokeWidth={0} />
-                <span className="mono text-[length:var(--text-label)] font-bold tracking-[0.04em]">SUPPORT SERVER COSTS</span>
-              </a>
-            </Button>
           </div>
         </div>
       )}
