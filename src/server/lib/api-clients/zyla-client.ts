@@ -16,9 +16,6 @@ export class ZylaClient {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.ZYLA_API_KEY || '';
-    if (!this.apiKey) {
-      console.warn('⚠️  ZYLA_API_KEY not configured');
-    }
   }
 
   private async request<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {

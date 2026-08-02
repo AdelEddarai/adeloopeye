@@ -129,7 +129,6 @@ export function getCoordinatesForLocation(location: string): LocationCoordinates
   }
   
   // No match found
-  console.warn(`⚠️ No coordinates found for location: "${location}"`);
   return null;
 }
 

@@ -32,7 +32,6 @@ const eventSelectionSlice = createSlice({
       state.highlightedEvents = [action.payload.eventId];
       state.focusMode = 'event';
       state.timestamp = Date.now();
-      console.log('🎯 Event selected:', action.payload.eventId);
     },
 
     // Select a location (highlights all events at that location)
@@ -42,7 +41,6 @@ const eventSelectionSlice = createSlice({
       state.highlightedEvents = action.payload.eventIds;
       state.focusMode = 'location';
       state.timestamp = Date.now();
-      console.log('📍 Location selected:', action.payload.location, 'Events:', action.payload.eventIds.length);
     },
 
     // Highlight multiple events (for hover effects)
@@ -58,7 +56,6 @@ const eventSelectionSlice = createSlice({
       state.highlightedEvents = [];
       state.focusMode = null;
       state.timestamp = Date.now();
-      console.log('🔄 Selection cleared');
     },
     setFollowSelection(state, action: PayloadAction<boolean>) {
       state.followSelection = action.payload;

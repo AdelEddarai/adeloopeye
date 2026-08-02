@@ -530,15 +530,6 @@ export function useMapLayers({
     // Geopolitical relationship lines - comprehensive visualization
     const relationships = (filtered as any).conflictRelationships || [];
     
-    // DEBUG: Log relationships to console
-    if (relationships.length > 0) {
-      console.log('[Map Layers] Rendering', relationships.length, 'geopolitical relationships');
-      console.log('[Map Layers] Sample relationship:', relationships[0]);
-    } else {
-      console.warn('[Map Layers] No geopolitical relationships to render');
-      console.log('[Map Layers] Filtered data:', filtered);
-    }
-    
     // Helper function to get color by relationship type - OPTIMIZED for visual hierarchy
     const getRelationshipColor = (type: string, isSource: boolean): RGBA => {
       const alpha = isSource ? 180 : 140; // Reduced opacity for subtlety

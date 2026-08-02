@@ -1,6 +1,5 @@
 export function getRequiredEnv(name: string): string {
   if (!process.env[name]) {
-    console.warn(`[WARNING] Missing environment variable: ${name}. App may not function correctly.`);
     return '';
   }
   return process.env[name] as string;
@@ -29,7 +28,6 @@ export const publicAnalyticsEnabled: boolean =
 // Lazy getter — only evaluated when called on the server.
 export function getDatabaseUrl(): string {
   if (!process.env.DATABASE_URL) {
-    console.warn('[WARNING] DATABASE_URL is missing. Using dummy URL to allow app to start without DB.');
     return 'postgres://dummy:dummy@localhost:5432/dummy';
   }
   return process.env.DATABASE_URL;

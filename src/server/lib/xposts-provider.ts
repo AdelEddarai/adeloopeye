@@ -27,7 +27,6 @@ export async function getXPosts(conflictId: string): Promise<XPost[]> {
     // @ts-ignore
     return allPosts;
   } catch (error) {
-    console.error('Failed to fetch live posts, returning seed data only:', error);
     // Fallback to seed data only
     return X_POSTS;
   }

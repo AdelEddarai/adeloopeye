@@ -43,7 +43,6 @@ const BASE_URL = 'https://api.openweathermap.org/data/2.5';
  */
 export async function getWeatherByCoords(lat: number, lon: number): Promise<WeatherData | null> {
   if (!API_KEY) {
-    console.warn('OpenWeatherMap API key not configured');
     return getSimulatedWeather(lat, lon);
   }
 
@@ -150,7 +149,6 @@ export async function getWeatherByCity(city: string): Promise<WeatherData | null
       sunset: new Date(data.sys.sunset * 1000).toISOString(),
     };
   } catch (error) {
-    console.error('Failed to fetch weather:', error);
     return null;
   }
 }

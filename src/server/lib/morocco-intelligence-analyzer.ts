@@ -352,8 +352,6 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
   const events: MoroccoEvent[] = [];
   const connections: MoroccoConnection[] = [];
 
-  console.log(`[Morocco Intel] Analyzing ${articles.length} articles for Morocco content`);
-
   // Process ALL articles - don't filter first
   let moroccoArticleCount = 0;
 
@@ -378,10 +376,6 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
     }
 
     moroccoArticleCount++;
-
-    if (moroccoArticleCount <= 5) {
-      console.log(`[Morocco Intel] Processing article ${moroccoArticleCount}: "${article.title}"`);
-    }
 
     // SIMPLIFIED DETECTION: Check for keywords directly in content
     // This is more flexible than strict regex patterns
@@ -566,9 +560,6 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
           status: determineStatus(originalContent),
         });
 
-        if (moroccoArticleCount <= 5) {
-          // Event logged successfully
-        }
       } catch (error) {
         // Skip event on error
       }
@@ -577,23 +568,12 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
       const foreignCountry = extractForeignCountry(originalContent);
       if (finalLocation && foreignCountry && (detectedType === 'DIPLOMATIC' || detectedType === 'ECONOMIC' || detectedType === 'TRADE')) {
         connections.push(createDiplomaticConnection(foreignCountry, article, detectedType as any));
-
-        if (moroccoArticleCount <= 5) {
-          console.log(`[Morocco Intel]   → Detected connection to ${foreignCountry}`);
-        }
       }
     }
   });
 
-  console.log(`[Morocco Intel] Processed ${moroccoArticleCount} Morocco-related articles`);
-
   // Add infrastructure status updates based on news
   const infrastructureWithStatus = updateInfrastructureStatus(MOROCCO_INFRASTRUCTURE, articles);
-
-  console.log(`[Morocco Intel] Analysis complete: ${events.length} events, ${connections.length} connections`);
-  if (events.length > 0) {
-    console.log(`[Morocco Intel] Sample events:`, events.slice(0, 3).map(e => ({ type: e.type, location: e.location, title: e.title.substring(0, 50) })));
-  }
 
   return {
     events,

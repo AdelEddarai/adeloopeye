@@ -10,9 +10,6 @@ export class NewsAPIClient {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.NEWSAPI_KEY || '';
-    if (!this.apiKey) {
-      console.warn('⚠️  NEWSAPI_KEY not configured - using fallback');
-    }
   }
 
   private async request<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {

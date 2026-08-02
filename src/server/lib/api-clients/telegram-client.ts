@@ -204,10 +204,6 @@ export class TelegramClient {
   constructor(botToken?: string) {
     this.botToken = botToken || process.env.TELEGRAM_BOT_TOKEN || '';
     this.baseUrl = `https://api.telegram.org/bot${this.botToken}`;
-    
-    if (!this.botToken) {
-      console.warn('⚠️ Telegram Bot Token not provided. Set TELEGRAM_BOT_TOKEN environment variable.');
-    }
   }
 
   /**
@@ -215,7 +211,6 @@ export class TelegramClient {
    */
   async getUpdates(offset?: number, limit: number = 100): Promise<TelegramUpdate[]> {
     if (!this.botToken) {
-      console.warn('⚠️ Telegram: No bot token, returning empty updates');
       return [];
     }
 
@@ -248,7 +243,6 @@ export class TelegramClient {
 
       return data.result || [];
     } catch (error) {
-      console.error('❌ Telegram getUpdates error:', error);
       return [];
     }
   }
@@ -273,7 +267,6 @@ export class TelegramClient {
       const data = await response.json();
       return data.ok ? data.result : null;
     } catch (error) {
-      console.error(`❌ Telegram getChat error for ${chatId}:`, error);
       return null;
     }
   }
@@ -298,7 +291,6 @@ export class TelegramClient {
       const data = await response.json();
       return data.ok ? data.result : null;
     } catch (error) {
-      console.error(`❌ Telegram getFile error for ${fileId}:`, error);
       return null;
     }
   }

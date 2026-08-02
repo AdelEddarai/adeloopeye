@@ -64,7 +64,6 @@ export function useMoroccoIntelligence(enabled: boolean = false) {
         
         if (!res.ok) {
           const errorText = await res.text().catch(() => 'Unknown error');
-          console.error(`[Morocco Intel Hook] API error ${res.status}:`, errorText);
           throw new Error(`Failed to fetch Morocco intelligence: ${res.status}`);
         }
         
@@ -72,7 +71,6 @@ export function useMoroccoIntelligence(enabled: boolean = false) {
         
         // Unwrap the API response envelope
         if (json.ok && json.data) {
-          console.log(`[Morocco Intel Hook] Successfully fetched ${json.data.events?.length || 0} events`);
           return json.data;
         }
         
@@ -80,10 +78,8 @@ export function useMoroccoIntelligence(enabled: boolean = false) {
         return json;
       } catch (error: any) {
         if (error.name === 'AbortError') {
-          console.error('[Morocco Intel Hook] Request timed out after 30s');
           throw new Error('Request timed out - server taking too long to respond');
         }
-        console.error('[Morocco Intel Hook] Fetch error:', error);
         throw error;
       }
     },

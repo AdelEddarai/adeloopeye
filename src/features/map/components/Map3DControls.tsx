@@ -18,16 +18,11 @@ export function Map3DControls({ map, isLoaded }: Map3DControlsProps) {
   const [bearing, setBearing] = useState(0);
   const [is3DMode, setIs3DMode] = useState(false);
 
-  console.log('[Map3DControls] Render:', { map: !!map, isLoaded });
-
   // Update pitch and bearing when map moves
   useEffect(() => {
     if (!map || !isLoaded) {
-      console.log('[Map3DControls] Waiting for map...', { map: !!map, isLoaded });
       return;
     }
-    
-    console.log('[Map3DControls] Setting up map listeners');
     
     const handleMapMove = () => {
       setPitch(Math.round(map.getPitch()));

@@ -78,11 +78,9 @@ export function IntelMap() {
   useEffect(() => {
     if (mapRef.current) {
       const map = mapRef.current.getMap();
-      console.log('[IntelMap] Map instance obtained:', map);
       setMapInstance(map);
       
       map.on('load', () => {
-        console.log('[IntelMap] Map loaded successfully');
         setIsMapLoaded(true);
       });
     }
@@ -111,37 +109,16 @@ export function IntelMap() {
   // This is more reliable than separate useLiveFlights() which can timeout in production
   const flights = useMemo(() => {
     if (!mapData?.assets) {
-      console.log('[IntelMap] No mapData.assets available');
       return [];
     }
-    
-    console.log('[IntelMap] Raw assets:', {
-      totalAssets: mapData.assets.length,
-      assetTypes: mapData.assets.map(a => a.type),
-      sampleAssets: mapData.assets.slice(0, 3),
-    });
     
     // Filter only aircraft assets (flights)
     const flightAssets = mapData.assets.filter(asset => {
       const isAircraft = asset.type === 'AIRCRAFT';
       const hasPosition = asset.position && asset.position.length === 2;
       
-      if (!isAircraft) {
-        console.log('[IntelMap] Non-aircraft asset:', asset.type, asset.name);
-      }
-      
       return isAircraft && hasPosition;
     });
-    
-    console.log('[IntelMap] Filtered flights:', {
-      totalAssets: mapData.assets.length,
-      flightCount: flightAssets.length,
-      sampleFlights: flightAssets.slice(0, 3),
-    });
-    
-    if (flightAssets.length === 0) {
-      console.warn('[IntelMap] ⚠️ NO FLIGHTS FOUND! Check if map/data API is returning flights in assets array');
-    }
     
     return flightAssets;
   }, [mapData]);
@@ -234,19 +211,14 @@ export function IntelMap() {
   
   // Handle click on map objects (especially flights)
   const handleClick = useCallback((info: PickingInfo) => {
-    console.log('[IntelMap] Click detected:', info);
-    
     if (info.object && info.layer?.id === 'flights-icons') {
       const flight = info.object as Asset;
-      console.log('[IntelMap] Flight clicked:', flight);
       
       // Toggle selection
       if (selectedFlightId === flight.id) {
         setSelectedFlightId(null);
-        console.log('[IntelMap] Deselected flight');
       } else {
         setSelectedFlightId(flight.id);
-        console.log('[IntelMap] Selected flight:', flight.id);
         
         // Optionally fly to the selected flight
         setViewState(prev => ({
@@ -261,7 +233,6 @@ export function IntelMap() {
       // Clicked on empty space - deselect
       if (selectedFlightId) {
         setSelectedFlightId(null);
-        console.log('[IntelMap] Deselected flight (clicked empty space)');
       }
     }
   }, [selectedFlightId]);
@@ -272,8 +243,6 @@ export function IntelMap() {
       const coordinates = getCoordinatesForLocation(eventSelection.selectedLocation);
       
       if (coordinates) {
-        console.log('🗺️ Map: Flying to location:', eventSelection.selectedLocation, coordinates);
-        
         setViewState(prev => ({
           ...prev,
           longitude: coordinates.lng,
@@ -282,8 +251,6 @@ export function IntelMap() {
           transitionDuration: 1500,
           transitionInterpolator: undefined, // Use default smooth interpolation
         }));
-      } else {
-        console.warn('⚠️ Map: No coordinates found for location:', eventSelection.selectedLocation);
       }
     }
   }, [eventSelection.selectedLocation, eventSelection.timestamp]);

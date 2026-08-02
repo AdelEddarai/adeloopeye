@@ -92,8 +92,6 @@ const MOROCCO_CITIES = [
  * https://open-meteo.com/en/docs
  */
 export async function fetchMoroccoWeather(): Promise<MoroccoWeather[]> {
-  console.log('[Morocco Weather] Fetching weather from Open-Meteo API (FREE)...');
-  
   const limit = Math.max(6, Math.min(60, Number(process.env.MOROCCO_WEATHER_CITY_LIMIT ?? 30)));
   const cities = MOROCCO_CITIES.slice(0, limit);
 
@@ -148,7 +146,6 @@ export async function fetchMoroccoWeather(): Promise<MoroccoWeather[]> {
     }
   }
 
-  console.log('[Morocco Weather] Fetched weather for', out.length, 'cities');
   return out;
 }
 
@@ -174,8 +171,6 @@ function mapWeatherCode(code: number): { condition: string; description: string;
  * This would integrate with local traffic APIs or scrape traffic websites
  */
 export async function fetchMoroccoTraffic(): Promise<MoroccoTraffic[]> {
-  console.log('[Morocco Traffic] Fetching traffic data...');
-  
   // This would integrate with:
   // - Moroccan traffic authority APIs
   // - Google Maps Traffic API
@@ -195,8 +190,6 @@ export async function fetchMoroccoTraffic(): Promise<MoroccoTraffic[]> {
  * - Energy prices
  */
 export async function fetchMoroccoCommodities(): Promise<MoroccoCommodity[]> {
-  console.log('[Morocco Commodities] Fetching commodity prices...');
-  
   // Mock data for demonstration
   // In production, integrate with real commodity APIs
   const commodities: MoroccoCommodity[] = [
@@ -239,8 +232,6 @@ export async function fetchMoroccoCommodities(): Promise<MoroccoCommodity[]> {
  * Also detects from news articles as fallback
  */
 export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]> {
-  console.log('[Morocco Fires] Detecting fires...');
-  
   const fires: MoroccoFire[] = [];
   
   // Strategy 1: Try NASA FIRMS API (requires free API key)
@@ -248,8 +239,6 @@ export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]
   
   if (nasaApiKey) {
     try {
-      console.log('[Morocco Fires] Fetching from NASA FIRMS API...');
-      
       // Morocco bounding box: [lng_min, lat_min, lng_max, lat_max]
       const bbox = '-17,21,-1,36'; // Covers all of Morocco including Western Sahara
       
@@ -315,19 +304,13 @@ export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]
             confidence,
           });
         }
-        
-        console.log(`[Morocco Fires] ✓ NASA FIRMS: Detected ${fires.length} active fires`);
       }
     } catch (err) {
-      console.error('[Morocco Fires] NASA FIRMS API failed:', err);
+      // NASA FIRMS API failed
     }
-  } else {
-    console.log('[Morocco Fires] NASA FIRMS API key not configured (set NASA_FIRMS_API_KEY)');
   }
   
   // Strategy 2: Detect fires from news articles (fallback)
-  console.log('[Morocco Fires] Analyzing news articles for fire mentions...');
-  
   articles.forEach(article => {
     const content = `${article.title} ${article.description || ''}`.toLowerCase();
     
@@ -379,7 +362,6 @@ export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]
     }
   });
   
-  console.log('[Morocco Fires] Total detected:', fires.length, 'fires');
   return fires;
 }
 
@@ -387,21 +369,12 @@ export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]
  * Fetch all Morocco local data
  */
 export async function fetchAllMoroccoLocalData(articles: any[]) {
-  console.log('[Morocco Local Data] Fetching all local data sources...');
-  
   const [weather, traffic, commodities, fires] = await Promise.all([
     fetchMoroccoWeather(),
     fetchMoroccoTraffic(),
     fetchMoroccoCommodities(),
     detectMoroccoFires(articles),
   ]);
-  
-  console.log('[Morocco Local Data] Fetched:', {
-    weather: weather.length,
-    traffic: traffic.length,
-    commodities: commodities.length,
-    fires: fires.length,
-  });
   
   return {
     weather,

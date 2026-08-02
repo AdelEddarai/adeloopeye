@@ -29,30 +29,17 @@ export class OpenSkyClient {
         ? Buffer.from(`${this.username}:${this.password}`).toString('base64')
         : btoa(`${this.username}:${this.password}`);
       headers['Authorization'] = `Basic ${auth}`;
-      console.log('[OpenSky Client] Using authenticated request (better rate limits)');
-    } else {
-      console.warn('[OpenSky Client] No credentials - using anonymous access (limited rate)');
     }
 
     try {
-      console.log('[OpenSky Client] Requesting:', url.toString());
-      
       const res = await fetch(url.toString(), {
         headers,
         next: { revalidate: 10 }, // Cache for 10s (flights move fast)
         signal: AbortSignal.timeout(15000), // 15 second timeout
       });
 
-      console.log('[OpenSky Client] Response status:', res.status);
-
       if (!res.ok) {
         const errorText = await res.text().catch(() => 'No error details');
-        console.error('[OpenSky Client] API error:', {
-          status: res.status,
-          statusText: res.statusText,
-          body: errorText,
-          authenticated: !!this.username,
-        });
         
         // Provide specific error messages for common issues
         if (res.status === 429) {
@@ -67,14 +54,8 @@ export class OpenSkyClient {
       }
 
       const data = await res.json();
-      console.log('[OpenSky Client] Success, states count:', data.states?.length || 0);
       return data;
     } catch (error) {
-      console.error('[OpenSky Client] Request failed:', {
-        error: error instanceof Error ? error.message : String(error),
-        url: url.toString(),
-        authenticated: !!this.username,
-      });
       throw error;
     }
   }

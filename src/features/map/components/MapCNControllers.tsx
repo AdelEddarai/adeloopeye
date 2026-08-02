@@ -163,8 +163,6 @@ export function MapCNEventFlyTo({ moroccoData, showMoroccoLayer, setMoroccoLayer
     if (!map || !isLoaded || !eventSelection.followSelection) return;
     
     if (eventSelection.selectedEventId && eventSelection.timestamp) {
-      console.log('🎯 MapCN received event selection:', eventSelection.selectedEventId, eventSelection.selectedLocation);
-      
       if (!showMoroccoLayer && setShowMoroccoLayer) {
         setShowMoroccoLayer(true);
         if (setMoroccoLayerToggles) {

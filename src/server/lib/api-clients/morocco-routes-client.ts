@@ -78,8 +78,6 @@ function generateRoutePath(from: [number, number], to: [number, number], waypoin
  * Fetch Morocco routes from news and traffic sources
  */
 export async function fetchMoroccoRoutes(articles: NewsArticle[]): Promise<MoroccoRoute[]> {
-  console.log('[Morocco Routes] Analyzing routes from', articles.length, 'articles...');
-  
   const routes: MoroccoRoute[] = [];
   
   type RouteConfig = {
@@ -310,8 +308,6 @@ export async function fetchMoroccoRoutes(articles: NewsArticle[]): Promise<Moroc
       lastUpdated: new Date().toISOString(),
     });
   }
-  
-  console.log('[Morocco Routes] Generated', routes.length, 'routes with', routes.reduce((sum, r) => sum + r.incidents.length, 0), 'total incidents');
   
   return routes;
 }

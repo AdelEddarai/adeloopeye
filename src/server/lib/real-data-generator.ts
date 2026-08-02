@@ -50,7 +50,6 @@ export async function generateConflictData() {
       },
     };
   } catch (error) {
-    console.error('Failed to generate conflict data:', error);
     // Return minimal fallback
     return {
       id: 'iran-2026',
@@ -108,7 +107,6 @@ export async function generateDailySnapshot(day: string) {
       scenarios: generateScenarios(articles),
     };
   } catch (error) {
-    console.error('Failed to generate snapshot:', error);
     return getMinimalSnapshot(day);
   }
 }

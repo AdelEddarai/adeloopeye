@@ -60,8 +60,6 @@ class TelegramIntelligenceAnalyzer {
    * Collect intelligence from Morocco-focused Telegram channels
    */
   async collectMoroccoIntelligence(): Promise<TelegramIntelligenceResponse> {
-    console.log('📱 Collecting Morocco intelligence from Telegram...');
-    
     if (!telegramClient.isConfigured()) {
       return this.createEmptyResponse('Telegram Bot Token not configured');
     }
@@ -69,8 +67,6 @@ class TelegramIntelligenceAnalyzer {
     try {
       const events: TelegramEvent[] = [];
       const updates = await telegramClient.getUpdates(this.lastUpdateId + 1, 50);
-      
-      console.log(`📱 Received ${updates.length} Telegram updates`);
 
       for (const update of updates) {
         this.lastUpdateId = Math.max(this.lastUpdateId, update.update_id);
@@ -98,7 +94,6 @@ class TelegramIntelligenceAnalyzer {
 
       return this.createResponse(events, MOROCCO_TELEGRAM_CHANNELS, 'MA');
     } catch (error) {
-      console.error('❌ Telegram Morocco intelligence error:', error);
       return this.createEmptyResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -107,8 +102,6 @@ class TelegramIntelligenceAnalyzer {
    * Collect global intelligence from international Telegram channels
    */
   async collectGlobalIntelligence(): Promise<TelegramIntelligenceResponse> {
-    console.log('🌍 Collecting global intelligence from Telegram...');
-    
     if (!telegramClient.isConfigured()) {
       return this.createEmptyResponse('Telegram Bot Token not configured');
     }
@@ -116,8 +109,6 @@ class TelegramIntelligenceAnalyzer {
     try {
       const events: TelegramEvent[] = [];
       const updates = await telegramClient.getUpdates(this.lastUpdateId + 1, 100);
-      
-      console.log(`🌍 Received ${updates.length} global Telegram updates`);
 
       for (const update of updates) {
         this.lastUpdateId = Math.max(this.lastUpdateId, update.update_id);
@@ -145,7 +136,6 @@ class TelegramIntelligenceAnalyzer {
 
       return this.createResponse(events, GLOBAL_TELEGRAM_CHANNELS);
     } catch (error) {
-      console.error('❌ Telegram global intelligence error:', error);
       return this.createEmptyResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

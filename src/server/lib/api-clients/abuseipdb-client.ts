@@ -10,9 +10,6 @@ export class AbuseIPDBClient {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.ABUSEIPDB_API_KEY || '';
-    if (!this.apiKey) {
-      console.warn('⚠️  ABUSEIPDB_API_KEY not configured');
-    }
   }
 
   private async request<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {

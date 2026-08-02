@@ -27,7 +27,6 @@ export async function getEvents(conflictId: string): Promise<IntelEvent[]> {
     
     return allEvents;
   } catch (error) {
-    console.error('Failed to fetch live events, returning seed data only:', error);
     // Fallback to seed data only
     return EVENTS;
   }

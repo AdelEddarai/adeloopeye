@@ -65,11 +65,11 @@ function parseRSSFeed(xml: string, sourceName: string): RSSArticle[] {
           });
         }
       } catch (err) {
-        console.error(`[RSS] Error parsing item:`, err);
+        // Error parsing item
       }
     });
   } catch (err) {
-    console.error(`[RSS] Error parsing feed:`, err);
+    // Error parsing feed
   }
   
   return articles;
@@ -95,9 +95,6 @@ async function fetchRSSFeed(url: string, sourceName: string, timeoutMs: number =
     return parseRSSFeed(xml, sourceName);
   } catch (err: any) {
     // Only log non-timeout errors
-    if (!err.message?.includes('timeout') && !err.message?.includes('aborted')) {
-      console.error(`[RSS] Failed to fetch ${sourceName}:`, err.message);
-    }
     return [];
   }
 }
@@ -187,8 +184,6 @@ const MOROCCO_RSS_FEEDS = [
  * Fetch news from all Moroccan RSS feeds
  */
 export async function fetchMoroccanRSSNews(timeoutMs: number = 8000): Promise<RSSArticle[]> {
-  console.log(`[RSS] Fetching from ${MOROCCO_RSS_FEEDS.length} Moroccan RSS feeds (timeout: ${timeoutMs}ms)...`);
-  
   const results = await Promise.allSettled(
     MOROCCO_RSS_FEEDS.map(feed => fetchRSSFeed(feed.url, feed.name, timeoutMs))
   );
@@ -201,16 +196,11 @@ export async function fetchMoroccanRSSNews(timeoutMs: number = 8000): Promise<RS
     if (result.status === 'fulfilled') {
       const articles = result.value;
       if (articles.length > 0) {
-        console.log(`[RSS] ✓ ${MOROCCO_RSS_FEEDS[index].name}: ${articles.length} articles`);
         allArticles.push(...articles);
         successCount++;
       }
     } else {
       failCount++;
-      // Only log if not a timeout
-      if (!result.reason?.message?.includes('timeout') && !result.reason?.message?.includes('aborted')) {
-        console.error(`[RSS] ✗ ${MOROCCO_RSS_FEEDS[index].name}: ${result.reason?.message || 'Failed'}`);
-      }
     }
   });
   
@@ -218,8 +208,6 @@ export async function fetchMoroccanRSSNews(timeoutMs: number = 8000): Promise<RS
   const uniqueArticles = Array.from(
     new Map(allArticles.map(article => [article.url, article])).values()
   );
-  
-  console.log(`[RSS] Summary: ${successCount} sources succeeded, ${failCount} timed out/failed, ${uniqueArticles.length} unique articles`);
   
   return uniqueArticles;
 }
