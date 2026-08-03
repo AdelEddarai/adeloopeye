@@ -241,36 +241,47 @@ export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]
     try {
       // Morocco bounding box: [lng_min, lat_min, lng_max, lat_max]
       const bbox = '-17,21,-1,36'; // Covers all of Morocco including Western Sahara
-      
-      // VIIRS data (375m resolution, more accurate than MODIS)
-      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${nasaApiKey}/VIIRS_SNPP_NRT/${bbox}/1`;
-      
-      const response = await fetch(url, { 
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          'User-Agent': 'MoroccoIntelligenceApp/1.0'
-        }
-      });
-      
-      if (response.ok) {
+
+      // Multiple satellite sources for better coverage: VIIRS 375m (SNPP/NOAA20/NOAA21) + MODIS 1km
+      const sources = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS_NRT'];
+      const seen = new Map<string, MoroccoFire>(); // dedupe across satellite passes
+
+      await Promise.allSettled(sources.map(async (source) => {
+        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${nasaApiKey}/${source}/${bbox}/1`;
+
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(8000),
+          headers: {
+            'User-Agent': 'MoroccoIntelligenceApp/1.0'
+          }
+        });
+
+        if (!response.ok) return;
         const csvText = await response.text();
         const lines = csvText.split('\n');
-        
+
         // Skip header
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
-          
+
           const parts = line.split(',');
           if (parts.length < 10) continue;
-          
+
           const lat = parseFloat(parts[0]);
           const lng = parseFloat(parts[1]);
           const brightness = parseFloat(parts[2]);
-          const confidence = parseFloat(parts[8]);
+          const confidence = parseFloat(parts[9]); // index 9 = confidence (was 8 = instrument)
+          const frp = parts.length > 12 ? parseFloat(parts[12]) : 0;
           const acqDate = parts[5];
           const acqTime = parts[6];
-          
+
+          if (isNaN(lat) || isNaN(lng) || isNaN(confidence)) continue;
+
+          // Dedupe: same spot detected by multiple satellites within ~0.05 degrees
+          const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+          if (seen.has(key)) continue;
+
           // Find nearest city
           let nearestCity = 'Morocco';
           let minDist = Infinity;
@@ -284,27 +295,33 @@ export async function detectMoroccoFires(articles: any[]): Promise<MoroccoFire[]
               nearestCity = city.name;
             }
           }
-          
+
           // Determine severity based on brightness and confidence
           let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'MEDIUM';
           if (brightness > 400 && confidence > 80) severity = 'CRITICAL';
           else if (brightness > 350 || confidence > 70) severity = 'HIGH';
           else if (brightness < 320 || confidence < 50) severity = 'LOW';
-          
-          fires.push({
-            id: `fire-nasa-${i}-${Date.now()}`,
+
+          seen.set(key, {
+            id: `fire-nasa-${source}-${i}-${Date.now()}`,
             location: nearestCity,
             position: [lng, lat],
             severity,
             area: Math.round(brightness / 10), // Rough estimate
             status: 'ACTIVE',
-            description: `Active fire detected by NASA satellite (${Math.round(confidence)}% confidence)`,
+            description: `Active fire detected by ${source.replace('_NRT', '')} satellite (${Math.round(confidence)}% confidence${!isNaN(frp) && frp > 0 ? `, FRP ${frp.toFixed(1)} MW` : ''})`,
             timestamp: `${acqDate}T${acqTime}:00Z`,
             brightness,
             confidence,
           });
         }
-      }
+      }));
+
+      fires.push(...seen.values());
+
+      // Keep the most significant fires (by brightness) to bound payload size
+      fires.sort((a, b) => (b.brightness || 0) - (a.brightness || 0));
+      if (fires.length > 120) fires.length = 120;
     } catch (err) {
       // NASA FIRMS API failed
     }

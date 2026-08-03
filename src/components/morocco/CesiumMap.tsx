@@ -21,10 +21,12 @@ const LAYER_CONFIG: LayerToggleConfig[] = [
   { key: 'flights', label: 'Flights & Assets', icon: '✈️', accent: 'bg-cyan-400', section: 'WORLD LAYER' },
   { key: 'cyber', label: 'Cyber Threats', icon: '💻', accent: 'bg-fuchsia-400', section: 'WORLD LAYER' },
   { key: 'events', label: 'Events', icon: '📍', accent: 'bg-blue-400', section: 'MOROCCO LAYER' },
+  { key: 'earthquakes', label: 'Earthquakes', icon: '🟠', accent: 'bg-red-500', section: 'MOROCCO LAYER' },
+  { key: 'disasters', label: 'Disasters', icon: '🌪️', accent: 'bg-rose-500', section: 'MOROCCO LAYER' },
+  { key: 'fires', label: 'Fires', icon: '🔥', accent: 'bg-orange-400', section: 'MOROCCO LAYER' },
   { key: 'infrastructure', label: 'Infrastructure', icon: '🏗️', accent: 'bg-amber-400', section: 'MOROCCO LAYER' },
   { key: 'connections', label: 'Connections', icon: '🔗', accent: 'bg-violet-400', section: 'MOROCCO LAYER' },
   { key: 'routes', label: 'Routes', icon: '🛣️', accent: 'bg-emerald-400', section: 'MOROCCO LAYER' },
-  { key: 'fires', label: 'Fires', icon: '🔥', accent: 'bg-orange-400', section: 'MOROCCO LAYER' },
   { key: 'weather', label: 'Weather', icon: '🌤️', accent: 'bg-sky-400', section: 'MOROCCO LAYER' },
 ];
 
@@ -55,6 +57,8 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
     routes: true,
     fires: true,
     weather: true,
+    earthquakes: true,
+    disasters: true,
     flights: true,
     cyber: true,
   });
@@ -198,6 +202,8 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
   const entityCounts = {
     events: moroccoData?.events?.length ?? 0,
     fires: moroccoData?.fires?.length ?? 0,
+    quakes: moroccoData?.earthquakes?.length ?? 0,
+    disasters: moroccoData?.disasters?.length ?? 0,
     infra: moroccoData?.infrastructure?.length ?? 0,
     conns: moroccoData?.connections?.length ?? 0,
     routes: moroccoData?.routes?.length ?? 0,
@@ -370,6 +376,8 @@ export default function CesiumMap({ embedded = false }: { embedded?: boolean }) 
               {[
                 { label: 'EVENTS', value: entityCounts.events, dot: 'bg-blue-400' },
                 { label: 'FIRES', value: entityCounts.fires, dot: 'bg-orange-400' },
+                { label: 'QUAKES', value: entityCounts.quakes, dot: 'bg-red-500' },
+                { label: 'DISASTERS', value: entityCounts.disasters, dot: 'bg-rose-500' },
                 { label: 'INFRA', value: entityCounts.infra, dot: 'bg-amber-400' },
                 { label: 'LINKS', value: entityCounts.conns, dot: 'bg-violet-400' },
                 { label: 'ROUTES', value: entityCounts.routes, dot: 'bg-emerald-400' },

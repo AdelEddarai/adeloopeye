@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, BarChart3 } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,13 @@ export function MoroccoMapWidget() {
       </div>
       
       {/* Bottom Overlay Action Bar */}
-      <div className="absolute bottom-2 right-2 z-10">
+      <div className="absolute bottom-2 right-2 z-10 flex items-center gap-2">
+        <Link href="/morocco">
+          <Button size="sm" className="bg-black/60 hover:bg-black/90 text-amber-300 border border-amber-900/50 backdrop-blur-sm text-[10px] h-7 px-3 mono font-bold group">
+            <BarChart3 className="w-3 h-3 mr-1.5 group-hover:scale-110 transition-transform" />
+            INTEL DASH ⤢
+          </Button>
+        </Link>
         <Link href="/morocco-map">
           <Button size="sm" className="bg-black/60 hover:bg-black/90 text-cyan-400 border border-cyan-900/50 backdrop-blur-sm text-[10px] h-7 px-3 mono font-bold group">
             <Maximize2 className="w-3 h-3 mr-1.5 group-hover:scale-110 transition-transform" />

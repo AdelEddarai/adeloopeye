@@ -7,15 +7,17 @@ import { multiNewsClient } from '@/server/lib/api-clients/multi-news-client';
 import { fetchMoroccanRSSNews, convertRSSToNewsArticle } from '@/server/lib/api-clients/rss-client';
 import { fetchAllMoroccoLocalData } from '@/server/lib/api-clients/morocco-local-data';
 import { fetchMoroccoRoutes } from '@/server/lib/api-clients/morocco-routes-client';
+import { usgsEarthquakeClient } from '@/server/lib/api-clients/usgs-earthquake-client';
+import { eonetClient } from '@/server/lib/api-clients/eonet-client';
 import { withDeadline } from '@/server/lib/route-deadline';
 
 // Netlify/serverless functions kill slow invocations (default 10s, max 26s).
 // The heavy external fetching below MUST complete well inside that window,
 // otherwise the platform returns a 502 and the dashboard/map show nothing.
 // These budgets keep the whole route under ~8s of wall-clock time.
-const PHASE1_BUDGET_MS = 5000; // RSS + news APIs + Telegram
-const PHASE2_BUDGET_MS = 3000; // Weather + fires + routes
-const TOTAL_BUDGET_MS = 8500; // Absolute ceiling including analysis
+const PHASE1_BUDGET_MS = 4000; // RSS + news APIs + Telegram
+const PHASE2_BUDGET_MS = 3500; // Weather + fires + routes + quakes + disasters
+const TOTAL_BUDGET_MS = 8000; // Absolute ceiling including analysis
 
 // In-memory cache: the client polls every 60s, so serving fresh cache is instant
 // and only the cold/expired call pays the external-API cost.
@@ -32,6 +34,8 @@ function emptyPayload(error?: string) {
     commodities: [],
     fires: [],
     routes: [],
+    earthquakes: [],
+    disasters: [],
     weatherAlerts: [],
     summary: {
       totalEvents: 0,
@@ -43,8 +47,11 @@ function emptyPayload(error?: string) {
       trafficIncidents: 0,
       totalRoutes: 0,
       disruptedRoutes: 0,
+      totalEarthquakes: 0,
+      significantEarthquakes: 0,
+      activeDisasters: 0,
       eventsByType: {},
-      sources: { rss: 0, api: 0, telegram: 0, total: 0 },
+      sources: { rss: 0, api: 0, telegram: 0, earthquakes: 0, eonet: 0, total: 0 },
     },
     timestamp: new Date().toISOString(),
     error,
@@ -65,7 +72,7 @@ export async function GET(req: NextRequest) {
   const payload = await withDeadline(collect(), TOTAL_BUDGET_MS, () => emptyPayload('Timeout'));
 
   // Never cache empty results (so a transient failure recovers on the next poll)
-  if (payload.events.length > 0 || payload.weather.length > 0) {
+  if (payload.events.length > 0 || payload.weather.length > 0 || payload.earthquakes.length > 0) {
     cache.set(cacheKey, { data: payload, fetchedAt: Date.now() });
   }
 
@@ -143,8 +150,8 @@ async function collect() {
 
   console.log(`[Morocco Intel] 📊 Combined total: ${uniqueArticles.length} unique articles (${rssConverted.length} from RSS, ${apiArticles.length} from APIs)`);
 
-  // Now fetch local data and routes with the articles (bounded)
-  const [localDataFinal, routesFinal] = await withDeadline(
+  // Now fetch local data, routes, earthquakes, and disasters (bounded)
+  const [localDataFinal, routesFinal, earthquakesFinal, disastersFinal] = await withDeadline(
     Promise.allSettled([
       (async () => {
         console.log('[Morocco Intel] 🌍 Strategy 3: Fetching local data sources...');
@@ -154,6 +161,14 @@ async function collect() {
         console.log('[Morocco Intel] 🛣️  Strategy 5: Analyzing routes and logistics...');
         return await fetchMoroccoRoutes(uniqueArticles);
       })(),
+      (async () => {
+        console.log('[Morocco Intel] 🌍 Strategy 6: Fetching USGS earthquakes...');
+        return await usgsEarthquakeClient.getMoroccoEarthquakes();
+      })(),
+      (async () => {
+        console.log('[Morocco Intel] 🌪️  Strategy 7: Fetching NASA EONET disasters...');
+        return await eonetClient.getMoroccoDisasters();
+      })(),
     ]),
     PHASE2_BUDGET_MS,
     () => [{ status: 'rejected', reason: 'timeout' } as PromiseSettledResult<any>] as any
@@ -161,6 +176,8 @@ async function collect() {
 
   const localData = localDataFinal.status === 'fulfilled' ? localDataFinal.value : { weather: [], traffic: [], commodities: [], fires: [] };
   const routes = routesFinal.status === 'fulfilled' ? routesFinal.value : [];
+  const earthquakes = earthquakesFinal.status === 'fulfilled' ? earthquakesFinal.value : [];
+  const disasters = disastersFinal.status === 'fulfilled' ? disastersFinal.value : [];
 
   // Analyze intelligence from articles
   console.log('[Morocco Intel] 🔍 Analyzing intelligence from articles...');
@@ -180,6 +197,8 @@ async function collect() {
   console.log(`[Morocco Intel]   - Commodities: ${localData.commodities.length} items`);
   console.log(`[Morocco Intel]   - Fires: ${localData.fires.length} active`);
   console.log(`[Morocco Intel]   - Routes: ${routes.length} major routes`);
+  console.log(`[Morocco Intel]   - Earthquakes: ${earthquakes.length} (${earthquakes.filter(q => q.magnitude >= 4).length} >= M4.0)`);
+  console.log(`[Morocco Intel]   - Disasters: ${disasters.length} active`);
   console.log(`[Morocco Intel]   - Telegram: ${telegramData.channels.monitored} channels monitored`);
 
   // Group events by type for summary
@@ -199,6 +218,8 @@ async function collect() {
     commodities: localData.commodities || [],
     fires: localData.fires || [],
     routes: routes || [],
+    earthquakes: earthquakes || [],
+    disasters: disasters || [],
     weatherAlerts: [],
     summary: {
       totalEvents: allEvents?.length || 0,
@@ -210,11 +231,16 @@ async function collect() {
       trafficIncidents: localData.traffic?.length || 0,
       totalRoutes: routes?.length || 0,
       disruptedRoutes: routes?.filter(r => r.status === 'DISRUPTED' || r.status === 'CLOSED').length || 0,
+      totalEarthquakes: earthquakes?.length || 0,
+      significantEarthquakes: earthquakes?.filter(q => q.magnitude >= 4).length || 0,
+      activeDisasters: disasters?.filter(d => !d.closed).length || 0,
       eventsByType,
       sources: {
         rss: rssConverted.length,
         api: apiArticles.length,
         telegram: telegramData.events.length,
+        earthquakes: earthquakes.length,
+        eonet: disasters.length,
         total: uniqueArticles.length + telegramData.events.length,
       },
     },

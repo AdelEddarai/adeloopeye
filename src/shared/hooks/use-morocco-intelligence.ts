@@ -13,6 +13,8 @@ import type {
   MoroccoFire
 } from '@/server/lib/api-clients/morocco-local-data';
 import type { MoroccoRoute } from '@/server/lib/api-clients/morocco-routes-client';
+import type { MoroccoEarthquake } from '@/server/lib/api-clients/usgs-earthquake-client';
+import type { MoroccoDisaster } from '@/server/lib/api-clients/eonet-client';
 
 type MoroccoIntelligenceResponse = {
   events: MoroccoEvent[];
@@ -23,6 +25,8 @@ type MoroccoIntelligenceResponse = {
   commodities: MoroccoCommodity[];
   fires: MoroccoFire[];
   routes: MoroccoRoute[];
+  earthquakes: MoroccoEarthquake[];
+  disasters: MoroccoDisaster[];
   weatherAlerts: MoroccoWeatherAlert[];
   summary: {
     totalEvents: number;
@@ -34,10 +38,16 @@ type MoroccoIntelligenceResponse = {
     trafficIncidents: number;
     totalRoutes: number;
     disruptedRoutes: number;
+    totalEarthquakes: number;
+    significantEarthquakes: number;
+    activeDisasters: number;
     eventsByType: Record<string, number>;
     sources: {
       rss: number;
       api: number;
+      telegram: number;
+      earthquakes: number;
+      eonet: number;
       total: number;
     };
   };

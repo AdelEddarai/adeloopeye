@@ -11,6 +11,8 @@ import type {
   MoroccoCommodity
 } from '@/server/lib/api-clients/morocco-local-data';
 import type { MoroccoRoute } from '@/server/lib/api-clients/morocco-routes-client';
+import type { MoroccoEarthquake } from '@/server/lib/api-clients/usgs-earthquake-client';
+import type { MoroccoDisaster } from '@/server/lib/api-clients/eonet-client';
 export type CesiumToggles = {
   events: boolean;
   infrastructure: boolean;
@@ -18,6 +20,8 @@ export type CesiumToggles = {
   routes: boolean;
   fires: boolean;
   weather: boolean;
+  earthquakes: boolean;
+  disasters: boolean;
   flights: boolean;
   cyber: boolean;
 };
@@ -31,6 +35,8 @@ type MoroccoIntelPayload = {
   commodities?: MoroccoCommodity[];
   fires?: MoroccoFire[];
   routes?: MoroccoRoute[];
+  earthquakes?: MoroccoEarthquake[];
+  disasters?: MoroccoDisaster[];
 };
 
 type GlobalIntelPayload = {
@@ -151,6 +157,37 @@ function getTrafficColor(Cesium: any, type: string) {
   if (type === 'ACCIDENT') return new Cesium.Color(255/255, 100/255, 0, 0.9);
   if (type === 'CONGESTION') return new Cesium.Color(255/255, 180/255, 0, 0.8);
   return new Cesium.Color(255/255, 150/255, 0, 0.8);
+}
+
+function getEarthquakeColor(Cesium: any, magnitude: number) {
+  if (magnitude >= 5.0) return new Cesium.Color(255/255, 40/255, 40/255, 0.95);
+  if (magnitude >= 4.0) return new Cesium.Color(255/255, 130/255, 0, 0.9);
+  if (magnitude >= 3.0) return new Cesium.Color(255/255, 215/255, 0, 0.85);
+  return new Cesium.Color(120/255, 200/255, 120/255, 0.8);
+}
+
+function getDisasterIcon(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes('wildfire') || c.includes('fire')) return '🔥';
+  if (c.includes('flood')) return '🌊';
+  if (c.includes('storm') || c.includes('tornado')) return '⛈️';
+  if (c.includes('drought')) return '🏜️';
+  if (c.includes('volcano')) return '🌋';
+  if (c.includes('earthquake')) return '🟠';
+  if (c.includes('landslide')) return '⛰️';
+  if (c.includes('snow') || c.includes('cold')) return '❄️';
+  if (c.includes('sea') || c.includes('ice')) return '🌊';
+  return '⚠️';
+}
+
+function getDisasterColor(Cesium: any, category: string) {
+  const c = category.toLowerCase();
+  if (c.includes('wildfire') || c.includes('fire')) return new Cesium.Color(255/255, 70/255, 0, 0.9);
+  if (c.includes('flood') || c.includes('storm')) return new Cesium.Color(40/255, 150/255, 255/255, 0.9);
+  if (c.includes('drought')) return new Cesium.Color(200/255, 150/255, 40/255, 0.9);
+  if (c.includes('volcano')) return new Cesium.Color(255/255, 90/255, 160/255, 0.9);
+  if (c.includes('earthquake')) return new Cesium.Color(255/255, 40/255, 40/255, 0.9);
+  return new Cesium.Color(170/255, 170/255, 170/255, 0.9);
 }
 
 function getPulseRadius(time?: any) {
@@ -431,7 +468,9 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
               connections: toggles.connections,
               routes: toggles.routes,
               fires: toggles.fires,
-              weather: toggles.weather
+              weather: toggles.weather,
+              earthquakes: toggles.earthquakes,
+              disasters: toggles.disasters
            },
            data: moroccoData
         });
@@ -826,6 +865,101 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
                   <img src="${getPlaceholderImage('FIRE')}" class="w-full h-16 object-cover rounded mb-2 border border-slate-700/50" />
                   <strong>Status:</strong> ${fire.status}<br/><strong>Severity:</strong> ${fire.severity}<br/>${fire.description}
                   </div>`
+              });
+            } catch(e) {}
+          });
+        }
+
+        // 5.5 Earthquakes (USGS, live)
+        if (toggles.earthquakes && moroccoData?.earthquakes) {
+          const quakes = moroccoData.earthquakes.slice(0, 60);
+          quakes.forEach((quake) => {
+            try {
+              if (!quake.position || quake.position.length !== 2) return;
+              if (!isValidCoord(quake.position[0], quake.position[1])) return;
+              const lon = Number(quake.position[0]);
+              const lat = Number(quake.position[1]);
+              const mag = quake.magnitude || 0;
+              const quakeColor = getEarthquakeColor(Cesium, mag);
+              const isSignificant = mag >= 4;
+
+              ds.entities.add({
+                position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+                point: {
+                  pixelSize: isSignificant ? 14 : 9,
+                  color: quakeColor,
+                  outlineColor: Cesium.Color.WHITE,
+                  outlineWidth: isSignificant ? 2 : 1,
+                  disableDepthTestDistance: Number.POSITIVE_INFINITY
+                },
+                ellipse: isSignificant ? {
+                  semiMajorAxis: new Cesium.CallbackProperty((time: any) => getPulseRadius(time) + 60, false),
+                  semiMinorAxis: new Cesium.CallbackProperty((time: any) => getPulseRadius(time), false),
+                  material: new Cesium.ColorMaterialProperty(quakeColor.withAlpha(0.12)),
+                  outline: true,
+                  outlineColor: quakeColor.withAlpha(0.7),
+                  outlineWidth: 1,
+                  height: 10
+                } : undefined,
+                label: {
+                  text: `M${mag.toFixed(1)}`,
+                  font: 'bold 10px sans-serif',
+                  pixelOffset: new Cesium.Cartesian2(0, -18),
+                  disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                  fillColor: Cesium.Color.WHITE,
+                  style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                  outlineColor: Cesium.Color.BLACK,
+                  outlineWidth: 2
+                },
+                name: `M${mag.toFixed(1)} · ${quake.location || quake.place}`,
+                description: `<div style="font-size: 11px;">
+                  <p><strong>Magnitude:</strong> <span style="color:${mag >= 5 ? '#ff4444' : mag >= 4 ? '#ff8800' : '#ffd700'}">M${mag.toFixed(1)}</span></p>
+                  <p><strong>Location:</strong> ${quake.place || 'Unknown'}</p>
+                  <p><strong>Depth:</strong> ${quake.depthKm?.toFixed(1) ?? 'N/A'} km</p>
+                  <p><strong>Time:</strong> ${new Date(quake.timestamp).toLocaleString()}</p>
+                  <p><strong>Tsunami:</strong> ${quake.tsunami ? '⚠️ YES' : 'No'}</p>
+                  <p><strong>Status:</strong> ${quake.status || 'reviewed'}</p>
+                  ${quake.url ? `<a href="${quake.url}" target="_blank" style="display:inline-block; margin-top:8px; padding:4px 8px; background:rgba(255,120,0,0.1); border:1px solid rgba(255,120,0,0.4); color:#ffaa44; border-radius:4px; text-decoration:none; font-family:monospace; font-size:10px;">USGS DETAIL ↗</a>` : ''}
+                </div>`
+              });
+            } catch(e) {}
+          });
+        }
+
+        // 5.6 Disasters (NASA EONET, live)
+        if (toggles.disasters && moroccoData?.disasters) {
+          moroccoData.disasters.slice(0, 40).forEach((disaster) => {
+            try {
+              if (!disaster.position || disaster.position.length !== 2) return;
+              if (!isValidCoord(disaster.position[0], disaster.position[1])) return;
+              const lon = Number(disaster.position[0]);
+              const lat = Number(disaster.position[1]);
+              const disasterColor = getDisasterColor(Cesium, disaster.category);
+
+              ds.entities.add({
+                position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+                point: {
+                  pixelSize: 11,
+                  color: disasterColor,
+                  outlineColor: Cesium.Color.WHITE,
+                  outlineWidth: 1,
+                  disableDepthTestDistance: Number.POSITIVE_INFINITY
+                },
+                label: {
+                  text: getDisasterIcon(disaster.category),
+                  font: '13px sans-serif',
+                  pixelOffset: new Cesium.Cartesian2(0, -12),
+                  disableDepthTestDistance: Number.POSITIVE_INFINITY
+                },
+                name: disaster.title,
+                description: `<div style="font-size: 11px;">
+                  <p><strong>Category:</strong> ${disaster.category}</p>
+                  <p><strong>Status:</strong> ${disaster.closed ? 'Closed' : '🟢 Active'}</p>
+                  ${disaster.magnitudeValue != null ? `<p><strong>Magnitude:</strong> ${disaster.magnitudeValue} ${disaster.magnitudeUnit || ''}</p>` : ''}
+                  <p><strong>Since:</strong> ${new Date(disaster.timestamp).toLocaleString()}</p>
+                  ${disaster.description ? `<p class="mt-1">${disaster.description}</p>` : ''}
+                  ${disaster.sources && disaster.sources[0] ? `<a href="${disaster.sources[0].url}" target="_blank" style="display:inline-block; margin-top:8px; padding:4px 8px; background:rgba(255,140,0,0.1); border:1px solid rgba(255,140,0,0.4); color:#ffaa44; border-radius:4px; text-decoration:none; font-family:monospace; font-size:10px;">SOURCE ↗</a>` : ''}
+                </div>`
               });
             } catch(e) {}
           });
