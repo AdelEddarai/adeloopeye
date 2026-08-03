@@ -92,7 +92,7 @@ const MOROCCO_CITIES = [
  * https://open-meteo.com/en/docs
  */
 export async function fetchMoroccoWeather(): Promise<MoroccoWeather[]> {
-  const limit = Math.max(6, Math.min(60, Number(process.env.MOROCCO_WEATHER_CITY_LIMIT ?? 30)));
+  const limit = Math.max(6, Math.min(60, Number(process.env.MOROCCO_WEATHER_CITY_LIMIT ?? 16)));
   const cities = MOROCCO_CITIES.slice(0, limit);
 
   async function fetchCity(city: (typeof MOROCCO_CITIES)[number]): Promise<MoroccoWeather | null> {
@@ -136,7 +136,7 @@ export async function fetchMoroccoWeather(): Promise<MoroccoWeather[]> {
     }
   }
 
-  const CONCURRENCY = 8;
+  const CONCURRENCY = 16;
   const out: MoroccoWeather[] = [];
   for (let i = 0; i < cities.length; i += CONCURRENCY) {
     const chunk = cities.slice(i, i + CONCURRENCY);
