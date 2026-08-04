@@ -256,12 +256,10 @@ function generateAssets(articles: any[]) {
 
 function generateMaritimeLanes(vessels: MaritimeVessel[]): MaritimeLane[] {
   if (vessels.length === 0) return MARITIME_LANES;
-  // Use vessel positions to infer active lanes
   const laneGroups = new Map<string, [number, number][]>();
   for (const lane of MARITIME_LANES) {
     laneGroups.set(lane.id, [...lane.path]);
   }
-  // Add vessel-derived points to nearest lane
   for (const vessel of vessels.slice(0, 50)) {
     let nearestLane = MARITIME_LANES[0];
     let minDist = Infinity;
@@ -280,6 +278,58 @@ function generateMaritimeLanes(vessels: MaritimeVessel[]): MaritimeLane[] {
     ...lane,
     path: laneGroups.get(lane.id) || lane.path,
   }));
+}
+
+function generateLogisticsCrisisIndicators(articles: any[]) {
+  const crises = [];
+  let idx = 0;
+  for (const article of articles) {
+    const content = `${article.title} ${article.description}`.toLowerCase();
+    if (!/(?:logistics|supply\s+chain|shipping|trade|port|freight|bottleneck|chokepoint|disruption|closure|blockage|crisis|sanction|tariff|embargo|price\s+(?:surge|hike|increase)|inflation|food\s+crisis|fuel\s+crisis|energy\s+crisis)/.test(content)) continue;
+    const actors = detectActors(content);
+    const targets = detectTargets(content);
+    for (const actor of actors) {
+      const pos = ACTOR_POSITIONS[actor];
+      if (!pos) continue;
+      crises.push({
+        id: `logistics-${idx++}`,
+        actor,
+        position: pos,
+        type: targets.includes('energy') ? 'ENERGY_CRISIS' : targets.includes('infrastructure') ? 'INFRASTRUCTURE_CRISIS' : targets.includes('economic') ? 'ECONOMIC_CRISIS' : 'LOGISTICS_CRISIS',
+        severity: targets.includes('energy') || targets.includes('infrastructure') ? 'CRITICAL' : 'HIGH',
+        description: article.title.slice(0, 120),
+        timestamp: article.publishedAt || new Date().toISOString(),
+        url: article.url || null,
+        source: article.source || null,
+      });
+    }
+  }
+  return crises;
+}
+
+function generateInvestmentFlows(articles: any[]) {
+  const flows = [];
+  let idx = 0;
+  for (const article of articles) {
+    const content = `${article.title} ${article.description}`.toLowerCase();
+    if (!/(?:investment|invest|trade\s+deal|economic\s+deal|infrastructure\s+deal|loan|aid|grant|financial\s+package|FDI|foreign\s+investment|trade\s+agreement|free\s+trade|partnership|cooperation|agreement\s+(?:signed|reached|new))/i.test(content)) continue;
+    const actors = detectActors(content);
+    for (const actor of actors) {
+      const pos = ACTOR_POSITIONS[actor];
+      if (!pos) continue;
+      flows.push({
+        id: `investment-${idx++}`,
+        actor,
+        position: pos,
+        type: /loan|aid|grant|financial/.test(content) ? 'AID' : /infrastructure/.test(content) ? 'INFRASTRUCTURE' : /trade\s+deal|trade\s+agreement|free\s+trade/.test(content) ? 'TRADE_DEAL' : 'INVESTMENT',
+        description: article.title.slice(0, 120),
+        timestamp: article.publishedAt || new Date().toISOString(),
+        url: article.url || null,
+        source: article.source || null,
+      });
+    }
+  }
+  return flows;
 }
 
 // ──────────────────────────────────────────────────────────
@@ -314,6 +364,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const threatZones = generateThreatZones(articlesData);
     const assets = generateAssets(articlesData);
     const maritimeLanes = generateMaritimeLanes(vesselsData);
+    const logisticsCrises = generateLogisticsCrisisIndicators(articlesData);
+    const investmentFlows = generateInvestmentFlows(articlesData);
 
     // Actor metadata for map coloring
     const actorMeta = {
@@ -356,7 +408,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       { id: 'muscat', name: 'Muscat', country: 'Oman', position: [59.9, 23.6], type: 'CITY' },
     ] as const;
 
-    console.log(`[Map Data] Returning ${strikeArcs.length} strike arcs, ${missileTracks.length} missile tracks, ${threatZones.length} threat zones, ${assets.length} assets, ${maritimeLanes.length} maritime lanes, ${cyberThreatsData.length} cyber threats, ${criticalEvents.length} targets, ${geopoliticalRelationships.length} relationships, ${cities.length} cities`);
+    console.log(`[Map Data] Returning ${strikeArcs.length} strike arcs, ${missileTracks.length} missile tracks, ${threatZones.length} threat zones, ${assets.length} assets, ${maritimeLanes.length} maritime lanes, ${logisticsCrises.length} logistics crises, ${investmentFlows.length} investment flows, ${cyberThreatsData.length} cyber threats, ${criticalEvents.length} targets, ${geopoliticalRelationships.length} relationships, ${cities.length} cities`);
 
     return ok(
       {
@@ -373,6 +425,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         maritimeLanes,
         vessels: vesselsData,
         flights: flightsData,
+        logisticsCrises,
+        investmentFlows,
       },
       { headers: { 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' } }
     );
@@ -393,6 +447,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         maritimeLanes: [],
         vessels: [],
         flights: [],
+        logisticsCrises: [],
+        investmentFlows: [],
       },
       { headers: { 'Cache-Control': 'public, max-age=5' } }
     );

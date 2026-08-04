@@ -595,6 +595,36 @@ function buildStories(conflictId: string, events: StoredEvent[]): StoredStory[] 
   });
 }
 
+const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+function mergeWithTTL<T extends { id: string; timestamp: string }>(
+  existing: T[],
+  incoming: T[],
+): { merged: T[]; newIds: string[] } {
+  const now = Date.now();
+  const cutoff = now - TWENTY_FOUR_HOURS;
+
+  const existingMap = new Map<string, T>();
+  for (const item of existing) {
+    const ts = new Date(item.timestamp).getTime();
+    if (ts >= cutoff) {
+      existingMap.set(item.id, item);
+    }
+  }
+
+  const newIds: string[] = [];
+  for (const item of incoming) {
+    const ts = new Date(item.timestamp).getTime();
+    if (ts < cutoff) continue;
+    if (!existingMap.has(item.id)) {
+      newIds.push(item.id);
+    }
+    existingMap.set(item.id, item);
+  }
+
+  return { merged: Array.from(existingMap.values()), newIds };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Main sync
 // ────────────────────────────────────────────────────────────────────────────
@@ -628,8 +658,13 @@ async function syncConflict(conflictId: string): Promise<void> {
   };
   store.setConflict(conflict);
 
-  store.setEvents(conflictId, events);
-  store.setPosts(conflictId, posts);
+  const existingEvents = store.getEvents(conflictId);
+  const { merged: mergedEvents, newIds: newEventIds } = mergeWithTTL(existingEvents, events);
+  store.setEvents(conflictId, mergedEvents);
+
+  const existingPosts = store.getPosts(conflictId);
+  const { merged: mergedPosts } = mergeWithTTL(existingPosts, posts);
+  store.setPosts(conflictId, mergedPosts);
 
   const actors = buildActorRows(conflictId, articles);
   store.setActors(conflictId, actors);
@@ -639,11 +674,13 @@ async function syncConflict(conflictId: string): Promise<void> {
   const snapshots = buildSnapshots(conflictId, articles, chips, scenarios, today);
   store.setSnapshots(conflictId, snapshots);
 
-  const mapFeatures = buildMapFeatures(conflictId, articles);
-  store.setMapFeatures(conflictId, mapFeatures);
+  const existingFeatures = store.getMapFeatures(conflictId);
+  const { merged: mergedFeatures } = mergeWithTTL(existingFeatures, buildMapFeatures(conflictId, articles));
+  store.setMapFeatures(conflictId, mergedFeatures);
 
-  const stories = buildStories(conflictId, events);
-  store.setMapStories(conflictId, stories);
+  const existingStories = store.getMapStories(conflictId);
+  const { merged: mergedStories } = mergeWithTTL(existingStories, buildStories(conflictId, mergedEvents));
+  store.setMapStories(conflictId, mergedStories);
 
-  console.log(`[sync] Synced ${conflictId}: ${articles.length} articles, ${events.length} events, ${actors.length} actors, ${snapshots.length} snapshots, ${mapFeatures.length} map features.`);
+  console.log(`[sync] Synced ${conflictId}: ${articles.length} articles, ${mergedEvents.length} events (${newEventIds.length} new), ${mergedPosts.length} posts, ${actors.length} actors, ${snapshots.length} snapshots, ${mergedFeatures.length} map features, ${mergedStories.length} stories.`);
 }

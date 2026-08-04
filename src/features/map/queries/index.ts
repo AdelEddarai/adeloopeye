@@ -25,6 +25,8 @@ export type MapDataResponse = {
   actorMeta: Record<string, ActorMeta>;
   maritimeLanes?: MaritimeLane[];
   vessels?: MaritimeVessel[];
+  logisticsCrises?: { id: string; actor: string; position: [number, number]; type: string; severity: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
+  investmentFlows?: { id: string; actor: string; position: [number, number]; type: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
 };
 
 export type MapDataResult = DataArrays & { actorMeta: Record<string, ActorMeta> };
@@ -43,6 +45,8 @@ function toDataArrays(r: MapDataResponse): MapDataResult {
     maritimeLanes: r.maritimeLanes ?? [],
     vessels:    r.vessels ?? [],
     actorMeta:  r.actorMeta ?? {},
+    logisticsCrises: r.logisticsCrises ?? [],
+    investmentFlows: r.investmentFlows ?? [],
   };
 }
 

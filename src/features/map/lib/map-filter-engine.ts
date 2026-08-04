@@ -16,6 +16,8 @@ export type DataArrays = {
   cities?: CityMarker[];
   maritimeLanes?: MaritimeLane[];
   vessels?: MaritimeVessel[];
+  logisticsCrises?: { id: string; actor: string; position: [number, number]; type: string; severity: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
+  investmentFlows?: { id: string; actor: string; position: [number, number]; type: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
 };
 
 export type FacetOption = {
@@ -68,16 +70,18 @@ export type FilteredData = {
   cities?: CityMarker[];
   maritimeLanes?: MaritimeLane[];
   vessels?: MaritimeVessel[];
+  logisticsCrises?: { id: string; actor: string; position: [number, number]; type: string; severity: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
+  investmentFlows?: { id: string; actor: string; position: [number, number]; type: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
 };
 
 type DataItem = { actor: string; priority: string; type: string; status?: string; timestamp?: string };
 
 // Helpers
 
-const DATASET_KEYS = ['strikes', 'missiles', 'targets', 'assets', 'zones'] as const;
+const DATASET_KEYS = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'logisticsCrises', 'investmentFlows'] as const;
 
 const DATASET_LABELS: Record<string, string> = {
-  strikes: 'Strikes', missiles: 'Missiles', targets: 'Targets', assets: 'Assets', zones: 'Zones',
+  strikes: 'Strikes', missiles: 'Missiles', targets: 'Targets', assets: 'Assets', zones: 'Zones', logisticsCrises: 'Logistics Crises', investmentFlows: 'Investment Flows',
 };
 
 function datasetItems(data: DataArrays, key: string): DataItem[] {
@@ -87,6 +91,8 @@ function datasetItems(data: DataArrays, key: string): DataItem[] {
     case 'targets':  return data.targets;
     case 'assets':   return data.assets;
     case 'zones':    return data.zones as unknown as DataItem[];
+    case 'logisticsCrises': return (data.logisticsCrises ?? []).map(c => ({ ...c, type: 'LOGISTICS_CRISIS' }));
+    case 'investmentFlows': return (data.investmentFlows ?? []).map(f => ({ ...f, type: 'INVESTMENT_FLOW' }));
     default:         return [];
   }
 }
