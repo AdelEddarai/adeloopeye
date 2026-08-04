@@ -616,21 +616,38 @@ function countryHit(lower: string, name: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`, 'i').test(lower);
 }
 
+/**
+ * Find the byte-position + length of the first real occurrence of a country
+ * in lowercased text, matching its canonical name OR any alias (word-boundary
+ * aware so "us" matches "US" but not "focus"). Essential because most news
+ * uses aliases ("USA", "Tehran", "Moscow") rather than canonical names.
+ */
+function findCountrySpan(lower: string, country: string): { idx: number; len: number } | null {
+  const names = [country.toLowerCase(), ...(COUNTRY_ALIASES[country] ?? [])];
+  let best: { idx: number; len: number } | null = null;
+  for (const n of names) {
+    const re = new RegExp(`(^|[^a-z0-9])${escapeRegExp(n)}($|[^a-z0-9])`, 'i');
+    const m = re.exec(lower);
+    if (!m) continue;
+    const prefixLen = m[1] ? m[1].length : 0;
+    const idx = m.index + prefixLen;
+    if (!best || idx < best.idx) best = { idx, len: n.length };
+  }
+  return best;
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function extractPairText(content: string, countryA: string, countryB: string): string | null {
   const lower = content.toLowerCase();
-  const lowerA = countryA.toLowerCase();
-  const lowerB = countryB.toLowerCase();
+  const spanA = findCountrySpan(lower, countryA);
+  const spanB = findCountrySpan(lower, countryB);
+  if (!spanA || !spanB) return null;
 
-  const idxA = lower.indexOf(lowerA);
-  const idxB = lower.indexOf(lowerB);
-  if (idxA < 0 || idxB < 0) return null;
-
-  const start = Math.min(idxA, idxB);
-  const end = Math.max(idxA + countryA.length, idxB + countryB.length);
+  const start = Math.min(spanA.idx, spanB.idx);
+  const end = Math.max(spanA.idx + spanA.len, spanB.idx + spanB.len);
 
   const windowStart = Math.max(0, start - PAIR_CONTEXT);
   const windowEnd = Math.min(content.length, end + PAIR_CONTEXT);
