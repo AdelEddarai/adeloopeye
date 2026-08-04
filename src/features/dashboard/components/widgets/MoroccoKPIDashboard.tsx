@@ -214,8 +214,15 @@ export function MoroccoKPIDashboard() {
     );
   }
 
-  // Handle empty data case
-  if (!data.events || data.events.length === 0) {
+  // Handle empty data case (only when ALL sources are down — weather/earthquakes
+  // come from reliable keyless APIs, so their presence means we have real data)
+  const hasAnyData =
+    (data.events && data.events.length > 0) ||
+    (data.weather && data.weather.length > 0) ||
+    (data.earthquakes && data.earthquakes.length > 0) ||
+    (data.fires && data.fires.length > 0);
+
+  if (!hasAnyData) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-3 text-center max-w-md">

@@ -23,7 +23,9 @@ export type MoroccoEventType =
   | 'SECURITY'
   | 'HEALTH'
   | 'EDUCATION'
-  | 'TRANSPORT';
+  | 'TRANSPORT'
+  | 'EARTHQUAKE'
+  | 'NATURAL_DISASTER';
 
 export type MoroccoEvent = {
   id: string;

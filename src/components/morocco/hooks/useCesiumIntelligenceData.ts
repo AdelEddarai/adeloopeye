@@ -104,6 +104,8 @@ function getEventColor(Cesium: any, type: string, severity: string) {
     case 'WEATHER': return new Cesium.Color(100/255, 200/255, 1.0, alpha);
     case 'FIRE': return new Cesium.Color(1.0, 80/255, 0, alpha);
     case 'SECURITY': return new Cesium.Color(200/255, 50/255, 50/255, alpha);
+    case 'EARTHQUAKE': return new Cesium.Color(1.0, 30/255, 30/255, alpha);
+    case 'NATURAL_DISASTER': return new Cesium.Color(220/255, 80/255, 160/255, alpha);
     default: return new Cesium.Color(150/255, 150/255, 150/255, alpha);
   }
 }
@@ -117,6 +119,8 @@ function getEventIcon(type: string): string {
     case 'WEATHER': return '🌤️';
     case 'FIRE': return '🔥';
     case 'SECURITY': return '🛡️';
+    case 'EARTHQUAKE': return '🌋';
+    case 'NATURAL_DISASTER': return '🌪️';
     default: return '📍';
   }
 }

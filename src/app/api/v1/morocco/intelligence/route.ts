@@ -9,15 +9,15 @@ import { fetchAllMoroccoLocalData } from '@/server/lib/api-clients/morocco-local
 import { fetchMoroccoRoutes } from '@/server/lib/api-clients/morocco-routes-client';
 import { usgsEarthquakeClient } from '@/server/lib/api-clients/usgs-earthquake-client';
 import { eonetClient } from '@/server/lib/api-clients/eonet-client';
-import { withDeadline } from '@/server/lib/route-deadline';
+import { withDeadline, rejectedResults } from '@/server/lib/route-deadline';
 
 // Netlify/serverless functions kill slow invocations (default 10s, max 26s).
 // The heavy external fetching below MUST complete well inside that window,
 // otherwise the platform returns a 502 and the dashboard/map show nothing.
-// These budgets keep the whole route under ~8s of wall-clock time.
-const PHASE1_BUDGET_MS = 4000; // RSS + news APIs + Telegram
-const PHASE2_BUDGET_MS = 3500; // Weather + fires + routes + quakes + disasters
-const TOTAL_BUDGET_MS = 8000; // Absolute ceiling including analysis
+// These budgets keep the whole route under ~8.5s of wall-clock time.
+const PHASE1_BUDGET_MS = 5200; // RSS + news APIs + Telegram
+const PHASE2_BUDGET_MS = 3000; // Weather + fires + routes + quakes + disasters
+const TOTAL_BUDGET_MS = 8500; // Absolute ceiling including analysis
 
 // In-memory cache: the client polls every 60s, so serving fresh cache is instant
 // and only the cold/expired call pays the external-API cost.
@@ -133,12 +133,12 @@ async function collect() {
       })(),
     ]),
     PHASE1_BUDGET_MS,
-    () => [{ status: 'rejected', reason: 'timeout' } as PromiseSettledResult<any>] as any
+    () => rejectedResults(3)
   );
 
-  const rssConverted = rssResult.status === 'fulfilled' ? rssResult.value : [];
-  const apiArticles = apiResult.status === 'fulfilled' ? apiResult.value : [];
-  const telegramData = telegramResult.status === 'fulfilled' ? telegramResult.value : { events: [], channels: { monitored: 0, active: 0 } };
+  const rssConverted = rssResult?.status === 'fulfilled' ? rssResult.value : [];
+  const apiArticles = apiResult?.status === 'fulfilled' ? apiResult.value : [];
+  const telegramData = telegramResult?.status === 'fulfilled' ? telegramResult.value : { events: [], channels: { monitored: 0, active: 0 } };
 
   // Combine all sources
   const allArticles = [...rssConverted, ...apiArticles];
@@ -171,25 +171,36 @@ async function collect() {
       })(),
     ]),
     PHASE2_BUDGET_MS,
-    () => [{ status: 'rejected', reason: 'timeout' } as PromiseSettledResult<any>] as any
+    () => rejectedResults(4)
   );
 
-  const localData = localDataFinal.status === 'fulfilled' ? localDataFinal.value : { weather: [], traffic: [], commodities: [], fires: [] };
-  const routes = routesFinal.status === 'fulfilled' ? routesFinal.value : [];
-  const earthquakes = earthquakesFinal.status === 'fulfilled' ? earthquakesFinal.value : [];
-  const disasters = disastersFinal.status === 'fulfilled' ? disastersFinal.value : [];
+  const localData = localDataFinal?.status === 'fulfilled' ? localDataFinal.value : { weather: [], traffic: [], commodities: [], fires: [] };
+  const routes = routesFinal?.status === 'fulfilled' ? routesFinal.value : [];
+  const earthquakes = earthquakesFinal?.status === 'fulfilled' ? earthquakesFinal.value : [];
+  const disasters = disastersFinal?.status === 'fulfilled' ? disastersFinal.value : [];
 
   // Analyze intelligence from articles
   console.log('[Morocco Intel] 🔍 Analyzing intelligence from articles...');
   const intelligence = analyzeMoroccoIntelligence(uniqueArticles);
 
   // Merge Telegram events with analyzed events
-  const allEvents = [...intelligence.events, ...telegramData.events];
+  const baseEvents = [...intelligence.events, ...telegramData.events];
   const allConnections = [...intelligence.connections];
   const allInfrastructure = [...intelligence.infrastructure];
 
+  // Guarantee the dashboard always has events. News/Telegram feeds can be slow or
+  // down (and the free keyless APIs below are far more reliable), so whenever news
+  // produces nothing we fall back to generating events from live sensor data
+  // (USGS quakes, NASA EONET disasters) plus satellite-detected fires.
+  const sensorEvents = [
+    ...buildEarthquakeEvents(earthquakes),
+    ...buildDisasterEvents(disasters),
+  ];
+  const fireEvents = baseEvents.length > 0 ? [] : buildFireEvents(fires);
+  const allEvents = [...baseEvents, ...sensorEvents, ...fireEvents];
+
   console.log(`[Morocco Intel] ✅ Analysis complete:`);
-  console.log(`[Morocco Intel]   - Events: ${allEvents.length} (${intelligence.events.length} from news, ${telegramData.events.length} from Telegram)`);
+  console.log(`[Morocco Intel]   - Events: ${allEvents.length} (${intelligence.events.length} from news, ${telegramData.events.length} from Telegram, ${sensorEvents.length} from sensors, ${fireEvents.length} from fires)`);
   console.log(`[Morocco Intel]   - Connections: ${allConnections.length}`);
   console.log(`[Morocco Intel]   - Infrastructure: ${allInfrastructure.length}`);
   console.log(`[Morocco Intel]   - Weather: ${localData.weather.length} cities`);
@@ -246,4 +257,69 @@ async function collect() {
     },
     timestamp: new Date().toISOString(),
   };
+}
+
+// Build dashboard events from live sensor data (used as a fallback so the map/KPI
+// dashboard always has meaningful intelligence even when news/RSS/Telegram fail).
+function buildEarthquakeEvents(earthquakes: any[]): any[] {
+  const events: any[] = [];
+  for (const q of earthquakes) {
+    if (!q || q.magnitude < 3) continue;
+    events.push({
+      id: `sensor-eq-${q.id}`,
+      type: 'EARTHQUAKE',
+      title: `M${q.magnitude.toFixed(1)} earthquake near ${q.location}`,
+      description: `${q.place} — depth ${q.depthKm.toFixed(1)} km${q.tsunami ? '. Tsunami alert issued.' : ''}`,
+      location: q.location,
+      position: q.position,
+      severity: q.severity,
+      timestamp: q.timestamp,
+      source: 'USGS',
+      impact: q.magnitude >= 5 ? 'Major structural damage possible' : 'Seismic activity detected',
+      status: 'ONGOING',
+    });
+  }
+  return events;
+}
+
+function buildDisasterEvents(disasters: any[]): any[] {
+  const events: any[] = [];
+  for (const d of disasters) {
+    if (!d || d.closed) continue;
+    events.push({
+      id: `sensor-disaster-${d.id}`,
+      type: 'NATURAL_DISASTER',
+      title: d.title,
+      description: d.description || `${d.category} reported in the region`,
+      location: d.category || 'Morocco region',
+      position: d.position,
+      severity: 'HIGH',
+      timestamp: d.timestamp,
+      source: 'NASA EONET',
+      impact: 'Ongoing natural disaster monitoring',
+      status: 'ONGOING',
+    });
+  }
+  return events;
+}
+
+function buildFireEvents(fires: any[]): any[] {
+  const events: any[] = [];
+  for (const f of (fires || []).slice(0, 30)) {
+    if (!f) continue;
+    events.push({
+      id: `sensor-fire-${f.id || `${f.position[0]},${f.position[1]}`}`,
+      type: 'FIRE',
+      title: `Wildfire near ${f.location}`,
+      description: `${f.description || 'Active fire detected by satellite'}.`,
+      location: f.location,
+      position: f.position,
+      severity: f.severity || (f.confidence > 80 ? 'HIGH' : 'MEDIUM'),
+      timestamp: f.timestamp,
+      source: 'FIRMS',
+      impact: 'Risk to life and property',
+      status: 'ONGOING',
+    });
+  }
+  return events;
 }
