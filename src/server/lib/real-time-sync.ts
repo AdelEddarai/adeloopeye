@@ -14,8 +14,11 @@ import { multiNewsClient, type NewsArticle } from './api-clients/multi-news-clie
 import {
   getGlobalConflictArticles,
   getGlobalHeadlines,
+  getMoroccoConflictArticles,
+  getMoroccoHeadlines,
   type GDELTArticle,
 } from './api-clients/gdelt-client';
+import { telegramClient, MOROCCO_TELEGRAM_CHANNELS, GLOBAL_TELEGRAM_CHANNELS, type TelegramMessage } from './api-clients/telegram-client';
 import {
   transformNewsToCriticalEvents,
   transformNewsToHeatPoints,
@@ -99,14 +102,25 @@ function gdeltToNewsArticle(a: GDELTArticle): NewsArticle {
 
 async function fetchConflictArticles(): Promise<NewsArticle[]> {
   // Keyless GDELT is the primary source so the feed works without paid keys.
-  const [gdeltArticles, gdeltHeadlines, newsArticles] = await Promise.allSettled([
+  // Morocco-specific queries ensure regional coverage.
+  const [
+    gdeltArticles,
+    gdeltHeadlines,
+    moroccoArticles,
+    moroccoHeadlines,
+    newsArticles,
+    telegramArticles,
+  ] = await Promise.allSettled([
     getGlobalConflictArticles(),
     getGlobalHeadlines(),
+    getMoroccoConflictArticles().catch(() => [] as GDELTArticle[]),
+    getMoroccoHeadlines().catch(() => [] as GDELTArticle[]),
     multiNewsClient.searchNews(
-      'iran OR israel OR gaza OR syria OR lebanon OR yemen OR ukraine OR middle east conflict',
+      'iran OR israel OR gaza OR syria OR lebanon OR yemen OR ukraine OR middle east conflict OR morocco OR western sahara OR houthi OR airstrike OR missile OR drone OR strike OR attack OR explosion',
       60,
       'en'
     ),
+    fetchTelegramArticles().catch(() => [] as NewsArticle[]),
   ]);
 
   const articles: NewsArticle[] = [];
@@ -117,8 +131,17 @@ async function fetchConflictArticles(): Promise<NewsArticle[]> {
   if (gdeltHeadlines.status === 'fulfilled') {
     articles.push(...gdeltHeadlines.value.map(gdeltToNewsArticle));
   }
+  if (moroccoArticles.status === 'fulfilled') {
+    articles.push(...moroccoArticles.value.map(gdeltToNewsArticle));
+  }
+  if (moroccoHeadlines.status === 'fulfilled') {
+    articles.push(...moroccoHeadlines.value.map(gdeltToNewsArticle));
+  }
   if (newsArticles.status === 'fulfilled') {
     articles.push(...newsArticles.value);
+  }
+  if (telegramArticles.status === 'fulfilled') {
+    articles.push(...telegramArticles.value);
   }
 
   // De-dupe by URL, sort newest first.
@@ -133,6 +156,40 @@ async function fetchConflictArticles(): Promise<NewsArticle[]> {
   return unique.sort(
     (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
+}
+
+/**
+ * Fetch recent messages from Morocco and global Telegram channels
+ * and convert them into NewsArticle objects for the sync pipeline.
+ */
+async function fetchTelegramArticles(): Promise<NewsArticle[]> {
+  const channels = [...MOROCCO_TELEGRAM_CHANNELS, ...GLOBAL_TELEGRAM_CHANNELS];
+  const articles: NewsArticle[] = [];
+
+  for (const channel of channels) {
+    const chat = await telegramClient.getChat(channel.id).catch(() => null);
+    if (!chat) continue;
+
+    const updates = await telegramClient.getUpdates(undefined, 20).catch(() => []);
+    for (const update of updates) {
+      const msg = update.message;
+      if (!msg || !msg.text) continue;
+      const text = msg.text.slice(0, 500);
+      const date = new Date(msg.date * 1000).toISOString();
+      articles.push({
+        title: text.slice(0, 120) || channel.title,
+        description: text.slice(0, 300),
+        url: '',
+        source: channel.title,
+        publishedAt: date,
+        author: null,
+        imageUrl: null,
+        content: text,
+      });
+    }
+  }
+
+  return articles;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -329,6 +386,12 @@ const ACTOR_SEEDS: ActorSeed[] = [
   { id: 'hezbollah', name: 'Hezbollah', fullName: 'Hezbollah', countryCode: 'LB', type: 'NON-STATE', mapKey: 'HEZBOLLAH', cssVar: 'var(--danger)', colorRgb: [180, 40, 40], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['hezbollah', 'lebanon', 'beirut'] },
   { id: 'russia', name: 'Russia', fullName: 'Russian Federation', countryCode: 'RU', type: 'STATE', mapKey: 'RUSSIA', cssVar: 'var(--russia)', colorRgb: [200, 80, 80], affiliation: 'NEUTRAL', mapGroup: 'Observer', keywords: ['russia', 'moscow', 'putin'] },
   { id: 'china', name: 'China', fullName: 'People\'s Republic of China', countryCode: 'CN', type: 'STATE', mapKey: 'CHINA', cssVar: 'var(--china)', colorRgb: [220, 100, 100], affiliation: 'NEUTRAL', mapGroup: 'Observer', keywords: ['china', 'beijing', 'chinese'] },
+  { id: 'morocco', name: 'Morocco', fullName: 'Kingdom of Morocco', countryCode: 'MA', type: 'STATE', mapKey: 'MOROCCO', cssVar: 'var(--warning)', colorRgb: [255, 180, 50], affiliation: 'NEUTRAL', mapGroup: 'Regional', keywords: ['morocco', 'rabat', 'casablanca', 'marrakech', 'maghreb', 'western sahara', 'polisario', 'hespress', 'le360'] },
+  { id: 'gaza', name: 'Gaza / Hamas', fullName: 'Gaza Strip / Hamas', countryCode: 'PS', type: 'NON-STATE', mapKey: 'GAZA', cssVar: 'var(--danger)', colorRgb: [220, 80, 80], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['gaza', 'hamas', 'palestine', 'gazan'] },
+  { id: 'yemen', name: 'Yemen / Houthis', fullName: 'Republic of Yemen / Ansar Allah', countryCode: 'YE', type: 'NON-STATE', mapKey: 'YEMEN', cssVar: 'var(--warning)', colorRgb: [236, 154, 60], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['yemen', 'houthi', 'ansar allah', 'sanaa', 'aden'] },
+  { id: 'lebanon', name: 'Lebanon / Hezbollah', fullName: 'Lebanese Republic', countryCode: 'LB', type: 'STATE', mapKey: 'LEBANON', cssVar: 'var(--danger)', colorRgb: [180, 40, 40], affiliation: 'NEUTRAL', mapGroup: 'Regional', keywords: ['lebanon', 'beirut', 'hezbollah', 'hariri'] },
+  { id: 'syria', name: 'Syria', fullName: 'Syrian Arab Republic', countryCode: 'SY', type: 'STATE', mapKey: 'SYRIA', cssVar: 'var(--danger)', colorRgb: [200, 60, 60], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['syria', 'damascus', ' Assad', 'aleppo'] },
+  { id: 'iraq', name: 'Iraq', fullName: 'Republic of Iraq', countryCode: 'IQ', type: 'STATE', mapKey: 'IRAQ', cssVar: 'var(--warning)', colorRgb: [210, 140, 40], affiliation: 'NEUTRAL', mapGroup: 'Regional', keywords: ['iraq', 'baghdad', 'mosul', 'shia', 'sunni'] },
 ];
 
 function buildActorRows(conflictId: string, articles: NewsArticle[]): StoredActor[] {
