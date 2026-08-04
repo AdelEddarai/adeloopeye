@@ -31,6 +31,7 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
   });
   const processedEventIds = useRef(new Set<string>());
   const swRef = useRef<ServiceWorkerRegistration | null>(null);
+  const initializedRef = useRef(false);
 
   // Preload notification worker so system alerts are possible
   useEffect(() => {
@@ -46,9 +47,18 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
     };
   }, [enabled]);
 
-  // Monitor events for new critical/alert events
+  // Monitor events for new events — every newly-arriving event triggers an alert.
+  // The first batch seen on mount is seeded silently (no spam of existing news);
+  // only events that appear AFTER that initial load ring a bell.
   useEffect(() => {
     if (!enabled || !events || events.length === 0) return;
+
+    // First data arrival: seed the processed set so old news doesn't spam alerts
+    if (!initializedRef.current) {
+      events.forEach(event => processedEventIds.current.add(event.id));
+      initializedRef.current = true;
+      return;
+    }
 
     const soundEnabled = !soundMuted;
 
@@ -59,74 +69,55 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
       // Skip if already processed
       if (processedEventIds.current.has(event.id)) return;
 
-      // Check if event is critical or high severity
-      const isCritical = event.severity === 'CRITICAL' || event.severity === 'HIGH';
+      processedEventIds.current.add(event.id);
 
-      // Check if event has alert keywords
-      const alertKeywords = [
-        'alert', 'urgent', 'emergency', 'critical', 'breaking',
-        'warning', 'danger', 'severe', 'crisis', 'evacuation',
-      ];
-      const hasAlertKeyword = alertKeywords.some(keyword =>
-        event.title.toLowerCase().includes(keyword) ||
-        (event.description?.toLowerCase().includes(keyword) || false)
+      const alert: AlertNotification = {
+        id: event.id,
+        event,
+        timestamp: now,
+        read: false,
+      };
+
+      newAlerts.push(alert);
+
+      // Show toast notification
+      const severity = event.severity === 'CRITICAL' ? '🚨' : event.severity === 'HIGH' ? '⚠️' : '📰';
+      const icon = getEventIcon(event.type);
+
+      toast.error(
+        `${severity} ${event.location} - ${icon} ${event.type}: ${event.title}`,
+        {
+          duration: event.severity === 'CRITICAL' ? 12000 : event.severity === 'HIGH' ? 8000 : 5000,
+          position: 'top-right',
+          className: event.severity === 'CRITICAL'
+            ? 'border-red-500 border-2 bg-red-950/90'
+            : event.severity === 'HIGH'
+              ? 'border-orange-500 border bg-orange-950/80'
+              : 'border-blue-500 border bg-blue-950/80',
+          description: event.description?.substring(0, 100),
+        }
       );
 
-      // Only alert for critical/high events or events with alert keywords
-      if (isCritical || hasAlertKeyword) {
-        // Check if event is recent (within last 10 minutes)
-        const eventTime = new Date(event.timestamp).getTime();
-        const isRecent = (now - eventTime) < 10 * 60 * 1000; // 10 minutes
-
-        if (isRecent) {
-          const alert: AlertNotification = {
-            id: event.id,
-            event,
-            timestamp: now,
-            read: false,
-          };
-
-          newAlerts.push(alert);
-          processedEventIds.current.add(event.id);
-
-          // Show toast notification
-          const severity = event.severity === 'CRITICAL' ? '🚨' : '⚠️';
-          const icon = getEventIcon(event.type);
-
-          toast.error(
-            `${severity} ${event.location} - ${icon} ${event.type}: ${event.title}`,
-            {
-              duration: event.severity === 'CRITICAL' ? 12000 : 8000,
-              position: 'top-right',
-              className: event.severity === 'CRITICAL'
-                ? 'border-red-500 border-2 bg-red-950/90'
-                : 'border-orange-500 border bg-orange-950/80',
-              description: event.description?.substring(0, 100),
-            }
-          );
-
-          // Play monitoring siren by default (critical = klaxon)
-          if (soundEnabled) {
-            if (event.severity === 'CRITICAL') {
-              playMonitoringAlert('CRITICAL');
-            } else if (event.severity === 'HIGH') {
-              playMonitoringAlert('HIGH');
-            } else {
-              playMonitoringAlert('MEDIUM');
-            }
-          }
-
-          // Fire a native browser notification for critical events
-          if (event.severity === 'CRITICAL' && pushGranted) {
-            void showSystemNotification({
-              title: `🚨 CRITICAL — ${event.location}`,
-              body: `${event.type}: ${event.title}`,
-              eventId: event.id,
-              registration: swRef.current,
-              url: '/morocco-map',
-            });
-          }
+      // Ring for every new event (siren for critical/high, tone for the rest)
+      if (soundEnabled) {
+        if (event.severity === 'CRITICAL') {
+          playMonitoringAlert('CRITICAL');
+        } else if (event.severity === 'HIGH') {
+          playMonitoringAlert('HIGH');
+        } else {
+          playNotificationTone();
         }
+      }
+
+      // Fire a native browser notification for critical events
+      if (event.severity === 'CRITICAL' && pushGranted) {
+        void showSystemNotification({
+          title: `🚨 CRITICAL — ${event.location}`,
+          body: `${event.type}: ${event.title}`,
+          eventId: event.id,
+          registration: swRef.current,
+          url: '/morocco-map',
+        });
       }
     });
 
@@ -205,6 +196,9 @@ function getEventIcon(type: string): string {
     case 'ENERGY': return '⚡';
     case 'SECURITY': return '🛡️';
     case 'TRANSPORT': return '🚗';
+    case 'EARTHQUAKE': return '🌋';
+    case 'NATURAL_DISASTER': return '🌪️';
+    case 'CONFLICT': return '⚔️';
     default: return '📍';
   }
 }

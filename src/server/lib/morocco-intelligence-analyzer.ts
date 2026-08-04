@@ -25,7 +25,8 @@ export type MoroccoEventType =
   | 'EDUCATION'
   | 'TRANSPORT'
   | 'EARTHQUAKE'
-  | 'NATURAL_DISASTER';
+  | 'NATURAL_DISASTER'
+  | 'CONFLICT';
 
 export type MoroccoEvent = {
   id: string;
@@ -201,6 +202,42 @@ const MOROCCO_INFRASTRUCTURE: MoroccoInfrastructure[] = [
     status: 'OPERATIONAL',
     description: 'Fishing and commercial port',
   },
+  {
+    id: 'port-nador-west-med',
+    type: 'PORT',
+    name: 'Nador West Med Port',
+    position: [-2.9333, 35.2833],
+    status: 'OPERATIONAL',
+    capacity: '3M TEU/year',
+    description: 'New deep-water port in the Oriental region',
+  },
+  {
+    id: 'port-safi',
+    type: 'PORT',
+    name: 'Port of Safi',
+    position: [-9.2372, 32.2994],
+    status: 'OPERATIONAL',
+    capacity: '4M tonnes/year',
+    description: 'Phosphate export and chemical port',
+  },
+  {
+    id: 'port-jorf-lasfar',
+    type: 'PORT',
+    name: 'Jorf Lasfar Port',
+    position: [-8.1167, 33.1000],
+    status: 'OPERATIONAL',
+    capacity: '10M tonnes/year',
+    description: 'Bulk commodity and petrochemical terminal',
+  },
+  {
+    id: 'port-dakhla',
+    type: 'PORT',
+    name: 'Port of Dakhla',
+    position: [-15.9582, 23.7158],
+    status: 'OPERATIONAL',
+    capacity: '2M tonnes/year',
+    description: 'Strategic Atlantic gateway to West Africa',
+  },
 
   // Airports
   {
@@ -228,6 +265,38 @@ const MOROCCO_INFRASTRUCTURE: MoroccoInfrastructure[] = [
     status: 'OPERATIONAL',
     description: 'Capital city airport',
   },
+  {
+    id: 'airport-tangier',
+    type: 'AIRPORT',
+    name: 'Tangier Ibn Battouta Airport',
+    position: [-5.9170, 35.7269],
+    status: 'OPERATIONAL',
+    description: 'Northern gateway near Tanger Med',
+  },
+  {
+    id: 'airport-fes',
+    type: 'AIRPORT',
+    name: 'Fes Saïss Airport',
+    position: [-4.9778, 33.9273],
+    status: 'OPERATIONAL',
+    description: 'Gateway to the imperial cities',
+  },
+  {
+    id: 'airport-agadir',
+    type: 'AIRPORT',
+    name: 'Agadir Al Massira Airport',
+    position: [-9.4131, 30.3250],
+    status: 'OPERATIONAL',
+    description: 'Southern tourist airport',
+  },
+  {
+    id: 'airport-oujda',
+    type: 'AIRPORT',
+    name: 'Oujda Angads Airport',
+    position: [-1.9231, 34.7872],
+    status: 'OPERATIONAL',
+    description: 'Airport serving the Oriental region',
+  },
 
   // Energy
   {
@@ -247,6 +316,37 @@ const MOROCCO_INFRASTRUCTURE: MoroccoInfrastructure[] = [
     status: 'OPERATIONAL',
     capacity: '301 MW',
     description: 'Major wind energy facility',
+  },
+
+  // Rail
+  {
+    id: 'rail-lgv',
+    type: 'RAILWAY',
+    name: 'LGV Tanger–Kenitra',
+    position: [-5.7000, 34.6000],
+    status: 'OPERATIONAL',
+    capacity: '320 km/h',
+    description: "Africa's first high-speed rail line",
+  },
+  {
+    id: 'rail-casa-oujda',
+    type: 'RAILWAY',
+    name: 'ONCF Casablanca–Oujda Line',
+    position: [-4.0000, 34.0000],
+    status: 'OPERATIONAL',
+    capacity: '2,100 km network',
+    description: 'Main east–west rail corridor',
+  },
+
+  // Industry
+  {
+    id: 'factory-renault-tanger',
+    type: 'FACTORY',
+    name: 'Renault Tanger Med Plant',
+    position: [-5.5000, 35.8000],
+    status: 'OPERATIONAL',
+    capacity: '400k vehicles/year',
+    description: 'Africa largest automotive plant',
   },
 ];
 
@@ -417,6 +517,11 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
 
     if (!eventDetected && (content.includes('protest') || content.includes('demonstration') || content.includes('rally') || content.includes('strike') || content.includes('march'))) {
       detectedType = 'PROTEST';
+      eventDetected = true;
+    }
+
+    if (!eventDetected && (content.includes('conflict') || content.includes('clash') || content.includes('attack') || content.includes('border') || content.includes('military') || content.includes('polisario') || content.includes('sahrawi') || content.includes('ceasefire') || content.includes('migrant') || content.includes('violence'))) {
+      detectedType = 'CONFLICT';
       eventDetected = true;
     }
 
@@ -741,7 +846,7 @@ function calculateSeverity(content: string, type: MoroccoEventType): 'LOW' | 'ME
   }
 
   // Type-specific severity
-  if (type === 'FIRE' || type === 'ACCIDENT' || type === 'SECURITY') {
+  if (type === 'FIRE' || type === 'ACCIDENT' || type === 'SECURITY' || type === 'CONFLICT') {
     return lower.includes('casualties') || lower.includes('deaths') ? 'CRITICAL' : 'HIGH';
   }
 
@@ -787,6 +892,8 @@ function generateImpactDescription(type: MoroccoEventType, content: string): str
       return 'Affects power supply and energy security';
     case 'TRANSPORT':
       return 'May cause delays and disruptions';
+    case 'CONFLICT':
+      return lower.includes('clash') || lower.includes('attack') ? 'Regional security escalation' : 'Regional security monitoring';
     default:
       return 'Monitoring situation';
   }

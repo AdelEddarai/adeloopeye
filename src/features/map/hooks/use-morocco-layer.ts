@@ -222,6 +222,8 @@ function getEventColor(type: string, severity: string): RGBA {
       return [255, 30, 30, alpha]; // Bright red
     case 'NATURAL_DISASTER':
       return [220, 80, 160, alpha]; // Magenta
+    case 'CONFLICT':
+      return [255, 69, 0, alpha]; // Orange-red
     default:
       return [150, 150, 150, alpha]; // Gray
   }
@@ -249,6 +251,7 @@ function getEventIcon(type: string): string {
     case 'TRANSPORT': return '🚗';
     case 'EARTHQUAKE': return '🌋';
     case 'NATURAL_DISASTER': return '🌪️';
+    case 'CONFLICT': return '⚔️';
     default: return '📍';
   }
 }

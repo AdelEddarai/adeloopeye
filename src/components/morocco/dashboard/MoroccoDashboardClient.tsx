@@ -15,6 +15,8 @@ import {
   GitMerge,
   BarChart3,
   Radar,
+  Package,
+  Swords,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,8 +33,10 @@ import { EarthquakePanel } from './EarthquakePanel';
 import { FirePanel } from './FirePanel';
 import { WeatherPanel } from './WeatherPanel';
 import { RoutePanel } from './RoutePanel';
+import { LogisticsPanel } from './LogisticsPanel';
+import { ConflictsPanel } from './ConflictsPanel';
 
-type TabKey = 'overview' | 'earthquakes' | 'fires' | 'weather' | 'routes';
+type TabKey = 'overview' | 'earthquakes' | 'fires' | 'weather' | 'routes' | 'logistics' | 'conflicts';
 
 function getTimeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -127,6 +131,8 @@ export default function MoroccoDashboardClient() {
     { title: 'Quakes M4+', value: data?.summary.significantEarthquakes ?? 0, icon: <Radio className="w-3.5 h-3.5" />, color: 'danger' as const },
     { title: 'Disasters', value: data?.summary.activeDisasters ?? 0, icon: <Waves className="w-3.5 h-3.5" />, color: 'info' as const },
     { title: 'Weather Alerts', value: data?.summary.weatherAlerts ?? 0, icon: <CloudSun className="w-3.5 h-3.5" />, color: 'info' as const },
+    { title: 'Logistics Crisis', value: data?.summary.logisticsCrisis ?? 0, icon: <Package className="w-3.5 h-3.5" />, color: 'warning' as const },
+    { title: 'Active Conflicts', value: data?.summary.activeConflicts ?? 0, icon: <Swords className="w-3.5 h-3.5" />, color: 'danger' as const },
   ];
 
   const TABS: { key: TabKey; label: string; icon: ReactNode }[] = [
@@ -135,6 +141,8 @@ export default function MoroccoDashboardClient() {
     { key: 'fires', label: `Fires (${data?.fires?.length ?? 0})`, icon: <Flame className="w-3 h-3 mr-1.5" /> },
     { key: 'weather', label: `Weather (${data?.weather?.length ?? 0})`, icon: <CloudSun className="w-3 h-3 mr-1.5" /> },
     { key: 'routes', label: 'Routes', icon: <GitMerge className="w-3 h-3 mr-1.5" /> },
+    { key: 'logistics', label: `Logistics (${data?.logistics?.length ?? 0})`, icon: <Package className="w-3 h-3 mr-1.5" /> },
+    { key: 'conflicts', label: `Conflicts (${data?.conflicts?.length ?? 0})`, icon: <Swords className="w-3 h-3 mr-1.5" /> },
   ];
 
   const LAYERS = [
@@ -347,6 +355,8 @@ export default function MoroccoDashboardClient() {
               {tab === 'fires' && <FirePanel fires={data.fires} />}
               {tab === 'weather' && <WeatherPanel weather={data.weather} />}
               {tab === 'routes' && <RoutePanel routes={data.routes} />}
+              {tab === 'logistics' && <LogisticsPanel logistics={data.logistics} />}
+              {tab === 'conflicts' && <ConflictsPanel conflicts={data.conflicts} />}
             </>
           )}
         </main>
@@ -362,6 +372,8 @@ export default function MoroccoDashboardClient() {
           fires: data?.fires?.length,
           weather: data?.weather?.length,
           routes: data?.routes?.length,
+          logistics: data?.logistics?.length,
+          conflicts: data?.conflicts?.length,
           map: undefined,
         }}
       />

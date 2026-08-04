@@ -9,6 +9,7 @@ type SourceFreshnessProps = {
     telegram: number;
     earthquakes: number;
     eonet: number;
+    gdelt: number;
     total: number;
   };
   timestamp?: string;
@@ -18,6 +19,7 @@ const SOURCES = [
   { key: 'rss', label: 'RSS Feeds', dot: 'bg-blue-400' },
   { key: 'api', label: 'News APIs', dot: 'bg-emerald-400' },
   { key: 'telegram', label: 'Telegram OSINT', dot: 'bg-fuchsia-400' },
+  { key: 'gdelt', label: 'GDELT Global', dot: 'bg-orange-400' },
   { key: 'earthquakes', label: 'USGS Seismic', dot: 'bg-red-500' },
   { key: 'eonet', label: 'NASA EONET', dot: 'bg-rose-500' },
 ] as const;

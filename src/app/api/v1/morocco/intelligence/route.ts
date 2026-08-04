@@ -9,19 +9,24 @@ import { fetchAllMoroccoLocalData } from '@/server/lib/api-clients/morocco-local
 import { fetchMoroccoRoutes } from '@/server/lib/api-clients/morocco-routes-client';
 import { usgsEarthquakeClient } from '@/server/lib/api-clients/usgs-earthquake-client';
 import { eonetClient } from '@/server/lib/api-clients/eonet-client';
+import { fetchMoroccoLogistics } from '@/server/lib/api-clients/morocco-logistics';
+import { fetchMoroccoConflicts, type ConflictEntry } from '@/server/lib/api-clients/morocco-conflicts';
+import { getMoroccoConflictArticles, type GDELTArticle } from '@/server/lib/api-clients/gdelt-client';
 import { withDeadline, rejectedResults } from '@/server/lib/route-deadline';
 
 // Netlify/serverless functions kill slow invocations (default 10s, max 26s).
 // The heavy external fetching below MUST complete well inside that window,
 // otherwise the platform returns a 502 and the dashboard/map show nothing.
 //
-// Phase 1 (news/RSS/Telegram) and Phase 2 (live sensors) run CONCURRENTLY, so
-// total wall-clock time is bounded by the slower phase (~6s), well under the
-// ~10s serverless limit. The phase budgets below are generous enough that the
-// reliable keyless sources (USGS, EONET, Open-Meteo) almost never hit them.
+// Phase 1 (news/RSS/Telegram), Phase 2 (live sensors) and the GDELT real-time
+// conflict stream run CONCURRENTLY, so total wall-clock time is bounded by the
+// slowest stream (~8s worst case), well under the ~10s serverless limit. The
+// budgets below are generous enough that the reliable keyless sources (USGS,
+// EONET, Open-Meteo) almost never hit them.
 const PHASE1_BUDGET_MS = 6000; // RSS + news APIs + Telegram
 const PHASE2_BUDGET_MS = 3500; // Weather + fires + routes + quakes + disasters
-const TOTAL_BUDGET_MS = 9500; // Safety net — should never fire (phases run concurrently)
+const GDELT_BUDGET_MS = 8000; // GDELT real-time conflict coverage (latency varies)
+const TOTAL_BUDGET_MS = 9500; // Safety net — should never fire (streams run concurrently)
 
 // In-memory cache: the client polls every 60s, so serving fresh cache is instant
 // and only the cold/expired call pays the external-API cost.
@@ -40,23 +45,27 @@ function emptyPayload(error?: string) {
     routes: [],
     earthquakes: [],
     disasters: [],
+    logistics: [],
+    conflicts: [],
     weatherAlerts: [],
-    summary: {
-      totalEvents: 0,
-      criticalEvents: 0,
-      activeConnections: 0,
-      operationalInfrastructure: 0,
-      activeFires: 0,
-      weatherAlerts: 0,
-      trafficIncidents: 0,
-      totalRoutes: 0,
-      disruptedRoutes: 0,
-      totalEarthquakes: 0,
-      significantEarthquakes: 0,
-      activeDisasters: 0,
-      eventsByType: {},
-      sources: { rss: 0, api: 0, telegram: 0, earthquakes: 0, eonet: 0, total: 0 },
-    },
+      summary: {
+        totalEvents: 0,
+        criticalEvents: 0,
+        activeConnections: 0,
+        operationalInfrastructure: 0,
+        activeFires: 0,
+        weatherAlerts: 0,
+        trafficIncidents: 0,
+        totalRoutes: 0,
+        disruptedRoutes: 0,
+        totalEarthquakes: 0,
+        significantEarthquakes: 0,
+        activeDisasters: 0,
+        logisticsCrisis: 0,
+        activeConflicts: 0,
+        eventsByType: {},
+        sources: { rss: 0, api: 0, telegram: 0, earthquakes: 0, eonet: 0, gdelt: 0, total: 0 },
+      },
     timestamp: new Date().toISOString(),
     error,
   };
@@ -167,10 +176,25 @@ async function collect() {
     () => rejectedResults(4)
   );
 
-  const [newsResults, sensorResults] = await Promise.all([newsPhase, sensorPhase]);
+  // ---- GDELT real-time conflict stream — its own concurrent stream because its
+  // latency is variable (2s-12s). Best-effort: when it lands in time we get a
+  // live regional-security feed; when it doesn't, conflicts fall back to news. ----
+  const gdeltPhase = withDeadline(
+    Promise.allSettled([
+      (async () => {
+        console.log('[Morocco Intel] 📡 Strategy 8: Fetching GDELT real-time conflict coverage...');
+        return await getMoroccoConflictArticles(GDELT_BUDGET_MS);
+      })(),
+    ]),
+    GDELT_BUDGET_MS,
+    () => rejectedResults(1)
+  );
+
+  const [newsResults, sensorResults, gdeltRaw] = await Promise.all([newsPhase, sensorPhase, gdeltPhase]);
 
   const [rssResult, apiResult, telegramResult] = newsResults;
   const [localDataFinal, routesFinal, earthquakesFinal, disastersFinal] = sensorResults;
+  const [gdeltFinal] = gdeltRaw;
 
   const rssConverted = rssResult?.status === 'fulfilled' ? rssResult.value : [];
   const apiArticles = apiResult?.status === 'fulfilled' ? apiResult.value : [];
@@ -189,10 +213,18 @@ async function collect() {
   const localData = localDataFinal?.status === 'fulfilled' ? localDataFinal.value : { weather: [], traffic: [], commodities: [], fires: [] };
   const earthquakes = earthquakesFinal?.status === 'fulfilled' ? earthquakesFinal.value : [];
   const disasters = disastersFinal?.status === 'fulfilled' ? disastersFinal.value : [];
+  const gdeltArticles = gdeltFinal?.status === 'fulfilled' ? gdeltFinal.value : [];
 
   // Route network is pure local compute (~ms): re-run with news articles so
   // any traffic/closure/weather incidents reported in the feeds are attached.
   const routes = await fetchMoroccoRoutes(uniqueArticles);
+
+  // Logistics + regional conflicts are driven by live coverage. Conflicts now
+  // combine the current news feed with GDELT's real-time (15-min refresh)
+  // global coverage so flashpoint intensity/status reacts to breaking events.
+  const logistics = fetchMoroccoLogistics(uniqueArticles);
+  const conflictSources = [...uniqueArticles, ...gdeltArticles];
+  const conflicts = fetchMoroccoConflicts(conflictSources);
 
   // Analyze intelligence from articles
   console.log('[Morocco Intel] 🔍 Analyzing intelligence from articles...');
@@ -212,10 +244,11 @@ async function collect() {
     ...buildDisasterEvents(disasters),
   ];
   const fireEvents = baseEvents.length > 0 ? [] : buildFireEvents(localData.fires);
-  const allEvents = [...baseEvents, ...sensorEvents, ...fireEvents];
+  const conflictEvents = buildConflictEvents(gdeltArticles, conflicts);
+  const allEvents = [...baseEvents, ...conflictEvents, ...sensorEvents, ...fireEvents];
 
   console.log(`[Morocco Intel] ✅ Analysis complete:`);
-  console.log(`[Morocco Intel]   - Events: ${allEvents.length} (${intelligence.events.length} from news, ${telegramData.events.length} from Telegram, ${sensorEvents.length} from sensors, ${fireEvents.length} from fires)`);
+  console.log(`[Morocco Intel]   - Events: ${allEvents.length} (${intelligence.events.length} from news, ${telegramData.events.length} from Telegram, ${conflictEvents.length} from GDELT conflicts, ${sensorEvents.length} from sensors, ${fireEvents.length} from fires)`);
   console.log(`[Morocco Intel]   - Connections: ${allConnections.length}`);
   console.log(`[Morocco Intel]   - Infrastructure: ${allInfrastructure.length}`);
   console.log(`[Morocco Intel]   - Weather: ${localData.weather.length} cities`);
@@ -223,6 +256,9 @@ async function collect() {
   console.log(`[Morocco Intel]   - Commodities: ${localData.commodities.length} items`);
   console.log(`[Morocco Intel]   - Fires: ${localData.fires.length} active`);
   console.log(`[Morocco Intel]   - Routes: ${routes.length} major routes`);
+  console.log(`[Morocco Intel]   - Logistics: ${logistics.length} nodes (${logistics.filter(l => l.crisis).length} in crisis)`);
+  console.log(`[Morocco Intel]   - Conflicts: ${conflicts.length} (${conflicts.filter(c => c.status === 'ESCALATING' || c.status === 'ACTIVE').length} active)`);
+  console.log(`[Morocco Intel]   - GDELT: ${gdeltArticles.length} real-time articles feeding conflicts`);
   console.log(`[Morocco Intel]   - Earthquakes: ${earthquakes.length} (${earthquakes.filter(q => q.magnitude >= 4).length} >= M4.0)`);
   console.log(`[Morocco Intel]   - Disasters: ${disasters.length} active`);
   console.log(`[Morocco Intel]   - Telegram: ${telegramData.channels.monitored} channels monitored`);
@@ -246,6 +282,8 @@ async function collect() {
     routes: routes || [],
     earthquakes: earthquakes || [],
     disasters: disasters || [],
+    logistics: logistics || [],
+    conflicts: conflicts || [],
     weatherAlerts: [],
     summary: {
       totalEvents: allEvents?.length || 0,
@@ -260,6 +298,8 @@ async function collect() {
       totalEarthquakes: earthquakes?.length || 0,
       significantEarthquakes: earthquakes?.filter(q => q.magnitude >= 4).length || 0,
       activeDisasters: disasters?.filter(d => !d.closed).length || 0,
+      logisticsCrisis: logistics?.filter(l => l.crisis || l.status === 'CLOSED' || l.status === 'DISRUPTED').length || 0,
+      activeConflicts: conflicts?.filter(c => c.status === 'ESCALATING' || c.status === 'ACTIVE').length || 0,
       eventsByType,
       sources: {
         rss: rssConverted.length,
@@ -267,7 +307,8 @@ async function collect() {
         telegram: telegramData.events.length,
         earthquakes: earthquakes.length,
         eonet: disasters.length,
-        total: uniqueArticles.length + telegramData.events.length,
+        gdelt: gdeltArticles.length,
+        total: uniqueArticles.length + telegramData.events.length + gdeltArticles.length,
       },
     },
     timestamp: new Date().toISOString(),
@@ -334,6 +375,53 @@ function buildFireEvents(fires: any[]): any[] {
       source: 'FIRMS',
       impact: 'Risk to life and property',
       status: 'ONGOING',
+    });
+  }
+  return events;
+}
+
+function stableHash(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(16);
+}
+
+function matchConflict(title: string, conflicts: ConflictEntry[]): ConflictEntry | undefined {
+  const lower = title.toLowerCase();
+  return conflicts.find(
+    c =>
+      c.flashpoints.some(fp => lower.includes(fp.toLowerCase())) ||
+      c.countries.some(cc => lower.includes(cc.toLowerCase())) ||
+      c.name
+        .toLowerCase()
+        .split(/\W+/)
+        .some(w => w.length > 4 && lower.includes(w))
+  );
+}
+
+// Convert GDELT's real-time coverage into CONFLICT events so breaking regional
+// security news lands on the map and in the alert stream immediately.
+function buildConflictEvents(gdeltArticles: GDELTArticle[], conflicts: ConflictEntry[]): any[] {
+  const events: any[] = [];
+  for (const a of gdeltArticles.slice(0, 25)) {
+    if (!a?.title) continue;
+    const conflict = matchConflict(a.title, conflicts);
+    const sev: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' =
+      conflict && conflict.intensity >= 60 ? 'HIGH' : 'MEDIUM';
+    events.push({
+      id: `gdelt-conflict-${stableHash(a.url)}`,
+      type: 'CONFLICT',
+      title: a.title,
+      description: `${conflict?.name || 'Regional security'}: breaking report from ${a.source}`,
+      location: conflict?.name || 'Morocco region',
+      position: conflict?.position || [-10.0, 28.0],
+      severity: sev,
+      timestamp: a.date,
+      source: `GDELT / ${a.source}`,
+      impact: conflict && conflict.intensity >= 60 ? 'Regional security escalation' : 'Regional security monitoring',
+      status: conflict?.status === 'ESCALATING' ? 'ONGOING' : 'MONITORING',
     });
   }
   return events;

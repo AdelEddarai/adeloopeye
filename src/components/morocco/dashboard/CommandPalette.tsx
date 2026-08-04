@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Command, Activity, Radio, Flame, CloudSun, GitMerge, Radar } from 'lucide-react';
+import { Command, Activity, Radio, Flame, CloudSun, GitMerge, Radar, Package, Swords } from 'lucide-react';
 
 type CommandPaletteProps = {
   open: boolean;
@@ -16,6 +16,8 @@ const COMMANDS = [
   { key: 'fires', label: 'Fires', icon: Flame, hint: 'NASA FIRMS thermal hotspots' },
   { key: 'weather', label: 'Weather & Alerts', icon: CloudSun, hint: 'City conditions + warnings' },
   { key: 'routes', label: 'Routes & Network', icon: GitMerge, hint: 'Highways, disruptions, links' },
+  { key: 'logistics', label: 'Logistics Network', icon: Package, hint: 'Ports, airports, rail, borders' },
+  { key: 'conflicts', label: 'Regional Conflicts', icon: Swords, hint: 'Flashpoints & border tensions' },
   { key: 'map', label: 'Open 4D Map', icon: Radar, hint: 'Cesium globe with all layers' },
 ] as const;
 

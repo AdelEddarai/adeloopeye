@@ -15,6 +15,8 @@ import type {
 import type { MoroccoRoute } from '@/server/lib/api-clients/morocco-routes-client';
 import type { MoroccoEarthquake } from '@/server/lib/api-clients/usgs-earthquake-client';
 import type { MoroccoDisaster } from '@/server/lib/api-clients/eonet-client';
+import type { LogisticsEntry } from '@/server/lib/api-clients/morocco-logistics';
+import type { ConflictEntry } from '@/server/lib/api-clients/morocco-conflicts';
 
 type MoroccoIntelligenceResponse = {
   events: MoroccoEvent[];
@@ -27,6 +29,8 @@ type MoroccoIntelligenceResponse = {
   routes: MoroccoRoute[];
   earthquakes: MoroccoEarthquake[];
   disasters: MoroccoDisaster[];
+  logistics: LogisticsEntry[];
+  conflicts: ConflictEntry[];
   weatherAlerts: MoroccoWeatherAlert[];
   summary: {
     totalEvents: number;
@@ -41,6 +45,8 @@ type MoroccoIntelligenceResponse = {
     totalEarthquakes: number;
     significantEarthquakes: number;
     activeDisasters: number;
+    logisticsCrisis: number;
+    activeConflicts: number;
     eventsByType: Record<string, number>;
     sources: {
       rss: number;
@@ -48,6 +54,7 @@ type MoroccoIntelligenceResponse = {
       telegram: number;
       earthquakes: number;
       eonet: number;
+      gdelt: number;
       total: number;
     };
   };
