@@ -55,8 +55,8 @@ export function useMapData(id: string = CONFLICT_ID, enabled: boolean = true) {
     queryKey: queryKeys.map.data(id),
     queryFn: () => api.get<MapDataResponse>(`/conflicts/${id}/map/data`),
     enabled, // Only fetch when enabled
-    staleTime: 5_000,
-    refetchInterval: enabled ? 10_000 : false,
+    staleTime: 300_000,
+    refetchInterval: enabled ? 900_000 : false, // 15 min: baseline always renders; live news is an augment that must not burn the ~100/day free quota
     refetchIntervalInBackground: false, // Don't update when tab not focused
     select: toDataArrays,
   });

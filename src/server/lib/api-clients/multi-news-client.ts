@@ -19,6 +19,13 @@ export type NewsArticle = {
   content: string | null;
 };
 
+/** GNews hard-caps `q` at 200 chars; keep under it so a long query never 4xxs. */
+const MAX_QUERY_LENGTH = 195;
+
+function clampQuery(query: string): string {
+  return query.length > MAX_QUERY_LENGTH ? query.slice(0, MAX_QUERY_LENGTH) : query;
+}
+
 class MultiNewsClient {
   private gnewsKey: string;
   private newsdataKey: string;
@@ -71,7 +78,7 @@ class MultiNewsClient {
    */
   private async fetchFromGNews(query: string, limit: number, language: string): Promise<NewsArticle[]> {
     const url = new URL('https://gnews.io/api/v4/search');
-    url.searchParams.set('q', query);
+    url.searchParams.set('q', clampQuery(query));
     url.searchParams.set('lang', language);
     url.searchParams.set('max', String(Math.min(limit, 100)));
     
@@ -111,7 +118,7 @@ class MultiNewsClient {
    */
   private async fetchFromNewsData(query: string, limit: number, language: string): Promise<NewsArticle[]> {
     const url = new URL('https://newsdata.io/api/1/news');
-    url.searchParams.set('q', query);
+    url.searchParams.set('q', clampQuery(query));
     url.searchParams.set('language', language);
     url.searchParams.set('size', String(Math.min(limit, 50)));
     
@@ -155,7 +162,7 @@ class MultiNewsClient {
    */
   private async fetchFromNewsAPI(query: string, limit: number, language: string): Promise<NewsArticle[]> {
     const url = new URL('https://newsapi.org/v2/everything');
-    url.searchParams.set('q', query);
+    url.searchParams.set('q', clampQuery(query));
     url.searchParams.set('pageSize', String(Math.min(limit, 100)));
     url.searchParams.set('language', language);
     url.searchParams.set('sortBy', 'publishedAt');

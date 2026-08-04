@@ -9,6 +9,7 @@ import { adsbfiClient } from '@/server/lib/api-clients/adsbfi-client';
 import { transformFlightsToMapFeatures, transformNewsToHeatPoints, transformNewsToCriticalEvents } from '@/server/lib/live-data-transformer';
 
 import type { MaritimeLane, MaritimeVessel } from '@/data/map-data';
+import { WORLD_BASELINE } from '@/data/world-baseline';
 
 // ─── Known conflict actor positions ──────────────────────
 
@@ -33,20 +34,16 @@ const ACTOR_POSITIONS: Record<string, [number, number]> = {
   western_sahara: [-13.0, 24.0],
 };
 
-// ─── Maritime chokepoints & commercial lanes ─────────────
-
-const MARITIME_LANES: MaritimeLane[] = [
-  { id: 'suez', name: 'Suez Canal', kind: 'CHOKEPOINT', path: [[32.3, 30.0], [32.5, 31.0], [32.3, 32.0]] },
-  { id: 'bab-el-mandeb', name: 'Bab el-Mandeb', kind: 'CHOKEPOINT', path: [[43.4, 12.6], [43.5, 12.5], [43.6, 12.4]] },
-  { id: 'strait-of-hormuz', name: 'Strait of Hormuz', kind: 'CHOKEPOINT', path: [[56.3, 26.5], [56.4, 26.6], [56.5, 26.7]] },
-  { id: 'malacca', name: 'Malacca Strait', kind: 'CHOKEPOINT', path: [[100.0, 1.0], [100.5, 2.0], [101.0, 3.0]] },
-  { id: 'strait-of-hormuz-tanker', name: 'Hormuz Tanker Route', kind: 'TANKER', path: [[56.0, 26.0], [56.5, 26.5], [57.0, 27.0]] },
-  { id: 'mediterranean', name: 'Mediterranean Corridor', kind: 'CONTAINER', path: [[-5.0, 36.0], [0.0, 37.0], [10.0, 38.0], [20.0, 37.0], [30.0, 36.0]] },
-  { id: 'red-sea', name: 'Red Sea Lane', kind: 'TANKER', path: [[32.0, 30.0], [33.0, 28.0], [34.0, 26.0], [42.0, 15.0]] },
-  { id: 'persian-gulf', name: 'Persian Gulf Route', kind: 'TANKER', path: [[48.0, 26.0], [52.0, 26.5], [56.0, 26.5], [56.5, 27.0]] },
-];
-
 // ─── Helpers ──────────────────────────────────────────────
+
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
 
 function detectActors(content: string): string[] {
   const actors: string[] = [];
@@ -254,16 +251,16 @@ function generateAssets(articles: any[]) {
   return assets;
 }
 
-function generateMaritimeLanes(vessels: MaritimeVessel[]): MaritimeLane[] {
-  if (vessels.length === 0) return MARITIME_LANES;
+function generateMaritimeLanes(vessels: MaritimeVessel[], base: MaritimeLane[]): MaritimeLane[] {
+  if (vessels.length === 0) return base;
   const laneGroups = new Map<string, [number, number][]>();
-  for (const lane of MARITIME_LANES) {
+  for (const lane of base) {
     laneGroups.set(lane.id, [...lane.path]);
   }
   for (const vessel of vessels.slice(0, 50)) {
-    let nearestLane = MARITIME_LANES[0];
+    let nearestLane = base[0];
     let minDist = Infinity;
-    for (const lane of MARITIME_LANES) {
+    for (const lane of base) {
       for (const point of lane.path) {
         const dist = Math.hypot(vessel.position[0] - point[0], vessel.position[1] - point[1]);
         if (dist < minDist) { minDist = dist; nearestLane = lane; }
@@ -274,7 +271,7 @@ function generateMaritimeLanes(vessels: MaritimeVessel[]): MaritimeLane[] {
       if (pts) pts.push(vessel.position);
     }
   }
-  return MARITIME_LANES.map(lane => ({
+  return base.map(lane => ({
     ...lane,
     path: laneGroups.get(lane.id) || lane.path,
   }));
@@ -340,8 +337,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     console.log('[Map Data] Fetching data from multiple real-time sources...');
 
+    const NEWS_QUERY = '(iran OR israel OR gaza OR ukraine OR russia OR china OR taiwan OR syria OR yemen) (attack OR strike OR missile OR drone OR war OR ceasefire OR sanction OR trade OR energy OR conflict)';
+
     const [articles, cyberThreats, vesselsSnap, flightsSnap] = await Promise.allSettled([
-      multiNewsClient.searchNews('iran OR israel OR syria OR iraq OR ukraine OR russia OR china OR trade OR energy OR alliance attack OR strike OR fire OR explosion OR sanctions OR deal OR morocco OR gaza OR houthi OR missile OR drone OR airstrike OR naval OR conflict OR ceasefire OR escalation OR tension', 100, 'en'),
+      multiNewsClient.searchNews(NEWS_QUERY, 100, 'en'),
       fetchCyberThreats(),
       fetchDatalasticVesselsSnapshot().catch(err => { console.error('[Map Data] Maritime AIS failed:', err instanceof Error ? err.message : err); return []; }),
       adsbfiClient.getGlobalFlights().catch(err => { console.error('[Map Data] ADSB flights failed:', err instanceof Error ? err.message : err); return []; }),
@@ -354,20 +353,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     console.log(`[Map Data] Got ${articlesData.length} articles, ${cyberThreatsData.length} threats, ${vesselsData.length} vessels, ${flightsData.length} flights`);
 
-    const heatPoints = transformNewsToHeatPoints(articlesData);
-    const criticalEvents = transformNewsToCriticalEvents(articlesData);
-    const geopoliticalRelationships = analyzeGeopoliticalRelationships(articlesData);
+    // Always-on world baseline (seeded) + live newswire data merged on top.
+    const baseline = WORLD_BASELINE;
+    const heatPoints = dedupeById([...baseline.heatPoints, ...transformNewsToHeatPoints(articlesData)]);
+    const criticalEvents = dedupeById([...baseline.targets, ...transformNewsToCriticalEvents(articlesData)]);
+    const geopoliticalRelationships = dedupeById([...baseline.conflictRelationships, ...analyzeGeopoliticalRelationships(articlesData)]);
 
     // Generate Palantir-like OSINT features from real data
-    const strikeArcs = generateStrikeArcs(articlesData);
-    const missileTracks = generateMissileTracks(articlesData);
-    const threatZones = generateThreatZones(articlesData);
-    const assets = generateAssets(articlesData);
-    const maritimeLanes = generateMaritimeLanes(vesselsData);
+    const strikeArcs = dedupeById([...baseline.strikeArcs, ...generateStrikeArcs(articlesData)]);
+    const missileTracks = dedupeById([...baseline.missileTracks, ...generateMissileTracks(articlesData)]);
+    const threatZones = dedupeById([...baseline.threatZones, ...generateThreatZones(articlesData)]);
+    const assets = dedupeById([...baseline.assets, ...generateAssets(articlesData)]);
+    const maritimeLanes = generateMaritimeLanes(vesselsData, baseline.maritimeLanes);
     const logisticsCrises = generateLogisticsCrisisIndicators(articlesData);
     const investmentFlows = generateInvestmentFlows(articlesData);
 
-    // Actor metadata for map coloring
+    // Actor metadata for map coloring (live cores override the baseline)
     const actorMeta = {
       us: { label: 'US', cssVar: '--us', rgb: [45, 114, 210], affiliation: 'FRIENDLY', group: 'allied' },
       iran: { label: 'Iran', cssVar: '--iran', rgb: [231, 106, 110], affiliation: 'HOSTILE', group: 'adversary' },
@@ -383,6 +384,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       western_sahara: { label: 'W. Sahara', cssVar: '--t3', rgb: [180, 160, 120], affiliation: 'NEUTRAL', group: 'neutral' },
       unknown: { label: 'Unknown', cssVar: '--t3', rgb: [143, 153, 168], affiliation: 'NEUTRAL', group: 'neutral' },
     };
+
+    // Baseline fills the whole globe; live core actors override their colours.
+    const resolvedActorMeta = { ...baseline.actorMeta, ...actorMeta };
 
     // Major cities (reference coordinates for the map backdrop)
     const cities = [
@@ -421,7 +425,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         cyberThreats: cyberThreatsData,
         conflictRelationships: geopoliticalRelationships,
         cities,
-        actorMeta,
+        actorMeta: resolvedActorMeta,
         maritimeLanes,
         vessels: vesselsData,
         flights: flightsData,
