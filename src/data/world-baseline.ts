@@ -132,6 +132,8 @@ const actorMeta: Record<string, ActorMeta> = {
   donbas: meta('Eastern Ukraine', '--danger', [200, 80, 80], NEUTRAL, 'neutral'),
   south_china_sea: meta('South China Sea', '--t2', [150, 170, 200], NEUTRAL, 'neutral'),
   taiwan_strait: meta('Taiwan Strait', '--t2', [150, 170, 200], NEUTRAL, 'neutral'),
+  natural: meta('Natural Hazard', '--warning', [236, 120, 40], NEUTRAL, 'natural'),
+  unrest: meta('Unrest', '--warning', [236, 154, 60], NEUTRAL, 'protests'),
   unknown: meta('Unknown', '--t3', [143, 153, 168], NEUTRAL, 'neutral'),
 };
 

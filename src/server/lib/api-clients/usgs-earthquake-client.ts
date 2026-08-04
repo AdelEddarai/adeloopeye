@@ -3,8 +3,8 @@
  * Real-time seismic events from the USGS Earthquake Hazards feed (FREE, no API key)
  * https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php
  *
- * Filtered to Morocco and surrounding region (includes Alboran Sea, northern
- * Atlantic, and western Algeria where tremors are often felt in Morocco).
+ * Provides both a Morocco-scoped view (used by the Morocco intel pipeline) and
+ * a global view (used by the worldwide crisis desk).
  */
 
 export type MoroccoEarthquake = {
@@ -47,13 +47,14 @@ function inMoroccoBBox(lng: number, lat: number): boolean {
   return lng >= MOROCCO_BBOX[0] && lng <= MOROCCO_BBOX[2] && lat >= MOROCCO_BBOX[1] && lat <= MOROCCO_BBOX[3];
 }
 
-function mapQuake(feature: any): MoroccoEarthquake | null {
+function mapQuake(feature: any, opts: { global?: boolean } = {}): MoroccoEarthquake | null {
   try {
     const coords = feature?.geometry?.coordinates;
     if (!coords || coords.length < 2) return null;
     const lng = Number(coords[0]);
     const lat = Number(coords[1]);
-    if (isNaN(lng) || isNaN(lat) || !inMoroccoBBox(lng, lat)) return null;
+    if (isNaN(lng) || isNaN(lat)) return null;
+    if (!opts.global && !inMoroccoBBox(lng, lat)) return null;
 
     const p = feature.properties || {};
     const mag = Number(p.mag) || 0;
@@ -76,18 +77,22 @@ function mapQuake(feature: any): MoroccoEarthquake | null {
   }
 }
 
+async function fetchFeed(timeoutMs: number): Promise<any> {
+  const res = await fetch(FEED_URL, {
+    headers: { 'User-Agent': 'AdeloopMoroccoIntel/1.0', 'Accept': 'application/json' },
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`USGS feed error: ${res.status}`);
+  return res.json();
+}
+
 class UsgsEarthquakeClient {
   /**
    * Recent earthquakes (last 24h, all magnitudes) within the Morocco region
    */
   async getMoroccoEarthquakes(timeoutMs: number = 6000): Promise<MoroccoEarthquake[]> {
-    const res = await fetch(FEED_URL, {
-      headers: { 'User-Agent': 'AdeloopMoroccoIntel/1.0' },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) throw new Error(`USGS feed error: ${res.status}`);
-
-    const json = await res.json();
+    const json = await fetchFeed(timeoutMs);
     const quakes: MoroccoEarthquake[] = [];
     for (const feature of json?.features || []) {
       const q = mapQuake(feature);
@@ -98,6 +103,23 @@ class UsgsEarthquakeClient {
       .filter(q => q.magnitude >= 2.0)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 100);
+  }
+
+  /**
+   * Recent significant earthquakes globally (last 24h, mag >= 4.5) for the crisis desk.
+   */
+  async getGlobalEarthquakes(minMagnitude: number = 4.5, timeoutMs: number = 6000): Promise<MoroccoEarthquake[]> {
+    const json = await fetchFeed(timeoutMs);
+    const quakes: MoroccoEarthquake[] = [];
+    for (const feature of json?.features || []) {
+      const q = mapQuake(feature, { global: true });
+      if (q) quakes.push(q);
+    }
+
+    return quakes
+      .filter(q => q.magnitude >= minMagnitude)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 60);
   }
 
   /**
@@ -118,6 +140,7 @@ class UsgsEarthquakeClient {
 
     const res = await fetch(url.toString(), {
       headers: { 'User-Agent': 'AdeloopMoroccoIntel/1.0' },
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) throw new Error(`USGS query error: ${res.status}`);

@@ -101,6 +101,66 @@ class EonetClient {
 
     return disasters.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
+
+  /**
+   * Open (active) natural disasters worldwide (no bbox) for the global crisis desk.
+   */
+  async getGlobalDisasters(timeoutMs: number = 6000): Promise<MoroccoDisaster[]> {
+    const url = new URL(EONET_URL);
+    url.searchParams.set('status', 'open');
+    url.searchParams.set('limit', '100');
+
+    const res = await fetch(url.toString(), {
+      headers: { 'User-Agent': 'AdeloopMoroccoIntel/1.0', 'Accept': 'application/json' },
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`EONET error: ${res.status}`);
+
+    const json = await res.json();
+    const disasters: MoroccoDisaster[] = [];
+
+    for (const event of json?.events || []) {
+      try {
+        const geometry = event.geometry && event.geometry[0];
+        if (!geometry) continue;
+
+        let lng = NaN;
+        let lat = NaN;
+        if (geometry.type === 'Point' && geometry.coordinates) {
+          lng = Number(geometry.coordinates[0]);
+          lat = Number(geometry.coordinates[1]);
+        } else if (geometry.type === 'Polygon' && geometry.coordinates && geometry.coordinates[0]) {
+          const pts = geometry.coordinates[0];
+          lng = pts.reduce((s: number, p: number[]) => s + Number(p[0]), 0) / pts.length;
+          lat = pts.reduce((s: number, p: number[]) => s + Number(p[1]), 0) / pts.length;
+        }
+        if (isNaN(lng) || isNaN(lat)) continue;
+
+        const category = event.categories && event.categories[0]
+          ? event.categories[0].title
+          : 'Natural Event';
+
+        disasters.push({
+          id: event.id || `eonet-${Date.now()}-${Math.random()}`,
+          title: event.title || 'Untitled event',
+          description: event.description || '',
+          category,
+          position: [lng, lat],
+          timestamp: geometry.date || new Date().toISOString(),
+          closed: !!event.closed,
+          sources: (event.sources || []).map((s: any) => ({ id: s.id, url: s.url })),
+          url: event.link || '',
+          magnitudeValue: geometry.magnitudeValue,
+          magnitudeUnit: geometry.magnitudeUnit,
+        });
+      } catch {
+        // skip malformed event
+      }
+    }
+
+    return disasters.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
 }
 
 export const eonetClient = new EonetClient();

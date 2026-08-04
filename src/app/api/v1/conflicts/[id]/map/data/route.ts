@@ -10,6 +10,7 @@ import { transformFlightsToMapFeatures, transformNewsToHeatPoints, transformNews
 
 import type { MaritimeLane, MaritimeVessel } from '@/data/map-data';
 import { WORLD_BASELINE } from '@/data/world-baseline';
+import { gatherCrisisDeskData, disasterToTarget, disasterToHeat } from '@/server/lib/crisis-desk';
 
 // ─── Known conflict actor positions ──────────────────────
 
@@ -339,30 +340,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const NEWS_QUERY = '(iran OR israel OR gaza OR ukraine OR russia OR china OR taiwan OR syria OR yemen) (attack OR strike OR missile OR drone OR war OR ceasefire OR sanction OR trade OR energy OR conflict)';
 
-    const [articles, cyberThreats, vesselsSnap, flightsSnap] = await Promise.allSettled([
+    const [articles, cyberThreats, vesselsSnap, flightsSnap, crisisDesk] = await Promise.allSettled([
       multiNewsClient.searchNews(NEWS_QUERY, 100, 'en'),
       fetchCyberThreats(),
       fetchDatalasticVesselsSnapshot().catch(err => { console.error('[Map Data] Maritime AIS failed:', err instanceof Error ? err.message : err); return []; }),
       adsbfiClient.getGlobalFlights().catch(err => { console.error('[Map Data] ADSB flights failed:', err instanceof Error ? err.message : err); return []; }),
+      gatherCrisisDeskData().catch(err => { console.error('[Map Data] Crisis desk failed:', err instanceof Error ? err.message : err); return { disasters: [], unrestHeat: [], travelAdvisoryZones: [] }; }),
     ]);
 
     const articlesData = articles.status === 'fulfilled' ? articles.value : [];
     const cyberThreatsData = cyberThreats.status === 'fulfilled' ? cyberThreats.value : [];
     const vesselsData = vesselsSnap.status === 'fulfilled' ? vesselsSnap.value : [];
     const flightsData = flightsSnap.status === 'fulfilled' ? flightsSnap.value : [];
+    const crisisData = crisisDesk.status === 'fulfilled' ? crisisDesk.value : { disasters: [], unrestHeat: [], travelAdvisoryZones: [] };
 
-    console.log(`[Map Data] Got ${articlesData.length} articles, ${cyberThreatsData.length} threats, ${vesselsData.length} vessels, ${flightsData.length} flights`);
+    console.log(`[Map Data] Got ${articlesData.length} articles, ${cyberThreatsData.length} threats, ${vesselsData.length} vessels, ${flightsData.length} flights, ${crisisData.disasters.length} disasters, ${crisisData.unrestHeat.length} unrest areas, ${crisisData.travelAdvisoryZones.length} advisory zones`);
 
     // Always-on world baseline (seeded) + live newswire data merged on top.
     const baseline = WORLD_BASELINE;
-    const heatPoints = dedupeById([...baseline.heatPoints, ...transformNewsToHeatPoints(articlesData)]);
-    const criticalEvents = dedupeById([...baseline.targets, ...transformNewsToCriticalEvents(articlesData)]);
+    const crisisTargets = crisisData.disasters.map(disasterToTarget);
+    const crisisHeat = crisisData.disasters.map(disasterToHeat);
+    const heatPoints = dedupeById([...baseline.heatPoints, ...crisisHeat, ...crisisData.unrestHeat, ...transformNewsToHeatPoints(articlesData)]);
+    const criticalEvents = dedupeById([...baseline.targets, ...transformNewsToCriticalEvents(articlesData), ...crisisTargets]);
     const geopoliticalRelationships = dedupeById([...baseline.conflictRelationships, ...analyzeGeopoliticalRelationships(articlesData)]);
 
     // Generate Palantir-like OSINT features from real data
     const strikeArcs = dedupeById([...baseline.strikeArcs, ...generateStrikeArcs(articlesData)]);
     const missileTracks = dedupeById([...baseline.missileTracks, ...generateMissileTracks(articlesData)]);
-    const threatZones = dedupeById([...baseline.threatZones, ...generateThreatZones(articlesData)]);
+    const threatZones = dedupeById([...baseline.threatZones, ...crisisData.travelAdvisoryZones, ...generateThreatZones(articlesData)]);
     const assets = dedupeById([...baseline.assets, ...generateAssets(articlesData)]);
     const maritimeLanes = generateMaritimeLanes(vesselsData, baseline.maritimeLanes);
     const logisticsCrises = generateLogisticsCrisisIndicators(articlesData);
