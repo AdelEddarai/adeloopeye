@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { loadCesium } from '@/shared/lib/cesium-loader';
 import type { 
   MoroccoEvent, 
   MoroccoConnection, 
@@ -291,7 +292,7 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
     let handler: any = null;
     let isActive = true;
 
-    import('cesium').then(Cesium => {
+    loadCesium().then(Cesium => {
       if (!isActive || viewer.isDestroyed()) return;
       
       handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
@@ -385,7 +386,7 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
 
     const setupData = async () => {
       try {
-        const Cesium = await import('cesium');
+        const Cesium = await loadCesium();
         
         // STRICT CHECK: If component unmounted or viewer destroyed during download, halt!
         if (!isActive || !viewer || viewer.isDestroyed()) return;

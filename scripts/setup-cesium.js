@@ -32,6 +32,14 @@ itemsToCopy.forEach(item => {
   }
 });
 
+// Copy the main Cesium.js bundle (loaded as a global script at runtime,
+// not bundled by webpack, to avoid production minification issues)
+const mainBundle = path.join(cesiumSource, 'Cesium.js');
+if (fs.existsSync(mainBundle)) {
+  fs.copyFileSync(mainBundle, path.join(cesiumDest, 'Cesium.js'));
+  console.log('✓ Copied Cesium.js');
+}
+
 console.log('\n✅ Cesium assets copied successfully!');
 console.log('You can now run: npm run dev');
 

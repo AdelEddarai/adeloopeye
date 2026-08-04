@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import 'cesium/Build/Cesium/Widgets/widgets.css';
+import { loadCesium } from '@/shared/lib/cesium-loader';
 
 // Add CSS injection to strip Cesium bottom credits
 if (typeof document !== 'undefined') {
@@ -25,7 +25,7 @@ export function useCesiumMapBase() {
       
       try {
         // 2. Yield thread to download massive WebGL library
-        const Cesium = await import('cesium');
+        const Cesium = await loadCesium();
         
         // 3. STRICT CHECK: Did the component unmount while we were downloading?
         if (!isMounted || !cesiumContainer.current) return;
