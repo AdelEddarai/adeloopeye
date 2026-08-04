@@ -30,9 +30,10 @@ const PHASE2_BUDGET_MS = 3500; // Weather + fires + routes + quakes + disasters
 const GDELT_BUDGET_MS = 8000; // GDELT real-time conflict coverage (latency varies)
 const TOTAL_BUDGET_MS = 9500; // Safety net — should never fire (streams run concurrently)
 
-// In-memory cache: the client polls every 60s, so serving fresh cache is instant
-// and only the cold/expired call pays the external-API cost.
-const CACHE_TTL_MS = 60 * 1000;
+// In-memory cache: the client polls every 60s. We keep the TTL longer than the
+// poll so the payload the client sees is STABLE (events don't vanish on every
+// refresh when a sparse cold fetch replaces the previous, fuller set).
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map<string, { data: any; fetchedAt: number }>();
 
 function emptyPayload(error?: string) {
@@ -81,19 +82,24 @@ export async function GET(req: NextRequest) {
   // Serve fresh cache instantly
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return ok(cached.data, { headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' } });
+    return ok(cached.data, { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } });
   }
 
   const payload = await withDeadline(collect(), TOTAL_BUDGET_MS, () => emptyPayload('Timeout'));
 
+  // Never replace a good cached payload with a sparse one — keep the richer set
+  // so visible events don't vanish on a transiently-empty refresh.
+  const hasGoodCache = !!cached && (cached.data.events?.length || 0) > (payload.events?.length || 0);
+  const served = hasGoodCache ? cached.data : payload;
+
   // Never cache empty results (so a transient failure recovers on the next poll)
-  if (payload.events.length > 0 || payload.weather.length > 0 || payload.earthquakes.length > 0) {
-    cache.set(cacheKey, { data: payload, fetchedAt: Date.now() });
+  if (served.events.length > 0 || served.weather.length > 0 || served.earthquakes.length > 0) {
+    cache.set(cacheKey, { data: served, fetchedAt: Date.now() });
   }
 
-  return ok(payload, {
+  return ok(served, {
     headers: {
-      'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
     },
   });
 }
