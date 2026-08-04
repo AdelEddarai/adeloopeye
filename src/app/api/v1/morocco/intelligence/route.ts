@@ -14,10 +14,14 @@ import { withDeadline, rejectedResults } from '@/server/lib/route-deadline';
 // Netlify/serverless functions kill slow invocations (default 10s, max 26s).
 // The heavy external fetching below MUST complete well inside that window,
 // otherwise the platform returns a 502 and the dashboard/map show nothing.
-// These budgets keep the whole route under ~8.5s of wall-clock time.
-const PHASE1_BUDGET_MS = 5200; // RSS + news APIs + Telegram
-const PHASE2_BUDGET_MS = 3000; // Weather + fires + routes + quakes + disasters
-const TOTAL_BUDGET_MS = 8500; // Absolute ceiling including analysis
+//
+// Phase 1 (news/RSS/Telegram) and Phase 2 (live sensors) run CONCURRENTLY, so
+// total wall-clock time is bounded by the slower phase (~6s), well under the
+// ~10s serverless limit. The phase budgets below are generous enough that the
+// reliable keyless sources (USGS, EONET, Open-Meteo) almost never hit them.
+const PHASE1_BUDGET_MS = 6000; // RSS + news APIs + Telegram
+const PHASE2_BUDGET_MS = 3500; // Weather + fires + routes + quakes + disasters
+const TOTAL_BUDGET_MS = 9500; // Safety net — should never fire (phases run concurrently)
 
 // In-memory cache: the client polls every 60s, so serving fresh cache is instant
 // and only the cold/expired call pays the external-API cost.
@@ -88,12 +92,13 @@ async function collect() {
   console.log('[Morocco Intel] Fetching comprehensive Morocco intelligence...');
   console.log('[Morocco Intel] ========================================');
 
-  const [rssResult, apiResult, telegramResult] = await withDeadline(
+  // ---- Phase 1: News + Telegram (slow, best-effort, requires external feeds) ----
+  const newsPhase = withDeadline(
     Promise.allSettled([
       // Strategy 1: Fetch from Moroccan RSS feeds (primary source)
       (async () => {
         console.log('[Morocco Intel] 📰 Strategy 1: Fetching from Moroccan RSS feeds...');
-        const articles = await fetchMoroccanRSSNews(4000); // 4s timeout, was 8s
+        const articles = await fetchMoroccanRSSNews(4000); // 4s timeout
         return articles.map(convertRSSToNewsArticle);
       })(),
 
@@ -136,30 +141,18 @@ async function collect() {
     () => rejectedResults(3)
   );
 
-  const rssConverted = rssResult?.status === 'fulfilled' ? rssResult.value : [];
-  const apiArticles = apiResult?.status === 'fulfilled' ? apiResult.value : [];
-  const telegramData = telegramResult?.status === 'fulfilled' ? telegramResult.value : { events: [], channels: { monitored: 0, active: 0 } };
-
-  // Combine all sources
-  const allArticles = [...rssConverted, ...apiArticles];
-
-  // Remove duplicates by URL
-  const uniqueArticles = Array.from(
-    new Map(allArticles.map(article => [article.url, article])).values()
-  );
-
-  console.log(`[Morocco Intel] 📊 Combined total: ${uniqueArticles.length} unique articles (${rssConverted.length} from RSS, ${apiArticles.length} from APIs)`);
-
-  // Now fetch local data, routes, earthquakes, and disasters (bounded)
-  const [localDataFinal, routesFinal, earthquakesFinal, disastersFinal] = await withDeadline(
+  // ---- Phase 2: Live sensors + weather + routes — runs CONCURRENTLY with news.
+  // These sources are keyless, reliable and fast, so even if every news feed
+  // fails the dashboard still renders with real data. ----
+  const sensorPhase = withDeadline(
     Promise.allSettled([
       (async () => {
         console.log('[Morocco Intel] 🌍 Strategy 3: Fetching local data sources...');
-        return await fetchAllMoroccoLocalData(uniqueArticles);
+        return await fetchAllMoroccoLocalData([]);
       })(),
       (async () => {
-        console.log('[Morocco Intel] 🛣️  Strategy 5: Analyzing routes and logistics...');
-        return await fetchMoroccoRoutes(uniqueArticles);
+        console.log('[Morocco Intel] 🛣️  Strategy 5: Building route network...');
+        return await fetchMoroccoRoutes([]);
       })(),
       (async () => {
         console.log('[Morocco Intel] 🌍 Strategy 6: Fetching USGS earthquakes...');
@@ -174,10 +167,32 @@ async function collect() {
     () => rejectedResults(4)
   );
 
+  const [newsResults, sensorResults] = await Promise.all([newsPhase, sensorPhase]);
+
+  const [rssResult, apiResult, telegramResult] = newsResults;
+  const [localDataFinal, routesFinal, earthquakesFinal, disastersFinal] = sensorResults;
+
+  const rssConverted = rssResult?.status === 'fulfilled' ? rssResult.value : [];
+  const apiArticles = apiResult?.status === 'fulfilled' ? apiResult.value : [];
+  const telegramData = telegramResult?.status === 'fulfilled' ? telegramResult.value : { events: [], channels: { monitored: 0, active: 0 } };
+
+  // Combine all sources
+  const allArticles = [...rssConverted, ...apiArticles];
+
+  // Remove duplicates by URL
+  const uniqueArticles = Array.from(
+    new Map(allArticles.map(article => [article.url, article])).values()
+  );
+
+  console.log(`[Morocco Intel] 📊 Combined total: ${uniqueArticles.length} unique articles (${rssConverted.length} from RSS, ${apiArticles.length} from APIs)`);
+
   const localData = localDataFinal?.status === 'fulfilled' ? localDataFinal.value : { weather: [], traffic: [], commodities: [], fires: [] };
-  const routes = routesFinal?.status === 'fulfilled' ? routesFinal.value : [];
   const earthquakes = earthquakesFinal?.status === 'fulfilled' ? earthquakesFinal.value : [];
   const disasters = disastersFinal?.status === 'fulfilled' ? disastersFinal.value : [];
+
+  // Route network is pure local compute (~ms): re-run with news articles so
+  // any traffic/closure/weather incidents reported in the feeds are attached.
+  const routes = await fetchMoroccoRoutes(uniqueArticles);
 
   // Analyze intelligence from articles
   console.log('[Morocco Intel] 🔍 Analyzing intelligence from articles...');
@@ -196,7 +211,7 @@ async function collect() {
     ...buildEarthquakeEvents(earthquakes),
     ...buildDisasterEvents(disasters),
   ];
-  const fireEvents = baseEvents.length > 0 ? [] : buildFireEvents(fires);
+  const fireEvents = baseEvents.length > 0 ? [] : buildFireEvents(localData.fires);
   const allEvents = [...baseEvents, ...sensorEvents, ...fireEvents];
 
   console.log(`[Morocco Intel] ✅ Analysis complete:`);
