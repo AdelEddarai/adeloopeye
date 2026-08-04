@@ -259,7 +259,14 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     // Enhanced type mapping with icons and colors
     const typeConfig: Record<string, { color: string; icon: string; label: string }> = {
       'MILITARY_CONFLICT': { color: 'var(--danger)', icon: '⚔️', label: 'MILITARY CONFLICT' },
+      'WAR_ALERT': { color: 'var(--danger)', icon: '🔥', label: 'WAR ALERT' },
       'DIPLOMATIC_TENSION': { color: 'var(--warning)', icon: '🤝', label: 'DIPLOMATIC TENSION' },
+      'MILITARY_DEPLOYMENT': { color: 'var(--danger)', icon: '🎖️', label: 'MILITARY DEPLOYMENT' },
+      'BORDER_CLOSURE': { color: 'var(--danger)', icon: '🚧', label: 'BORDER CLOSURE' },
+      'LOGISTICS_CRISIS': { color: 'var(--warning)', icon: '⚠️', label: 'LOGISTICS CRISIS' },
+      'CEASEFIRE': { color: 'var(--success)', icon: '🕊️', label: 'CEASEFIRE' },
+      'DIPLOMATIC_AGREEMENT': { color: 'var(--success)', icon: '✍️', label: 'DIPLOMATIC AGREEMENT' },
+      'LOGISTICS_PLAN': { color: 'var(--teal)', icon: '🛤️', label: 'LOGISTICS PLAN' },
       'TRADE_ROUTE': { color: 'var(--info)', icon: '🚢', label: 'TRADE ROUTE' },
       'ALLIANCE': { color: 'var(--success)', icon: '🛡️', label: 'ALLIANCE' },
       'SUPPLY_CHAIN': { color: 'var(--cyber)', icon: '📦', label: 'SUPPLY CHAIN' },

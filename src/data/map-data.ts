@@ -132,7 +132,7 @@ export type ConflictRelationship = {
   sourcePosition: [number, number];
   targetPosition: [number, number];
   intensity:   number; // 1-10
-  type:        'MILITARY_CONFLICT' | 'TRADE_ROUTE' | 'ALLIANCE' | 'DIPLOMATIC_TENSION' | 'SUPPLY_CHAIN' | 'ENERGY_DEPENDENCY' | 'MIGRATION_FLOW' | 'ECONOMIC_PARTNERSHIP' | 'LOGISTICS_CRISIS';
+  type:        'MILITARY_CONFLICT' | 'WAR_ALERT' | 'DIPLOMATIC_TENSION' | 'MILITARY_DEPLOYMENT' | 'BORDER_CLOSURE' | 'LOGISTICS_CRISIS' | 'CEASEFIRE' | 'DIPLOMATIC_AGREEMENT' | 'LOGISTICS_PLAN' | 'TRADE_ROUTE' | 'ECONOMIC_PARTNERSHIP' | 'ALLIANCE' | 'SUPPLY_CHAIN' | 'ENERGY_DEPENDENCY' | 'MIGRATION_FLOW';
   description: string;
   timestamp:   string;
   articles:    string[];

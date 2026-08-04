@@ -538,8 +538,14 @@ export function useMapLayers({
       switch (type) {
         case 'MILITARY_CONFLICT':
           return isSource ? [255, 60, 60, alpha] : [255, 120, 120, alphaTarget]; // Bright red for conflicts
+        case 'WAR_ALERT':
+          return isSource ? [255, 40, 40, alpha] : [255, 80, 80, alphaTarget]; // Crimson pulsing for coming war
         case 'DIPLOMATIC_TENSION':
           return isSource ? [255, 180, 0, alpha] : [255, 200, 80, alphaTarget]; // Orange for tensions
+        case 'MILITARY_DEPLOYMENT':
+          return isSource ? [255, 90, 90, alpha] : [255, 150, 150, alphaTarget]; // Red for deployments
+        case 'BORDER_CLOSURE':
+          return isSource ? [180, 50, 50, alpha] : [220, 100, 100, alphaTarget]; // Dark red for closures
         case 'TRADE_ROUTE':
           return isSource ? [80, 160, 220, alpha] : [120, 180, 240, alphaTarget]; // Subtle blue for trade
         case 'ALLIANCE':
@@ -554,6 +560,12 @@ export function useMapLayers({
           return isSource ? [40, 160, 120, alpha] : [80, 180, 140, alphaTarget]; // Teal for economics
         case 'LOGISTICS_CRISIS':
           return isSource ? [255, 100, 0, alpha] : [255, 150, 50, alphaTarget]; // Orange-red for logistics
+        case 'LOGISTICS_PLAN':
+          return isSource ? [50, 220, 180, alpha] : [100, 240, 210, alphaTarget]; // Cyan-green for new plans
+        case 'CEASEFIRE':
+          return isSource ? [80, 220, 80, alpha] : [140, 240, 140, alphaTarget]; // Bright green for ceasefire
+        case 'DIPLOMATIC_AGREEMENT':
+          return isSource ? [140, 220, 120, alpha] : [180, 240, 160, alphaTarget]; // Soft green for deals
         default:
           return isSource ? [120, 120, 120, alpha] : [160, 160, 160, alphaTarget]; // Gray default
       }
@@ -567,8 +579,8 @@ export function useMapLayers({
       getTargetPosition: (d: any): [number, number] => d.targetPosition,
       getSourceColor: (d: any): RGBA => {
         const baseColor = getRelationshipColor(d.type, true);
-        // Add pulsing effect ONLY for military conflicts
-        if (d.type === 'MILITARY_CONFLICT') {
+        // Add pulsing effect for military conflicts, war alerts and deployments
+        if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
           const pulse = Math.sin(pulseTime * 1.5) * 0.2 + 0.8;
           return [baseColor[0], baseColor[1], baseColor[2], Math.floor(baseColor[3] * pulse)];
         }
@@ -577,7 +589,7 @@ export function useMapLayers({
       getTargetColor: (d: any): RGBA => {
         const baseColor = getRelationshipColor(d.type, false);
         // Add pulsing effect ONLY for military conflicts
-        if (d.type === 'MILITARY_CONFLICT') {
+        if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
           const pulse = Math.sin(pulseTime * 1.5 + Math.PI) * 0.2 + 0.8;
           return [baseColor[0], baseColor[1], baseColor[2], Math.floor(baseColor[3] * pulse)];
         }
@@ -588,17 +600,17 @@ export function useMapLayers({
         if (d.type === 'TRADE_ROUTE' || d.type === 'ECONOMIC_PARTNERSHIP') {
           return 1.5; // Very thin for trade
         }
-        if (d.type === 'ENERGY_DEPENDENCY') {
-          return 2.0; // Slightly thicker for energy
+        if (d.type === 'ENERGY_DEPENDENCY' || d.type === 'SUPPLY_CHAIN' || d.type === 'MIGRATION_FLOW') {
+          return 2.0; // Slightly thicker for energy/supply/migration
         }
-        if (d.type === 'LOGISTICS_CRISIS') {
-          return 2.5; // Medium-thick for logistics crises
+        if (['LOGISTICS_CRISIS', 'LOGISTICS_PLAN'].includes(d.type)) {
+          return 2.5; // Medium-thick for logistics
         }
-        if (d.type === 'ALLIANCE') {
-          return 2.5; // Medium for alliances
+        if (d.type === 'ALLIANCE' || d.type === 'CEASEFIRE' || d.type === 'DIPLOMATIC_AGREEMENT') {
+          return 2.5; // Medium for alliances & deals
         }
-        if (d.type === 'MILITARY_CONFLICT') {
-          // Subtle pulsing width for conflicts only
+        if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
+          // Subtle pulsing width for active/threatened conflicts only
           const pulse = Math.sin(pulseTime * 1.5) * 0.3 + 1;
           return 3.0 * pulse; // Thickest for conflicts
         }
@@ -606,19 +618,16 @@ export function useMapLayers({
       },
       getHeight: (d: any): number => {
         // COMPLETELY FLAT for trade and shipping - NO 3D arc
-        if (d.type === 'TRADE_ROUTE' || d.type === 'ECONOMIC_PARTNERSHIP') {
+        if (['TRADE_ROUTE', 'ECONOMIC_PARTNERSHIP', 'ENERGY_DEPENDENCY', 'MIGRATION_FLOW', 'SUPPLY_CHAIN'].includes(d.type)) {
           return 0; // ZERO height = completely flat line
         }
-        if (d.type === 'ENERGY_DEPENDENCY') {
-          return 0; // ZERO height = completely flat line
-        }
-        if (d.type === 'LOGISTICS_CRISIS') {
+        if (['LOGISTICS_CRISIS', 'LOGISTICS_PLAN'].includes(d.type)) {
           return 0.05; // Nearly flat for logistics
         }
-        if (d.type === 'ALLIANCE') {
-          return 0.05; // Nearly flat for alliances
+        if (['ALLIANCE', 'CEASEFIRE', 'DIPLOMATIC_AGREEMENT', 'DIPLOMATIC_TENSION'].includes(d.type)) {
+          return 0.05; // Nearly flat for alliances/deals
         }
-        if (d.type === 'MILITARY_CONFLICT') {
+        if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
           return 0.15; // Higher arc for conflicts (drama)
         }
         return 0.05; // Default subtle curve
@@ -634,10 +643,12 @@ export function useMapLayers({
       },
     });
 
-    // REFINED: Subtle glow effect only for conflicts and energy
+    // REFINED: Subtle glow effect for active/threatened conflicts and energy
     const relationshipGlowLayer = relationships.length > 0 && new ArcLayer<any>({
       id: 'relationship-glow',
-      data: relationships.filter((d: any) => ['MILITARY_CONFLICT', 'ENERGY_DEPENDENCY'].includes(d.type)),
+      data: relationships.filter((d: any) =>
+        ['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE', 'LOGISTICS_CRISIS', 'ENERGY_DEPENDENCY'].includes(d.type),
+      ),
       getSourcePosition: (d: any): [number, number] => d.sourcePosition,
       getTargetPosition: (d: any): [number, number] => d.targetPosition,
       getSourceColor: (d: any): RGBA => {
@@ -649,17 +660,17 @@ export function useMapLayers({
         return [r, g, b, 20]; // Very subtle
       },
       getWidth: (d: any): number => {
-        if (d.type === 'MILITARY_CONFLICT') {
+        if (['MILITARY_CONFLICT', 'WAR_ALERT'].includes(d.type)) {
           return 6; // Wider glow for conflicts
         }
-        return 4; // Subtle glow for energy
+        return 4; // Subtle glow for others
       },
       getHeight: (d: any): number => {
         // Match main layer heights
-        if (d.type === 'ENERGY_DEPENDENCY') {
+        if (['ENERGY_DEPENDENCY', 'LOGISTICS_CRISIS', 'LOGISTICS_PLAN'].includes(d.type)) {
           return 0; // Completely flat
         }
-        if (d.type === 'MILITARY_CONFLICT') {
+        if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
           return 0.15;
         }
         return 0.05;
@@ -702,6 +713,74 @@ export function useMapLayers({
       backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
       billboard: true,
       pickable: true,
+    });
+
+    // Logistics crises - pulsing danger markers at disrupted hubs
+    const logisticsCrises = (filtered as any).logisticsCrises || [];
+    const logisticsCrisisLayer = logisticsCrises.length > 0 && new IconLayer<any>({
+      id: 'logistics-crises',
+      data: logisticsCrises,
+      getPosition: (d: any): [number, number] => d.position,
+      getIcon: () => 'crisis',
+      getSize: 44,
+      getColor: (d: any): RGBA => {
+        const isCritical = d.severity === 'CRITICAL';
+        if (isCritical) {
+          const pulse = Math.sin(pulseTime * 1.5) * 0.2 + 0.8;
+          return [255, 100, 0, Math.floor(230 * pulse)];
+        }
+        return [255, 160, 60, 210];
+      },
+      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
+        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+          <g id="crisis">
+            <path d="M64 10 L118 108 L10 108 Z" fill="currentColor" opacity="0.35" stroke="currentColor" stroke-width="3"/>
+            <path d="M64 45 L72 85 L56 85 Z" fill="currentColor"/>
+            <rect x="61" y="52" width="6" height="20" fill="white"/>
+            <rect x="61" y="76" width="6" height="4" fill="white"/>
+          </g>
+        </svg>
+      `),
+      iconMapping: {
+        crisis: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+      },
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: {
+        getColor: [pulseTime],
+      },
+    });
+
+    // Investment flows - teal markers at economic hubs
+    const investmentFlows = (filtered as any).investmentFlows || [];
+    const investmentFlowLayer = investmentFlows.length > 0 && new IconLayer<any>({
+      id: 'investment-flows',
+      data: investmentFlows,
+      getPosition: (d: any): [number, number] => d.position,
+      getIcon: () => 'invest',
+      getSize: 36,
+      getColor: (d: any): RGBA => {
+        if (d.type === 'AID') return [40, 200, 160, 230];
+        if (d.type === 'INFRASTRUCTURE') return [60, 190, 220, 230];
+        if (d.type === 'TRADE_DEAL') return [80, 200, 120, 230];
+        return [40, 160, 120, 210];
+      },
+      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
+        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+          <g id="invest">
+            <path d="M64 18 L96 52 L78 52 L78 96 L50 96 L50 52 L32 52 Z" fill="currentColor" opacity="0.85"/>
+            <rect x="42" y="20" width="44" height="6" rx="3" fill="white"/>
+          </g>
+        </svg>
+      `),
+      iconMapping: {
+        invest: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+      },
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: {
+        getColor: [],
+      },
     });
 
     // City markers - clickable for weather
@@ -899,6 +978,8 @@ export function useMapLayers({
       relationshipGlowLayer,
       relationshipLayer,
       relationshipLabels,
+      logisticsCrisisLayer,
+      investmentFlowLayer,
       cityLayer,
       targetLabels,
       assetLabels,

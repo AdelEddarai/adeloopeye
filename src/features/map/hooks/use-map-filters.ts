@@ -28,18 +28,23 @@ export type { FilteredData, FilterFacets,FilterState };
 
 // Dataset names
 
-export type DatasetName = 'strikes' | 'missiles' | 'targets' | 'assets' | 'zones' | 'conflictRelationships';
+export type DatasetName = 'strikes' | 'missiles' | 'targets' | 'assets' | 'zones' | 'conflictRelationships' | 'logisticsCrises' | 'investmentFlows';
 
-export const ALL_DATASETS: DatasetName[] = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships'];
+export const ALL_DATASETS: DatasetName[] = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships', 'logisticsCrises', 'investmentFlows'];
 
 export const DATASET_LABEL: Record<DatasetName, string> = {
-  strikes: 'STRIKES', missiles: 'MISSILES', targets: 'TARGETS', assets: 'ASSETS', zones: 'ZONES', conflictRelationships: 'RELATIONSHIPS',
+  strikes: 'STRIKES', missiles: 'MISSILES', targets: 'TARGETS', assets: 'ASSETS', zones: 'ZONES', conflictRelationships: 'RELATIONS', logisticsCrises: 'LOGISTICS', investmentFlows: 'INVESTMENT',
 };
 
 function buildFingerprint(rawData: DataArrays): string {
   let minTs = Number.POSITIVE_INFINITY;
   let maxTs = Number.NEGATIVE_INFINITY;
-  for (const entry of [...rawData.strikes, ...rawData.missiles, ...rawData.targets, ...rawData.assets, ...rawData.zones, ...(rawData.conflictRelationships ?? [])]) {
+  for (const entry of [
+    ...rawData.strikes, ...rawData.missiles, ...rawData.targets, ...rawData.assets, ...rawData.zones,
+    ...(rawData.conflictRelationships ?? []),
+    ...(rawData.logisticsCrises ?? []),
+    ...(rawData.investmentFlows ?? []),
+  ]) {
     if (!entry.timestamp) continue;
     const ts = new Date(entry.timestamp).getTime();
     if (!Number.isFinite(ts)) continue;
@@ -57,6 +62,9 @@ function buildFingerprint(rawData: DataArrays): string {
     rawData.heat.length,
     rawData.maritimeLanes?.length ?? 0,
     rawData.vessels?.length ?? 0,
+    rawData.conflictRelationships?.length ?? 0,
+    rawData.logisticsCrises?.length ?? 0,
+    rawData.investmentFlows?.length ?? 0,
     stableMin,
     stableMax,
   ].join('|');
@@ -75,6 +83,8 @@ const EMPTY_RESULT: { filtered: FilteredData; facets: FilterFacets } = {
     maritimeLanes: [],
     vessels: [],
     conflictRelationships: [],
+    logisticsCrises: [],
+    investmentFlows: [],
   },
   facets:   { datasets: [], perDataset: {}, totalVisible: 0, totalAll: 0 },
 };
@@ -168,7 +178,14 @@ export function useMapFilters(enabled: boolean = true): UseMapFiltersReturn {
     if (!rawData) return {} as Record<string, string[]>;
     const map: Record<string, string[]> = {};
     for (const key of ALL_DATASETS) {
-      const items = key === 'zones' ? rawData.zones : key === 'conflictRelationships' ? (rawData.conflictRelationships ?? []) : rawData[key] as Array<{ type: string }>;
+      let items: Array<{ type: string }>;
+      switch (key) {
+        case 'zones': items = rawData.zones; break;
+        case 'conflictRelationships': items = rawData.conflictRelationships ?? []; break;
+        case 'logisticsCrises': items = (rawData.logisticsCrises ?? []).map(c => ({ type: 'LOGISTICS_CRISIS' })); break;
+        case 'investmentFlows': items = (rawData.investmentFlows ?? []).map(f => ({ type: 'INVESTMENT_FLOW' })); break;
+        default: items = rawData[key] as Array<{ type: string }>; break;
+      }
       if (items) map[key] = [...new Set(items.map(i => i.type))];
     }
     return map;

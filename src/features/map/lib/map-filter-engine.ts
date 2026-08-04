@@ -91,8 +91,18 @@ function datasetItems(data: DataArrays, key: string): DataItem[] {
     case 'targets':  return data.targets;
     case 'assets':   return data.assets;
     case 'zones':    return data.zones as unknown as DataItem[];
-    case 'logisticsCrises': return (data.logisticsCrises ?? []).map(c => ({ ...c, type: 'LOGISTICS_CRISIS' }));
-    case 'investmentFlows': return (data.investmentFlows ?? []).map(f => ({ ...f, type: 'INVESTMENT_FLOW' }));
+    case 'logisticsCrises': return (data.logisticsCrises ?? []).map(c => ({
+      actor: c.actor,
+      priority: crisisPriority(c.severity),
+      type: 'LOGISTICS_CRISIS',
+      timestamp: c.timestamp,
+    }));
+    case 'investmentFlows': return (data.investmentFlows ?? []).map(f => ({
+      actor: f.actor,
+      priority: 'P2',
+      type: 'INVESTMENT_FLOW',
+      timestamp: f.timestamp,
+    }));
     case 'conflictRelationships': return (data.conflictRelationships ?? []).map(r => ({
       actor: r.sourceCountry,
       priority: r.intensity >= 7 ? 'P1' : r.intensity >= 4 ? 'P2' : 'P3',
@@ -101,6 +111,10 @@ function datasetItems(data: DataArrays, key: string): DataItem[] {
     }));
     default:         return [];
   }
+}
+
+function crisisPriority(severity?: string): string {
+  return severity === 'CRITICAL' ? 'P1' : severity === 'HIGH' ? 'P2' : 'P3';
 }
 
 function actorMeta(key: string, meta: Record<string, ActorMeta>) {
@@ -136,7 +150,7 @@ export function extractInitialState(data: DataArrays): FilterState {
 export function extractTimeExtent(data: DataArrays): [number, number] {
   let min = Infinity;
   let max = -Infinity;
-  for (const dk of ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships'] as const) {
+  for (const dk of ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships', 'logisticsCrises', 'investmentFlows'] as const) {
     for (const d of datasetItems(data, dk)) {
       if (!d.timestamp) continue;
       const t = new Date(d.timestamp).getTime();
@@ -195,6 +209,22 @@ export function applyFilters(
     cities: data.cities || [],
     maritimeLanes: data.maritimeLanes || [],
     vessels: data.vessels || [],
+    logisticsCrises: state.datasets.has('logisticsCrises')
+      ? (data.logisticsCrises ?? []).filter(c => passes({
+          actor: c.actor,
+          priority: crisisPriority(c.severity),
+          type: 'LOGISTICS_CRISIS',
+          timestamp: c.timestamp,
+        }))
+      : [],
+    investmentFlows: state.datasets.has('investmentFlows')
+      ? (data.investmentFlows ?? []).filter(f => passes({
+          actor: f.actor,
+          priority: 'P2',
+          type: 'INVESTMENT_FLOW',
+          timestamp: f.timestamp,
+        }))
+      : [],
   };
 
   let totalVisible = 0;

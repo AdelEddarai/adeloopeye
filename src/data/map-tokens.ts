@@ -62,6 +62,23 @@ export const TYPE_META: Record<string, { label: string; category: MarkerCategory
   PATROL:           { label: 'Patrol',           category: 'ZONE' },
   NFZ:              { label: 'NFZ',              category: 'ZONE' },
   THREAT_CORRIDOR:  { label: 'Threat Corridor',  category: 'ZONE' },
+  // Geopolitical relationship types (lines between countries)
+  MILITARY_CONFLICT:     { label: 'Military Conflict',     category: 'KINETIC' },
+  WAR_ALERT:             { label: 'War Alert',             category: 'KINETIC' },
+  DIPLOMATIC_TENSION:    { label: 'Diplomatic Tension',    category: 'INSTALLATION' },
+  MILITARY_DEPLOYMENT:   { label: 'Military Deployment',   category: 'INSTALLATION' },
+  BORDER_CLOSURE:        { label: 'Border Closure',        category: 'INSTALLATION' },
+  LOGISTICS_CRISIS:      { label: 'Logistics Crisis',      category: 'INSTALLATION' },
+  CEASEFIRE:             { label: 'Ceasefire',             category: 'INSTALLATION' },
+  DIPLOMATIC_AGREEMENT:  { label: 'Diplomatic Agreement',  category: 'INSTALLATION' },
+  LOGISTICS_PLAN:        { label: 'Logistics Plan',        category: 'INSTALLATION' },
+  TRADE_ROUTE:           { label: 'Trade Route',           category: 'INSTALLATION' },
+  ECONOMIC_PARTNERSHIP:  { label: 'Economic Partnership',  category: 'INSTALLATION' },
+  ALLIANCE:              { label: 'Alliance',              category: 'INSTALLATION' },
+  SUPPLY_CHAIN:          { label: 'Supply Chain',          category: 'INSTALLATION' },
+  ENERGY_DEPENDENCY:     { label: 'Energy Dependency',     category: 'INSTALLATION' },
+  MIGRATION_FLOW:        { label: 'Migration Flow',        category: 'INSTALLATION' },
+  INVESTMENT_FLOW:       { label: 'Investment Flow',       category: 'INSTALLATION' },
 };
 
 // Naval strikes use teal regardless of actor (visual convention: teal = maritime)
@@ -120,5 +137,8 @@ export const LAYER_DISPLAY: Record<string, LayerDisplayMeta> = {
   targets:  { color: 'var(--warning)', border: 'var(--warning)', bg: 'var(--warning-dim)'},
   assets:   { color: 'var(--teal)',    border: 'var(--teal)',    bg: 'var(--teal-dim)'  },
   zones:    { color: 'var(--gold)',    border: 'var(--gold)',    bg: 'var(--gold-dim)'  },
+  conflictRelationships: { color: 'var(--blue-l)', border: 'var(--blue)', bg: 'var(--blue-dim)' },
+  logisticsCrises: { color: 'var(--warning)', border: 'var(--warning)', bg: 'var(--warning-dim)' },
+  investmentFlows: { color: 'var(--teal)', border: 'var(--teal)', bg: 'var(--teal-dim)' },
   heat:     { color: 'var(--cyber)',   border: 'var(--cyber)',   bg: 'var(--cyber-dim)' },
 };
