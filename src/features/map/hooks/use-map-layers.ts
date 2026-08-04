@@ -552,6 +552,8 @@ export function useMapLayers({
           return isSource ? [120, 120, 200, alpha] : [160, 160, 220, alphaTarget]; // Light purple
         case 'ECONOMIC_PARTNERSHIP':
           return isSource ? [40, 160, 120, alpha] : [80, 180, 140, alphaTarget]; // Teal for economics
+        case 'LOGISTICS_CRISIS':
+          return isSource ? [255, 100, 0, alpha] : [255, 150, 50, alphaTarget]; // Orange-red for logistics
         default:
           return isSource ? [120, 120, 120, alpha] : [160, 160, 160, alphaTarget]; // Gray default
       }
@@ -589,6 +591,9 @@ export function useMapLayers({
         if (d.type === 'ENERGY_DEPENDENCY') {
           return 2.0; // Slightly thicker for energy
         }
+        if (d.type === 'LOGISTICS_CRISIS') {
+          return 2.5; // Medium-thick for logistics crises
+        }
         if (d.type === 'ALLIANCE') {
           return 2.5; // Medium for alliances
         }
@@ -606,6 +611,9 @@ export function useMapLayers({
         }
         if (d.type === 'ENERGY_DEPENDENCY') {
           return 0; // ZERO height = completely flat line
+        }
+        if (d.type === 'LOGISTICS_CRISIS') {
+          return 0.05; // Nearly flat for logistics
         }
         if (d.type === 'ALLIANCE') {
           return 0.05; // Nearly flat for alliances

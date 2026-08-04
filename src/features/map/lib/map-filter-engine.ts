@@ -78,10 +78,10 @@ type DataItem = { actor: string; priority: string; type: string; status?: string
 
 // Helpers
 
-const DATASET_KEYS = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'logisticsCrises', 'investmentFlows'] as const;
+const DATASET_KEYS = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'logisticsCrises', 'investmentFlows', 'conflictRelationships'] as const;
 
 const DATASET_LABELS: Record<string, string> = {
-  strikes: 'Strikes', missiles: 'Missiles', targets: 'Targets', assets: 'Assets', zones: 'Zones', logisticsCrises: 'Logistics Crises', investmentFlows: 'Investment Flows',
+  strikes: 'Strikes', missiles: 'Missiles', targets: 'Targets', assets: 'Assets', zones: 'Zones', logisticsCrises: 'Logistics Crises', investmentFlows: 'Investment Flows', conflictRelationships: 'Geopolitical Relations',
 };
 
 function datasetItems(data: DataArrays, key: string): DataItem[] {
@@ -93,6 +93,12 @@ function datasetItems(data: DataArrays, key: string): DataItem[] {
     case 'zones':    return data.zones as unknown as DataItem[];
     case 'logisticsCrises': return (data.logisticsCrises ?? []).map(c => ({ ...c, type: 'LOGISTICS_CRISIS' }));
     case 'investmentFlows': return (data.investmentFlows ?? []).map(f => ({ ...f, type: 'INVESTMENT_FLOW' }));
+    case 'conflictRelationships': return (data.conflictRelationships ?? []).map(r => ({
+      actor: r.sourceCountry,
+      priority: r.intensity >= 7 ? 'P1' : r.intensity >= 4 ? 'P2' : 'P3',
+      type: r.type,
+      timestamp: r.timestamp,
+    }));
     default:         return [];
   }
 }
@@ -130,7 +136,7 @@ export function extractInitialState(data: DataArrays): FilterState {
 export function extractTimeExtent(data: DataArrays): [number, number] {
   let min = Infinity;
   let max = -Infinity;
-  for (const dk of ['strikes', 'missiles', 'targets', 'assets', 'zones'] as const) {
+  for (const dk of ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships'] as const) {
     for (const d of datasetItems(data, dk)) {
       if (!d.timestamp) continue;
       const t = new Date(d.timestamp).getTime();
@@ -180,7 +186,12 @@ export function applyFilters(
     zones:    state.datasets.has('zones')    ? data.zones.filter(d => passes(d as unknown as DataItem)) : [],
     heat:     state.heat ? data.heat : [],
     cyberThreats: data.cyberThreats || [],
-    conflictRelationships: data.conflictRelationships || [],
+    conflictRelationships: state.datasets.has('conflictRelationships')
+      ? (data.conflictRelationships ?? []).filter(r => {
+          const item: DataItem = { actor: r.sourceCountry, priority: r.intensity >= 7 ? 'P1' : r.intensity >= 4 ? 'P2' : 'P3', type: r.type, timestamp: r.timestamp };
+          return passes(item);
+        })
+      : [],
     cities: data.cities || [],
     maritimeLanes: data.maritimeLanes || [],
     vessels: data.vessels || [],

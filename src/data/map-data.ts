@@ -132,10 +132,11 @@ export type ConflictRelationship = {
   sourcePosition: [number, number];
   targetPosition: [number, number];
   intensity:   number; // 1-10
-  type:        'MILITARY' | 'DIPLOMATIC' | 'ECONOMIC';
+  type:        'MILITARY_CONFLICT' | 'TRADE_ROUTE' | 'ALLIANCE' | 'DIPLOMATIC_TENSION' | 'SUPPLY_CHAIN' | 'ENERGY_DEPENDENCY' | 'MIGRATION_FLOW' | 'ECONOMIC_PARTNERSHIP' | 'LOGISTICS_CRISIS';
   description: string;
   timestamp:   string;
   articles:    string[];
+  bidirectional?: boolean;
 };
 
 export type CityMarker = {

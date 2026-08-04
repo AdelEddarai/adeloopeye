@@ -19,7 +19,8 @@ export type RelationshipType =
   | 'SUPPLY_CHAIN'
   | 'ENERGY_DEPENDENCY'
   | 'MIGRATION_FLOW'
-  | 'ECONOMIC_PARTNERSHIP';
+  | 'ECONOMIC_PARTNERSHIP'
+  | 'LOGISTICS_CRISIS';
 
 export type GeopoliticalRelationship = {
   id: string;
@@ -129,6 +130,9 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:began|started|erupted|escalated|intensified)\s+(?:a\s+)?(?:war|conflict|fight|battle|clash)\s+(?:with|against)\s+(\w+)/i,
     /(\w+)\s+(?:wages?|conducts?|faces?)\s+(?:war|military\s+operation)\s+(?:against|with)\s+(\w+)/i,
     /(\w+)\s+(?:ground\s+)?(?:offensive|assault|invasion)\s+(?:on|in|against)\s+(\w+)/i,
+    /(\w+)\s+(?:and|vs\.?|versus)\s+(\w+)\s+(?:clash|fight|battle|combat|conflict)/i,
+    /(\w+)\s+(?:hit|hit\s+by|struck)\s+(?:by|with)\s+(?:a\s+)?(?:missile|airstrike|drone|bomb)/i,
+    /(\w+)\s+(?:retaliat|respond|counter)\s+(?:with|by)\s+(?:a\s+)?(?:strike|attack|missile)/i,
   ],
 
   TRADE_ROUTE: [
@@ -138,6 +142,8 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:bilateral\s+trade)\s+(?:with)\s+(\w+)/i,
     /(\w+)\s+(?:trade\s+route|shipping\s+lane)\s+(?:connecting|linking|between)\s+(\w+)/i,
     /(\w+)\s+(?:import|export)\s+(?:surge|spike|increase|drop|decline|disruption)\s+(?:from|to)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:trade|commerce|business)/i,
+    /(\w+)\s+(?:tariff|tax|duty)\s+(?:on|against)\s+(\w+)/i,
   ],
 
   ALLIANCE: [
@@ -147,15 +153,21 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:NATO|alliance)\s+(?:with|member)\s+(\w+)/i,
     /(\w+)\s+(?:joint\s+statement|joint\s+declaration|joint\s+exercise)\s+(?:with)\s+(\w+)/i,
     /(\w+)\s+(?:security\s+partnership|defense\s+pact|mutual\s+defense)\s+(?:with)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:alliance|partnership|coalition)/i,
+    /(\w+)\s+(?:pledged|committed|agreed)\s+(?:to|to\s+support)\s+(\w+)/i,
   ],
 
   DIPLOMATIC_TENSION: [
     /(\w+)\s+(?:sanctions?|condemns?|criticizes?|warns?)\s+(\w+)/i,
-    /(\w+)\s+(?:tensions?|dispute|rift|standoff)\s+(?:with)\s+(\w+)/i,
+    /(\w+)\s+(?:tensions?|dispute|rift|standoff)\s+(?:with|between)\s+(\w+)/i,
+    /(\w+)\s+(?:tensions?|dispute|rift|standoff)\s+(?:with|between|and)\s+(\w+)/i,
     /(\w+)\s+(?:breaks?|suspends?)\s+(?:ties|relations)\s+(?:with)\s+(\w+)/i,
     /(\w+)\s+(?:expels?|recalls?)\s+(?:ambassador|diplomat)\s+(?:from|to)\s+(\w+)/i,
     /(\w+)\s+(?:diplomatic\s+crisis|diplomatic\s+row|diplomatic\s+tension)\s+(?:with)\s+(\w+)/i,
     /(\w+)\s+(?:summit|meeting|talks?|negotiations?)\s+(?:with|between)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:tensions?|dispute|rift|standoff)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:discuss|talk|meet|negotiat)/i,
+    /(\w+)\s+(?:rejected|refused|declined)\s+(?:to|any)\s+(?:deal|agreement|talk|meeting)\s+(?:with|from)\s+(\w+)/i,
   ],
 
   SUPPLY_CHAIN: [
@@ -165,6 +177,7 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:supply\s+chain\s+crisis|logistics\s+crisis|shipping\s+crisis)\s+(?:affecting|hitting|disrupting)\s+(\w+)/i,
     /(\w+)\s+(?:port|shipping|freight)\s+(?:disruption|closure|blockage|congestion)\s+(?:in|at|near)\s+(\w+)/i,
     /(\w+)\s+(?:bottleneck|chokepoint|disruption)\s+(?:in|at|affecting)\s+(?:the\s+)?(?:trade|shipping|supply)\s+(?:route|chain)\s+(?:to|from|with)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:supply|trade|shipping|logistics)/i,
   ],
 
   ENERGY_DEPENDENCY: [
@@ -173,6 +186,7 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:energy\s+deal|gas\s+deal)\s+(?:with)\s+(\w+)/i,
     /(\w+)\s+(?:depends?\s+on)\s+(\w+)\s+(?:for\s+energy|for\s+oil|for\s+gas)/i,
     /(\w+)\s+(?:fuel\s+supply|energy\s+supply|oil\s+supply)\s+(?:disruption|cut|reduction|sanction)\s+(?:on|against|from)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:energy|oil|gas|fuel)/i,
   ],
 
   MIGRATION_FLOW: [
@@ -180,6 +194,7 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:immigration|emigration)\s+(?:to|from)\s+(\w+)/i,
     /(\w+)\s+(?:border|crossing)\s+(?:with|to|from)\s+(\w+)/i,
     /(\w+)\s+(?:border\s+crisis|migration\s+crisis|refugee\s+crisis)\s+(?:in|at|near)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:refugee|migrant|border)/i,
   ],
 
   ECONOMIC_PARTNERSHIP: [
@@ -191,6 +206,7 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:loan|aid|grant|financial\s+package)\s+(?:to|for)\s+(\w+)/i,
     /(\w+)\s+(?:trade\s+agreement|free\s+trade|customs\s+deal)\s+(?:with|between)\s+(\w+)/i,
     /(\w+)\s+(?:new\s+agreement|signed\s+agreement|reached\s+agreement|deal\s+signed)\s+(?:with|between)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:invest|trade|deal|agreement|partnership|cooperation)/i,
   ],
 
   LOGISTICS_CRISIS: [
@@ -200,242 +216,110 @@ const RELATIONSHIP_PATTERNS = {
     /(\w+)\s+(?:blocked|closed|seized|confiscated)\s+(?:trade|goods|ships|cargo|ports?)\s+(?:from|to|at)\s+(\w+)/i,
     /(\w+)\s+(?:tariff|sanction|embargo)\s+(?:on|against)\s+(\w+)/i,
     /(\w+)\s+(?:price\s+surge|price\s+hike|cost\s+increase|inflation)\s+(?:in|affecting|hitting)\s+(\w+)/i,
+    /(\w+)\s+(?:and|with)\s+(\w+)\s+(?:logistics|supply|trade|port|shipping|crisis|disruption)/i,
   ],
 };
 
 /**
- * Analyze news articles for all types of geopolitical relationships
+ * Analyze news articles for all types of geopolitical relationships.
+ * Uses multi-word-aware country name detection instead of single-word regex groups.
  */
 export function analyzeGeopoliticalRelationships(articles: NewsArticle[]): GeopoliticalRelationship[] {
   const relationships = new Map<string, GeopoliticalRelationship>();
-  
-  articles.forEach(article => {
+
+  // Sorted by length descending so longer names match first (e.g. "United States" before "US")
+  const sortedCountryNames = Object.keys(COUNTRY_COORDS).sort((a, b) => b.length - a.length);
+
+  for (const article of articles) {
     const content = `${article.title} ${article.description}`;
-    
-    // Try each relationship type
-    for (const [type, patterns] of Object.entries(RELATIONSHIP_PATTERNS)) {
-      for (const pattern of patterns) {
-        const match = content.match(pattern);
-        if (match) {
-          const source = normalizeCountryName(match[1]);
-          const target = normalizeCountryName(match[2]);
-          
-          if (source && target && COUNTRY_COORDS[source] && COUNTRY_COORDS[target]) {
-            // For bidirectional relationships (trade, alliances), use sorted key
-            const isBidirectional = ['TRADE_ROUTE', 'ALLIANCE', 'ECONOMIC_PARTNERSHIP'].includes(type);
-            const key = isBidirectional && source > target 
-              ? `${target}-${source}-${type}`
-              : `${source}-${target}-${type}`;
-            
-            if (relationships.has(key)) {
-              // Increase intensity for repeated mentions
-              const existing = relationships.get(key)!;
-              existing.intensity = Math.min(10, existing.intensity + 1);
-              existing.articles.push(article.url);
-            } else {
-              // Create new relationship
-              relationships.set(key, {
-                id: `geo-${key}-${Date.now()}`,
-                sourceCountry: source,
-                targetCountry: target,
-                sourcePosition: COUNTRY_COORDS[source],
-                targetPosition: COUNTRY_COORDS[target],
-                intensity: calculateIntensity(content, type as RelationshipType),
-                type: type as RelationshipType,
-                description: article.title,
-                timestamp: article.publishedAt,
-                articles: [article.url],
-                bidirectional: isBidirectional,
-              });
+    const lower = content.toLowerCase();
+
+    // Find all country names mentioned in this article
+    const mentionedCountries: string[] = [];
+    for (const name of sortedCountryNames) {
+      if (lower.includes(name.toLowerCase()) && !mentionedCountries.includes(name)) {
+        mentionedCountries.push(name);
+      }
+    }
+
+    if (mentionedCountries.length < 2) continue;
+
+    // For each pair of mentioned countries, detect relationship type
+    for (let i = 0; i < mentionedCountries.length; i++) {
+      for (let j = i + 1; j < mentionedCountries.length; j++) {
+        const source = mentionedCountries[i];
+        const target = mentionedCountries[j];
+
+        // Extract the sentence/phrase containing both countries
+        const pairText = extractPairText(content, source, target);
+        if (!pairText) continue;
+
+        const pairLower = pairText.toLowerCase();
+
+        // Try each relationship type
+        for (const [type, patterns] of Object.entries(RELATIONSHIP_PATTERNS)) {
+          for (const pattern of patterns) {
+            const match = pairLower.match(pattern);
+            if (match) {
+              const key = makeRelationshipKey(source, target, type);
+              if (relationships.has(key)) {
+                const existing = relationships.get(key)!;
+                existing.intensity = Math.min(10, existing.intensity + 1);
+                existing.articles.push(article.url);
+              } else {
+                relationships.set(key, {
+                  id: `geo-${key}-${Date.now()}`,
+                  sourceCountry: source,
+                  targetCountry: target,
+                  sourcePosition: COUNTRY_COORDS[source],
+                  targetPosition: COUNTRY_COORDS[target],
+                  intensity: calculateIntensity(pairLower, type as RelationshipType),
+                  type: type as RelationshipType,
+                  description: article.title,
+                  timestamp: article.publishedAt,
+                  articles: [article.url],
+                  bidirectional: isBidirectional(type),
+                });
+              }
+              break; // One match per pair per type is enough
             }
           }
         }
       }
     }
-  });
-  
+  }
+
   return Array.from(relationships.values());
 }
 
-/**
- * Normalize country names from text
- */
-function normalizeCountryName(name: string): string | null {
-  const normalized = name.trim();
-  
-  // Direct matches
-  if (COUNTRY_COORDS[normalized]) return normalized;
-  
-  // Common variations
-  const variations: Record<string, string> = {
-    'US': 'United States',
-    'USA': 'United States',
-    'America': 'United States',
-    'American': 'United States',
-    'Israeli': 'Israel',
-    'IDF': 'Israel',
-    'Iranian': 'Iran',
-    'Tehran': 'Iran',
-    'Russian': 'Russia',
-    'Moscow': 'Russia',
-    'Syrian': 'Syria',
-    'Damascus': 'Syria',
-    'Lebanese': 'Lebanon',
-    'Beirut': 'Lebanon',
-    'Iraqi': 'Iraq',
-    'Baghdad': 'Iraq',
-    'Yemeni': 'Yemen',
-    'Houthi': 'Yemen',
-    'Saudi': 'Saudi Arabia',
-    'Riyadh': 'Saudi Arabia',
-    'Turkish': 'Turkey',
-    'Ankara': 'Turkey',
-    'Egyptian': 'Egypt',
-    'Cairo': 'Egypt',
-    'Chinese': 'China',
-    'Beijing': 'China',
-    'British': 'UK',
-    'London': 'UK',
-    'French': 'France',
-    'Paris': 'France',
-    'German': 'Germany',
-    'Berlin': 'Germany',
-    'Ukrainian': 'Ukraine',
-    'Kyiv': 'Ukraine',
-    'Indian': 'India',
-    'Delhi': 'India',
-    'Japanese': 'Japan',
-    'Tokyo': 'Japan',
-    'Korean': 'South Korea',
-    'Seoul': 'South Korea',
-    'Moroccan': 'Morocco',
-    'Rabat': 'Morocco',
-    'Casablanca': 'Morocco',
-    'Marrakech': 'Morocco',
-    'Morocco': 'Morocco',
-    'Western Sahara': 'Western Sahara',
-    'Polisario': 'Western Sahara',
-    'Sahrawi': 'Western Sahara',
-    'Gazan': 'Gaza',
-    'Gaza': 'Gaza',
-    'Palestinian': 'Gaza',
-    'Palestine': 'Gaza',
-    'Algerian': 'Algeria',
-    'Algiers': 'Algeria',
-    'Algeria': 'Algeria',
-    'Tunisian': 'Tunisia',
-    'Tunis': 'Tunisia',
-    'Tunisia': 'Tunisia',
-    'Libyan': 'Libya',
-    'Tripoli': 'Libya',
-    'Libya': 'Libya',
-    'Sudanese': 'Sudan',
-    'Khartoum': 'Sudan',
-    'Sudan': 'Sudan',
-    'Ethiopian': 'Ethiopia',
-    'Addis Ababa': 'Ethiopia',
-    'Ethiopia': 'Ethiopia',
-    'Somali': 'Somalia',
-    'Mogadishu': 'Somalia',
-    'Somalia': 'Somalia',
-    'Nigerian': 'Nigeria',
-    'Lagos': 'Nigeria',
-    'Nigeria': 'Nigeria',
-    'South African': 'South Africa',
-    'Johannesburg': 'South Africa',
-    'South Africa': 'South Africa',
-    'Kenyan': 'Kenya',
-    'Nairobi': 'Kenya',
-    'Kenya': 'Kenya',
-    'Ghanaian': 'Ghana',
-    'Accra': 'Ghana',
-    'Ghana': 'Ghana',
-    'Qatari': 'Qatar',
-    'Doha': 'Qatar',
-    'Qatar': 'Qatar',
-    'UAE': 'UAE',
-    'Emirati': 'UAE',
-    'Dubai': 'UAE',
-    'UAE': 'UAE',
-    'Bahraini': 'Bahrain',
-    'Manama': 'Bahrain',
-    'Bahrain': 'Bahrain',
-    'Kuwaiti': 'Kuwait',
-    'Kuwait': 'Kuwait',
-    'Omani': 'Oman',
-    'Muscat': 'Oman',
-    'Oman': 'Oman',
-    'Jordanian': 'Jordan',
-    'Amman': 'Jordan',
-    'Jordan': 'Jordan',
-    'Lebanese': 'Lebanon',
-    'Beirut': 'Lebanon',
-    'Lebanon': 'Lebanon',
-    'Syrian': 'Syria',
-    'Damascus': 'Syria',
-    'Syria': 'Syria',
-    'Iraqi': 'Iraq',
-    'Baghdad': 'Iraq',
-    'Iraq': 'Iraq',
-    'Yemeni': 'Yemen',
-    'Sanaa': 'Yemen',
-    'Yemen': 'Yemen',
-    'Iranian': 'Iran',
-    'Tehran': 'Iran',
-    'Iran': 'Iran',
-    'Israeli': 'Israel',
-    'Tel Aviv': 'Israel',
-    'Jerusalem': 'Israel',
-    'Israel': 'Israel',
-    'Russian': 'Russia',
-    'Moscow': 'Russia',
-    'Russia': 'Russia',
-    'Ukrainian': 'Ukraine',
-    'Kyiv': 'Ukraine',
-    'Ukraine': 'Ukraine',
-    'Chinese': 'China',
-    'Beijing': 'China',
-    'China': 'China',
-    'Japanese': 'Japan',
-    'Tokyo': 'Japan',
-    'Japan': 'Japan',
-    'Indian': 'India',
-    'Delhi': 'India',
-    'India': 'India',
-    'British': 'UK',
-    'London': 'UK',
-    'UK': 'UK',
-    'French': 'France',
-    'Paris': 'France',
-    'France': 'France',
-    'German': 'Germany',
-    'Berlin': 'Germany',
-    'Germany': 'Germany',
-    'Turkish': 'Turkey',
-    'Ankara': 'Turkey',
-    'Turkey': 'Turkey',
-    'Egyptian': 'Egypt',
-    'Cairo': 'Egypt',
-    'Egypt': 'Egypt',
-    'Saudi': 'Saudi Arabia',
-    'Riyadh': 'Saudi Arabia',
-    'Saudi Arabia': 'Saudi Arabia',
-    'Canadian': 'Canada',
-    'Ottawa': 'Canada',
-    'Canada': 'Canada',
-    'Mexican': 'Mexico',
-    'Mexico City': 'Mexico',
-    'Mexico': 'Mexico',
-    'Brazilian': 'Brazil',
-    'Brasilia': 'Brazil',
-    'Brazil': 'Brazil',
-    'Argentine': 'Argentina',
-    'Buenos Aires': 'Argentina',
-    'Argentina': 'Argentina',
-  };
-  
-  return variations[normalized] || null;
+function isBidirectional(type: string): boolean {
+  return ['TRADE_ROUTE', 'ALLIANCE', 'ECONOMIC_PARTNERSHIP', 'ENERGY_DEPENDENCY'].includes(type);
 }
+
+function makeRelationshipKey(source: string, target: string, type: string): string {
+  const isBidir = isBidirectional(type);
+  if (isBidir && source > target) {
+    return `${target}-${source}-${type}`;
+  }
+  return `${source}-${target}-${type}`;
+}
+
+function extractPairText(content: string, countryA: string, countryB: string): string | null {
+  const lower = content.toLowerCase();
+  const idxA = lower.indexOf(countryA.toLowerCase());
+  const idxB = lower.indexOf(countryB.toLowerCase());
+  if (idxA < 0 || idxB < 0) return null;
+
+  const start = Math.min(idxA, idxB);
+  const end = Math.max(idxA + countryA.length, idxB + countryB.length);
+
+  // Expand window to include surrounding context (up to 200 chars)
+  const windowStart = Math.max(0, start - 100);
+  const windowEnd = Math.min(content.length, end + 100);
+  return content.slice(windowStart, windowEnd);
+}
+
+
 
 /**
  * Calculate relationship intensity based on keywords and type

@@ -28,18 +28,18 @@ export type { FilteredData, FilterFacets,FilterState };
 
 // Dataset names
 
-export type DatasetName = 'strikes' | 'missiles' | 'targets' | 'assets' | 'zones';
+export type DatasetName = 'strikes' | 'missiles' | 'targets' | 'assets' | 'zones' | 'conflictRelationships';
 
-export const ALL_DATASETS: DatasetName[] = ['strikes', 'missiles', 'targets', 'assets', 'zones'];
+export const ALL_DATASETS: DatasetName[] = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships'];
 
 export const DATASET_LABEL: Record<DatasetName, string> = {
-  strikes: 'STRIKES', missiles: 'MISSILES', targets: 'TARGETS', assets: 'ASSETS', zones: 'ZONES',
+  strikes: 'STRIKES', missiles: 'MISSILES', targets: 'TARGETS', assets: 'ASSETS', zones: 'ZONES', conflictRelationships: 'RELATIONSHIPS',
 };
 
 function buildFingerprint(rawData: DataArrays): string {
   let minTs = Number.POSITIVE_INFINITY;
   let maxTs = Number.NEGATIVE_INFINITY;
-  for (const entry of [...rawData.strikes, ...rawData.missiles, ...rawData.targets, ...rawData.assets, ...rawData.zones]) {
+  for (const entry of [...rawData.strikes, ...rawData.missiles, ...rawData.targets, ...rawData.assets, ...rawData.zones, ...(rawData.conflictRelationships ?? [])]) {
     if (!entry.timestamp) continue;
     const ts = new Date(entry.timestamp).getTime();
     if (!Number.isFinite(ts)) continue;
@@ -74,6 +74,7 @@ const EMPTY_RESULT: { filtered: FilteredData; facets: FilterFacets } = {
     heat: [],
     maritimeLanes: [],
     vessels: [],
+    conflictRelationships: [],
   },
   facets:   { datasets: [], perDataset: {}, totalVisible: 0, totalAll: 0 },
 };
@@ -167,7 +168,7 @@ export function useMapFilters(enabled: boolean = true): UseMapFiltersReturn {
     if (!rawData) return {} as Record<string, string[]>;
     const map: Record<string, string[]> = {};
     for (const key of ALL_DATASETS) {
-      const items = rawData[key === 'zones' ? 'zones' : key] as Array<{ type: string }>;
+      const items = key === 'zones' ? rawData.zones : key === 'conflictRelationships' ? (rawData.conflictRelationships ?? []) : rawData[key] as Array<{ type: string }>;
       if (items) map[key] = [...new Set(items.map(i => i.type))];
     }
     return map;
