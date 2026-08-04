@@ -9,9 +9,11 @@ import { fetchAllMoroccoLocalData } from '@/server/lib/api-clients/morocco-local
 import { fetchMoroccoRoutes } from '@/server/lib/api-clients/morocco-routes-client';
 import { usgsEarthquakeClient } from '@/server/lib/api-clients/usgs-earthquake-client';
 import { eonetClient } from '@/server/lib/api-clients/eonet-client';
-import { fetchMoroccoLogistics } from '@/server/lib/api-clients/morocco-logistics';
+import { fetchMoroccoLogistics, type LogisticsEntry } from '@/server/lib/api-clients/morocco-logistics';
 import { fetchMoroccoConflicts, type ConflictEntry } from '@/server/lib/api-clients/morocco-conflicts';
 import { getMoroccoConflictArticles, type GDELTArticle } from '@/server/lib/api-clients/gdelt-client';
+import type { MoroccoWeather, MoroccoCommodity } from '@/server/lib/api-clients/morocco-local-data';
+import type { MoroccoRoute } from '@/server/lib/api-clients/morocco-routes-client';
 import { withDeadline, rejectedResults } from '@/server/lib/route-deadline';
 
 // Netlify/serverless functions kill slow invocations (default 10s, max 26s).
@@ -245,10 +247,31 @@ async function collect() {
   ];
   const fireEvents = baseEvents.length > 0 ? [] : buildFireEvents(localData.fires);
   const conflictEvents = buildConflictEvents(gdeltArticles, conflicts);
-  const allEvents = [...baseEvents, ...conflictEvents, ...sensorEvents, ...fireEvents];
+
+  // Guaranteed event volume. News/Telegram/GDELT can be down, and there may be
+  // no active quakes/disasters — but the live local layers (weather, markets,
+  // routes, logistics, conflicts) ALWAYS exist. Surface them as real events so
+  // the dashboard/map is never sparse. IDs are STABLE so the alert system
+  // doesn't re-ring them on every 60s poll.
+  const derivedEvents = buildDerivedEvents(
+    localData.weather,
+    localData.commodities,
+    routes,
+    logistics,
+    conflicts,
+    conflictEvents.length === 0
+  );
+
+  const allEvents = Array.from(
+    new Map(
+      [...baseEvents, ...conflictEvents, ...derivedEvents, ...sensorEvents, ...fireEvents]
+        .filter(Boolean)
+        .map(e => [e.id, e])
+    ).values()
+  );
 
   console.log(`[Morocco Intel] ✅ Analysis complete:`);
-  console.log(`[Morocco Intel]   - Events: ${allEvents.length} (${intelligence.events.length} from news, ${telegramData.events.length} from Telegram, ${conflictEvents.length} from GDELT conflicts, ${sensorEvents.length} from sensors, ${fireEvents.length} from fires)`);
+  console.log(`[Morocco Intel]   - Events: ${allEvents.length} (${intelligence.events.length} from news, ${telegramData.events.length} from Telegram, ${conflictEvents.length} from GDELT conflicts, ${derivedEvents.length} from live local layers, ${sensorEvents.length} from sensors, ${fireEvents.length} from fires)`);
   console.log(`[Morocco Intel]   - Connections: ${allConnections.length}`);
   console.log(`[Morocco Intel]   - Infrastructure: ${allInfrastructure.length}`);
   console.log(`[Morocco Intel]   - Weather: ${localData.weather.length} cities`);
@@ -386,6 +409,151 @@ function stableHash(input: string): string {
     hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
   }
   return hash.toString(16);
+}
+
+// Surface the always-available live local layers (weather, markets, routes,
+// logistics, conflicts) as real events so the dashboard/map is never sparse.
+// Every id is STABLE across polls — the alert hook seeds them silently on the
+// first batch and skips them afterwards, so no notification spam.
+function buildDerivedEvents(
+  weather: MoroccoWeather[],
+  commodities: MoroccoCommodity[],
+  routes: MoroccoRoute[],
+  logistics: LogisticsEntry[],
+  conflicts: ConflictEntry[],
+  includeConflictStatus: boolean
+): any[] {
+  const events: any[] = [];
+  const now = new Date().toISOString();
+
+  // 1. Active weather alerts (HEAT / WIND / STORM) from live Open-Meteo data
+  for (const w of weather || []) {
+    if (!w?.alert) continue;
+    events.push({
+      id: `weather-${w.city}-${w.alert.type}`,
+      type: 'WEATHER',
+      title: `${w.alert.type} warning in ${w.city}`,
+      description: `${w.alert.description}. Current: ${w.temperature}°C, wind ${w.windSpeed} km/h, ${w.condition}.`,
+      location: w.city,
+      position: w.position,
+      severity: w.alert.severity,
+      timestamp: now,
+      source: 'Open-Meteo',
+      impact: 'May disrupt daily activities and agriculture',
+      status: 'ONGOING',
+    });
+  }
+
+  // 2. Notable current conditions (storms / heavy rain / snow) without an alert flag
+  for (const w of weather || []) {
+    if (!w || w.alert) continue;
+    const notable = ['Thunderstorm', 'Rain', 'Snow'].includes(w.condition);
+    if (!notable) continue;
+    events.push({
+      id: `wx-${w.city}-${w.condition.toLowerCase()}`,
+      type: 'WEATHER',
+      title: `${w.condition} in ${w.city}`,
+      description: `${w.condition} conditions — ${w.description}. ${w.temperature}°C, wind ${w.windSpeed} km/h.`,
+      location: w.city,
+      position: w.position,
+      severity: 'MEDIUM',
+      timestamp: now,
+      source: 'Open-Meteo',
+      impact: 'May cause travel delays and local disruptions',
+      status: 'MONITORING',
+    });
+  }
+
+  // 3. Live commodity / market activity
+  for (const c of commodities || []) {
+    if (!c) continue;
+    const move = Math.abs(c.change || 0);
+    events.push({
+      id: `commodity-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      type: 'ECONOMIC',
+      title: `${c.name} ${(c.change || 0) >= 0 ? 'up' : 'down'} ${Math.abs(c.change || 0)}%`,
+      description: `${c.name} trading at ${c.price} ${c.unit} on the ${c.market} market.`,
+      location: c.market,
+      position: [-7.5898, 33.5731], // Casablanca financial center
+      severity: move > 5 ? 'HIGH' : move > 2 ? 'MEDIUM' : 'LOW',
+      timestamp: c.timestamp || now,
+      source: 'Morocco Markets',
+      impact: 'Market movement affecting trade and supply',
+      status: 'MONITORING',
+    });
+  }
+
+  // 4. Route disruptions / closures / incidents
+  for (const r of routes || []) {
+    if (!r) continue;
+    const hasIncidents = (r.incidents?.length ?? 0) > 0;
+    const closed = r.status === 'CLOSED' || r.status === 'DISRUPTED';
+    if (!hasIncidents && !closed) continue;
+
+    const worstIncident = [...(r.incidents || [])].sort(
+      (a, b) => ({ CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 } as any)[b.severity] - ({ CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 } as any)[a.severity]
+    )[0];
+
+    events.push({
+      id: `route-${r.id}`,
+      type: 'TRANSPORT',
+      title: `${r.status.replace(/_/g, ' ')} — ${r.name}`,
+      description: hasIncidents
+        ? (r.incidents[0]?.description || r.description)
+        : r.description,
+      location: worstIncident?.location || r.name,
+      position: worstIncident?.position || r.path?.[0] || [-6.8498, 33.9716],
+      severity: worstIncident?.severity || (r.status === 'CLOSED' ? 'HIGH' : 'MEDIUM'),
+      timestamp: now,
+      source: 'Route Network',
+      impact: 'May cause delays and disruptions',
+      status: r.status === 'CLOSED' ? 'ONGOING' : 'MONITORING',
+    });
+  }
+
+  // 5. Logistics crisis nodes (closed / disrupted / under pressure)
+  for (const l of logistics || []) {
+    if (!l) continue;
+    const isCrisis = l.crisis || l.status === 'CLOSED' || l.status === 'DISRUPTED';
+    if (!isCrisis) continue;
+    events.push({
+      id: `logistics-${l.id}`,
+      type: 'INFRASTRUCTURE',
+      title: `${l.status.replace(/_/g, ' ')} — ${l.name}`,
+      description: l.description,
+      location: l.name,
+      position: l.position,
+      severity: l.status === 'CLOSED' ? 'HIGH' : l.crisis ? 'MEDIUM' : 'LOW',
+      timestamp: now,
+      source: 'Logistics Network',
+      impact: 'Affects transportation and logistics',
+      status: 'ONGOING',
+    });
+  }
+
+  // 6. Active / escalating conflicts (only when GDELT produced no per-article
+  //    conflict events, so we don't double-stack conflict markers on the map)
+  if (includeConflictStatus) {
+    for (const c of conflicts || []) {
+      if (!c) continue;
+      if (c.status !== 'ESCALATING' && c.status !== 'ACTIVE') continue;
+      events.push({
+        id: `conflict-status-${c.id}`,
+        type: 'CONFLICT',
+        title: `${c.name} — ${c.status} (intensity ${c.intensity})`,
+        description: c.description,
+        location: c.name,
+        position: c.position,
+        severity: c.status === 'ESCALATING' ? 'HIGH' : 'MEDIUM',
+        timestamp: now,
+        source: 'Regional Monitor',
+        impact: 'Regional security monitoring',
+        status: c.status === 'ESCALATING' ? 'ONGOING' : 'MONITORING',
+      });
+    }
+  }
+
+  return events;
 }
 
 function matchConflict(title: string, conflicts: ConflictEntry[]): ConflictEntry | undefined {
