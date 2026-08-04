@@ -55,11 +55,13 @@ export function EventDetail({ event, tab, onTabChange, compact = false, pageScro
         <h1 className={cn('font-bold text-[var(--t1)] leading-[1.25] mb-2', compact ? 'text-[length:var(--text-body)]' : 'text-[length:var(--text-subhead)]')}>
           {event.title}
         </h1>
-        <div className="flex gap-5">
+        <div className="flex gap-5 flex-wrap">
           <MetaChip label="TIMESTAMP"
             val={new Date(event.timestamp).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'} />
           <MetaChip label="LOCATION" val={event.location} />
-          <MetaChip label="SOURCES"  val={String(event.sources?.length || 0)} />
+          {event.sources && event.sources.length > 0 && (
+            <MetaChip label="SOURCE" val={event.sources[0].name} />
+          )}
         </div>
       </div>
 

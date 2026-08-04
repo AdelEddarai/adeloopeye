@@ -2,6 +2,7 @@ import { cache } from 'react';
 
 import { publicConflictId } from '@/shared/lib/env';
 import { prisma } from '@/server/lib/db';
+import { ensureConflictSynced } from '@/server/lib/real-time-sync';
 
 import { PAGE_SIZE } from './page-size';
 
@@ -14,6 +15,8 @@ type ActorFilters = {
 };
 
 export const getActors = cache(async (filters?: ActorFilters) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const where: Record<string, unknown> = { conflictId: CONFLICT_ID };
 
   if (filters?.type?.length) {
@@ -54,6 +57,8 @@ export const getActors = cache(async (filters?: ActorFilters) => {
 });
 
 export const getActor = cache(async (actorId: string) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const row = await prisma.actor.findFirst({
     where: { id: actorId, conflictId: CONFLICT_ID },
     include: {

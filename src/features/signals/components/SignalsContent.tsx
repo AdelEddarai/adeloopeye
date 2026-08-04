@@ -152,7 +152,7 @@ export function SignalsContent() {
       >
         {/* Header */}
         <div className={`panel-header shrink-0 ${usePageScroll ? 'h-8 min-h-8 safe-px' : ''}`}>
-          <span className="section-title">Field Signals — Operation Epic Fury</span>
+          <span className="section-title">Field Signals</span>
           <span className="label ml-auto text-[var(--t4)]">ADELOOPEYE-CURATED</span>
         </div>
 
@@ -207,7 +207,7 @@ export function SignalsContent() {
         <ResizableHandle />
         <ResizablePanel id="content" defaultSize="78%" minSize="50%" className="flex flex-col overflow-hidden min-w-0">
           <div className="panel-header">
-            <span className="section-title">Field Signals — Operation Epic Fury</span>
+            <span className="section-title">Field Signals</span>
             <span className="label ml-auto text-[var(--t4)]">ADELOOPEYE-CURATED</span>
           </div>
           <ScrollArea className="flex-1 min-w-0">

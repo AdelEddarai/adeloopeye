@@ -22,7 +22,15 @@ type Props = {
 
 export function ActorGrid({ actors }: Props) {
   if (actors.length === 0) {
-    return <p className="text-sm text-[var(--t3)]">No actors found.</p>;
+    return (
+      <div className="border border-dashed border-[var(--bd)] p-8 text-center">
+        <p className="label text-[var(--t3)] mb-2">No actors found</p>
+        <p className="text-xs text-[var(--t4)] leading-relaxed">
+          Actor profiles are derived from live reporting. Clear the filters or check back
+          shortly — profiles update as new coverage arrives.
+        </p>
+      </div>
+    );
   }
 
   return (

@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const description = buildDescription(`${story.tagline} ${story.narrative}`);
   return buildDetailMetadata({
-    title: `${story.title} - Iran Conflict Story`,
+    title: `${story.title} - Conflict Story`,
     description,
     path: `/browse/stories/${id}`,
     image: { alt: `${story.title} story on Conflicts.app` },

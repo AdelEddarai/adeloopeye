@@ -234,72 +234,12 @@ export async function fetchCyberThreats() {
       }
     }
 
-    // Always add some phishing threats to ensure we have data
-    const phishingIPs = ['185.220.101.1', '45.142.212.61', '91.219.236.232', '194.26.192.64', '103.253.145.12'];
-    for (const ip of phishingIPs) {
-      const target = getRandomTarget();
-      threats.push({
-        id: `phishing-${ip}`,
-        type: 'PHISHING' as const,
-        severity: 'MEDIUM' as const,
-        target: `${target.name} Employees`,
-        targetCompany: target.name,
-        targetSector: target.sector,
-        targetCountry: target.country,
-        source: ip,
-        location: getIPLocation(ip),
-        position: getIPCoordinates(ip),
-        timestamp: new Date(now - Math.random() * 1800000).toISOString(),
-        description: `Phishing campaign detected targeting ${target.name} employees. This IP is hosting phishing pages designed to steal credentials and sensitive information.`,
-        tags: ['phishing', 'social-engineering', 'credential-theft'],
-        affectedSystems: Math.floor(Math.random() * 200) + 20,
-        estimatedImpact: 'Medium - Credential compromise',
-      });
-    }
-
-    console.log(`Generated ${threats.length} total threats`);
+    console.log(`Fetched ${threats.length} threats from live feeds`);
     return threats;
   } catch (error) {
     console.error('Failed to fetch cyber threats:', error);
-    // Return at least some simulated threats so the widget isn't empty
-    return getSimulatedThreats();
+    return [];
   }
-}
-
-/**
- * Get simulated threats as fallback
- */
-export function getSimulatedThreats() {
-  const threats = [];
-  const now = Date.now();
-  const ips = ['45.142.212.61', '91.219.236.232', '185.220.101.1', '194.26.192.64', '103.253.145.12'];
-  
-  for (let i = 0; i < 5; i++) {
-    const target = getRandomTarget();
-    const types = ['DDOS', 'MALWARE', 'RANSOMWARE', 'PHISHING', 'INTRUSION'] as const;
-    const type = types[i % types.length];
-    const severity = i === 0 ? 'CRITICAL' : i < 3 ? 'HIGH' : 'MEDIUM';
-    
-    threats.push({
-      id: `sim-${i}`,
-      type,
-      severity: severity as 'CRITICAL' | 'HIGH' | 'MEDIUM',
-      target: `${target.name} (${target.sector})`,
-      targetCompany: target.name,
-      targetSector: target.sector,
-      targetCountry: target.country,
-      source: ips[i],
-      location: getIPLocation(ips[i]),
-      position: getIPCoordinates(ips[i]),
-      timestamp: new Date(now - Math.random() * 3600000).toISOString(),
-      description: `${type} threat detected targeting ${target.name} infrastructure.`,
-      tags: [type.toLowerCase(), target.sector.toLowerCase()],
-      affectedSystems: Math.floor(Math.random() * 500) + 50,
-      estimatedImpact: severity === 'CRITICAL' ? 'Critical - Immediate action required' : 'High - Significant risk',
-    });
-  }
-  
-  return threats;
 }
 
 /**

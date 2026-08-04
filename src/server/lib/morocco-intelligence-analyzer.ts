@@ -1007,10 +1007,10 @@ function updateInfrastructureStatus(
 }
 
 /**
- * Generate weather alerts for Morocco (mock data - would integrate with weather API)
+ * Generate weather alerts for Morocco
+ * Returns an empty array until a live weather source is wired up
  */
 export function generateMoroccoWeatherAlerts(): MoroccoWeatherAlert[] {
-  // This would integrate with a real weather API
-  // For now, return empty array - will be populated by real weather data
+  // Would integrate with a real weather API
   return [];
 }

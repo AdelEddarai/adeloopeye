@@ -40,9 +40,14 @@ export function EventArticle({ event, signals }: Props) {
       />
 
       <header className="mt-8 mb-8">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           <SeverityBadge severity={event.severity} />
           <span className="mono text-[length:var(--text-label)] text-[var(--t4)]">{event.type}</span>
+          {event.sources?.[0]?.name && (
+            <span className="mono text-[length:var(--text-caption)] text-[var(--t3)]">
+              {event.sources[0].name}
+            </span>
+          )}
           {event.verified && (
             <span className="mono text-[length:var(--text-caption)] font-bold text-[var(--success)]">VERIFIED</span>
           )}

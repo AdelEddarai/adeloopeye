@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest) {
       {
         news: [],
         keyLocations: [],
-        economicIndicators: { gdpGrowth: 0, inflation: 0, unemployment: 0, tradeBalance: 'N/A' },
+        economicIndicators: { gdpGrowth: null, inflation: null, unemployment: null, tradeBalance: null },
         securityAlerts: [],
       },
       { headers: { 'Cache-Control': 'public, max-age=60' } }

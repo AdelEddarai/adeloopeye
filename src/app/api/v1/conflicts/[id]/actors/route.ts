@@ -8,14 +8,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const lite = req.nextUrl.searchParams.get('lite') === 'true';
   
   if (lite) {
-    const actors = getActorsLite(conflictId);
+    const actors = await getActorsLite(conflictId);
     return ok(actors, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });
   }
 
   // Full actor data with day snapshots
-  const actors = getActors(conflictId);
+  const actors = await getActors(conflictId);
 
   return ok(actors, {
     headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },

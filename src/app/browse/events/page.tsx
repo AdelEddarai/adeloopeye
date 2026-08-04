@@ -5,6 +5,7 @@ import { EventList } from '@/features/browse/components/events/EventList';
 import { BrowsePageHeader } from '@/features/browse/components/layout/BrowsePageHeader';
 import { BrowsePagination } from '@/features/browse/components/layout/BrowsePagination';
 import { StructuredData } from '@/features/browse/components/seo/StructuredData';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 import {
   buildBrowseMetadata,
   buildDescription,
@@ -32,18 +33,18 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const isFiltered = hasActiveFilters([severity, date]);
   const path = isFiltered ? '/browse/events' : getCanonicalListPath('/browse/events', page);
   const title = isFiltered
-    ? 'Filtered Iran Conflict Events'
-    : page > 1 ? `Iran Conflict Events Timeline - Page ${page}` : 'Iran Conflict Events Timeline';
+    ? 'Filtered Conflict Events'
+    : page > 1 ? `Events Timeline - Page ${page}` : 'Events Timeline';
   const description = isFiltered
-    ? buildDescription('Filtered Iran conflict events by severity and date. Browse airstrikes, diplomacy, intelligence operations, and humanitarian incidents with source-backed summaries.')
-    : buildDescription('Track Iran conflict events in a searchable timeline covering airstrikes, diplomacy, intelligence operations, and humanitarian incidents with severity scoring and sources.');
+    ? buildDescription('Filtered conflict events by severity and date. Browse airstrikes, diplomacy, intelligence operations, and humanitarian incidents with source-backed summaries.')
+    : buildDescription('Track conflict events in a searchable timeline covering airstrikes, diplomacy, intelligence operations, and humanitarian incidents with severity scoring and sources.');
 
   return buildBrowseMetadata({
     title,
     description,
     path,
     robots: { isIndexable: !isFiltered },
-    image: { alt: 'Iran conflict events timeline on Conflicts.app' },
+    image: { alt: 'Conflict events timeline on Conflicts.app' },
   });
 }
 
@@ -76,12 +77,12 @@ export default async function BrowseEventsPage({ searchParams }: Props) {
       { name: 'Events', path: '/browse/events' },
     ]),
     buildCollectionPageJsonLd({
-      name: 'Iran Conflict Events Timeline',
-      description: 'Searchable timeline of Iran conflict events with source-backed summaries and severity scoring.',
+      name: 'Events Timeline',
+      description: 'Searchable timeline of conflict events with source-backed summaries and severity scoring.',
       path: canonicalPath,
     }),
     buildItemListJsonLd({
-      name: 'Iran Conflict Events',
+      name: 'Conflict Events',
       path: canonicalPath,
       items: events.map((event) => ({
         name: event.title,
@@ -96,11 +97,14 @@ export default async function BrowseEventsPage({ searchParams }: Props) {
       <StructuredData data={jsonLd} />
       <BrowsePageHeader crumbs={[{ label: 'Events' }]} hasAutoRefresh />
       <header className="mt-6 mb-8">
-        <p className="label mb-2">Intelligence feed</p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="label">Intelligence feed</p>
+          <LiveStatusBadge />
+        </div>
         <h1 className="text-lg font-bold text-[var(--t1)] mb-1">Events</h1>
         <p className="text-xs text-[var(--t3)]">
           {total > PAGE_SIZE ? `Showing ${from}–${to} of ${total} events` : `${total} events`}
-          {severity || date ? ' matching filters' : ' tracked across the Iran conflict'}
+          {severity || date ? ' matching filters' : ' tracked across the conflict'}
         </p>
       </header>
       <EventList events={events} page={page} filterBar={<EventFilterBar eventDates={eventDates} />} />

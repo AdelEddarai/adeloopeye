@@ -23,9 +23,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const actor = await getActor(id);
   if (!actor) return { title: { absolute: 'Actor not found | Conflicts.app | Pharos' } };
 
-  const description = buildDescription(`${actor.name}. ${actor.type} actor in the Iran conflict. ${actor.assessment}`);
+  const description = buildDescription(`${actor.name}. ${actor.type} actor in the tracked conflict. ${actor.assessment}`);
   return buildDetailMetadata({
-    title: `${actor.name} - Iran Conflict Actor Profile`,
+    title: `${actor.name} - Actor Profile`,
     description,
     path: `/browse/actors/${id}`,
     image: { alt: `${actor.name} actor profile on Conflicts.app` },
@@ -37,7 +37,7 @@ export default async function BrowseActorPage({ params }: Props) {
   const actor = await getActor(id);
   if (!actor) notFound();
 
-  const description = buildDescription(`${actor.name}. ${actor.type} actor in the Iran conflict. ${actor.assessment}`);
+  const description = buildDescription(`${actor.name}. ${actor.type} actor in the tracked conflict. ${actor.assessment}`);
   const jsonLd = [
     buildBreadcrumbJsonLd([
       { name: 'Browse', path: '/browse' },

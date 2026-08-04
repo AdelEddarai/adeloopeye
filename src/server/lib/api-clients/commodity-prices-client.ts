@@ -65,8 +65,8 @@ async function fetchCommodityPrice(name: string): Promise<{ price: number } | nu
  */
 export async function fetchCommodityPrices(): Promise<CommodityPrice[]> {
   if (!API_NINJAS_KEY) {
-    console.warn('API_NINJAS_KEY not configured, using simulated data');
-    return getSimulatedPrices();
+    console.warn('API_NINJAS_KEY not configured');
+    return [];
   }
 
   try {
@@ -99,82 +99,9 @@ export async function fetchCommodityPrices(): Promise<CommodityPrice[]> {
       })
     );
 
-    const validResults = results.filter((r): r is CommodityPrice => r !== null);
-    
-    // If we got some real data, return it; otherwise fall back to simulated
-    return validResults.length > 0 ? validResults : getSimulatedPrices();
+    return results.filter((r): r is CommodityPrice => r !== null);
   } catch (error) {
     console.error('Failed to fetch commodity prices:', error);
-    return getSimulatedPrices();
+    return [];
   }
-}
-
-/**
- * Get simulated prices as fallback
- */
-function getSimulatedPrices(): CommodityPrice[] {
-  const now = new Date().toISOString();
-  
-  return [
-    {
-      symbol: 'CRUDE_OIL_WTI',
-      name: 'WTI Crude Oil',
-      price: 78.45 + (Math.random() - 0.5) * 2,
-      change: (Math.random() - 0.5) * 3,
-      changePercent: (Math.random() - 0.5) * 4,
-      unit: 'per barrel',
-      category: 'Energy',
-      timestamp: now,
-    },
-    {
-      symbol: 'CRUDE_OIL_BRENT',
-      name: 'Brent Crude Oil',
-      price: 82.30 + (Math.random() - 0.5) * 2,
-      change: (Math.random() - 0.5) * 3,
-      changePercent: (Math.random() - 0.5) * 4,
-      unit: 'per barrel',
-      category: 'Energy',
-      timestamp: now,
-    },
-    {
-      symbol: 'NATURAL_GAS',
-      name: 'Natural Gas',
-      price: 2.85 + (Math.random() - 0.5) * 0.2,
-      change: (Math.random() - 0.5) * 0.3,
-      changePercent: (Math.random() - 0.5) * 5,
-      unit: 'per MMBtu',
-      category: 'Energy',
-      timestamp: now,
-    },
-    {
-      symbol: 'GOLD',
-      name: 'Gold',
-      price: 2050 + (Math.random() - 0.5) * 20,
-      change: (Math.random() - 0.5) * 15,
-      changePercent: (Math.random() - 0.5) * 1.5,
-      unit: 'per oz',
-      category: 'Metals',
-      timestamp: now,
-    },
-    {
-      symbol: 'SILVER',
-      name: 'Silver',
-      price: 24.50 + (Math.random() - 0.5) * 0.5,
-      change: (Math.random() - 0.5) * 0.8,
-      changePercent: (Math.random() - 0.5) * 3,
-      unit: 'per oz',
-      category: 'Metals',
-      timestamp: now,
-    },
-    {
-      symbol: 'COPPER',
-      name: 'Copper',
-      price: 3.85 + (Math.random() - 0.5) * 0.1,
-      change: (Math.random() - 0.5) * 0.15,
-      changePercent: (Math.random() - 0.5) * 2.5,
-      unit: 'per lb',
-      category: 'Metals',
-      timestamp: now,
-    },
-  ];
 }

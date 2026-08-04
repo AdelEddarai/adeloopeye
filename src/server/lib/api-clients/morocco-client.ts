@@ -24,10 +24,10 @@ export type MoroccoData = {
     status: 'ACTIVE' | 'ALERT' | 'NORMAL';
   }>;
   economicIndicators: {
-    gdpGrowth: number;
-    inflation: number;
-    unemployment: number;
-    tradeBalance: string;
+    gdpGrowth: number | null;
+    inflation: number | null;
+    unemployment: number | null;
+    tradeBalance: string | null;
   };
   securityAlerts: Array<{
     id: string;
@@ -157,14 +157,14 @@ export function getMoroccoLocations() {
 }
 
 /**
- * Get Morocco economic indicators (simulated - would use World Bank API in production)
+ * Get Morocco economic indicators (not yet wired to a live source)
  */
 export function getMoroccoEconomicIndicators() {
   return {
-    gdpGrowth: 3.2, // % (2024 estimate)
-    inflation: 6.1, // % (2024)
-    unemployment: 11.8, // % (2024)
-    tradeBalance: '-$25.3B', // Trade deficit
+    gdpGrowth: null,
+    inflation: null,
+    unemployment: null,
+    tradeBalance: null,
   };
 }
 

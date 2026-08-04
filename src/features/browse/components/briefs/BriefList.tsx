@@ -17,7 +17,15 @@ type Props = {
 
 export function BriefList({ briefs }: Props) {
   if (briefs.length === 0) {
-    return <p className="text-sm text-[var(--t3)]">No briefs available.</p>;
+    return (
+      <div className="mt-2 border border-dashed border-[var(--bd)] p-8 text-center">
+        <p className="label text-[var(--t3)] mb-2">No briefs yet</p>
+        <p className="text-xs text-[var(--t4)] leading-relaxed">
+          Daily briefs are generated from real-time reporting. Check back shortly —
+          a new brief is compiled each day.
+        </p>
+      </div>
+    );
   }
 
   return (

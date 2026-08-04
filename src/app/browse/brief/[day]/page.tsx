@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const description = buildDescription(`${brief.dayLabel}. ${brief.summary} Escalation score ${brief.escalation}/100.`);
   return buildDetailMetadata({
-    title: `${brief.dayLabel} - Iran Conflict Daily Brief`,
+    title: `${brief.dayLabel} - Conflict Daily Brief`,
     description,
     path: `/browse/brief/${day}`,
     image: { alt: `${brief.dayLabel} daily brief on Conflicts.app` },
@@ -46,7 +46,7 @@ export default async function BrowseBriefDayPage({ params }: Props) {
       { name: brief.dayLabel, path: `/browse/brief/${day}` },
     ]),
     buildReportJsonLd({
-      headline: `${brief.dayLabel} - Iran Conflict Daily Brief`,
+      headline: `${brief.dayLabel} - Conflict Daily Brief`,
       description,
       path: `/browse/brief/${day}`,
       datePublished: publishedAt,

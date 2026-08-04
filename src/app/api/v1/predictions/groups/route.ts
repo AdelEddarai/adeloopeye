@@ -1,8 +1,12 @@
 import { ok } from '@/server/lib/api-utils';
-import { MOCK_PREDICTION_GROUPS } from '@/server/lib/mock-data-provider';
+import { prisma } from '@/server/lib/db';
 
 export async function GET() {
-  return ok(MOCK_PREDICTION_GROUPS, {
+  const groups = await prisma.predictionGroup.findMany({
+    orderBy: { ord: 'asc' },
+  });
+
+  return ok(groups, {
     headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' },
   });
 }

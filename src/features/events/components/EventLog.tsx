@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { useXPosts } from '@/features/events/queries/x-posts';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 
 import { fmtTime } from '@/shared/lib/format';
 import { SEV_C } from '@/shared/lib/severity-colors';
@@ -65,8 +66,11 @@ export function EventLog({ events, selectedId, onSelect, compact = false, pageSc
   return (
     <div className={cn(pageScroll ? 'flex flex-col' : 'flex-1 flex flex-col overflow-hidden')}>
       <div className={cn('panel-header justify-between', compact && (pageScroll ? 'h-8 min-h-8 safe-px' : 'h-8 min-h-8 px-3'))}>
-        <span className="section-title">Operation Epic Fury</span>
-        <Badge variant="outline" className="text-[length:var(--text-caption)] text-[var(--t4)] border-[var(--bd)]">{events.length}</Badge>
+        <span className="section-title">Intel Feed</span>
+        <div className="flex items-center gap-2">
+          <LiveStatusBadge className="hidden sm:inline-flex" />
+          <Badge variant="outline" className="text-[length:var(--text-caption)] text-[var(--t4)] border-[var(--bd)]">{events.length}</Badge>
+        </div>
       </div>
 
       {/* Column headers */}
@@ -78,7 +82,10 @@ export function EventLog({ events, selectedId, onSelect, compact = false, pageSc
         <div>
           {events.length === 0 && (
             <div className="p-6 text-center">
-              <span className="label">No results</span>
+              <span className="label">No events yet</span>
+              <p className="mono text-[length:var(--text-tiny)] text-[var(--t4)] mt-1">
+                Waiting for real-time reports…
+              </p>
             </div>
           )}
           {sortedDates.map(date => {
@@ -141,7 +148,11 @@ export function EventLog({ events, selectedId, onSelect, compact = false, pageSc
                         {evt.title}
                       </p>
                       <div className="flex gap-1.5 mt-0.5">
-                        <span className="mono text-[length:var(--text-tiny)] text-[var(--t3)]">{evt.sources?.length || 0}src</span>
+                        {evt.sources && evt.sources.length > 0 && (
+                          <span className="mono text-[length:var(--text-tiny)] text-[var(--t3)]">
+                            {evt.sources[0].name}
+                          </span>
+                        )}
                         {xc > 0 && <span className="mono text-[length:var(--text-tiny)] text-[var(--t2)]">𝕏{xc}</span>}
                         {evt.verified && <CheckCircle size={8} className="text-[var(--success)]" strokeWidth={2} />}
                       </div>
@@ -159,7 +170,10 @@ export function EventLog({ events, selectedId, onSelect, compact = false, pageSc
         <ScrollArea className="flex-1">
           {events.length === 0 && (
             <div className="p-6 text-center">
-              <span className="label">No results</span>
+              <span className="label">No events yet</span>
+              <p className="mono text-[length:var(--text-tiny)] text-[var(--t4)] mt-1">
+                Waiting for real-time reports…
+              </p>
             </div>
           )}
           {sortedDates.map(date => {
@@ -222,7 +236,11 @@ export function EventLog({ events, selectedId, onSelect, compact = false, pageSc
                         {evt.title}
                       </p>
                       <div className="flex gap-1.5 mt-0.5">
-                        <span className="mono text-[length:var(--text-tiny)] text-[var(--t3)]">{evt.sources?.length || 0}src</span>
+                        {evt.sources && evt.sources.length > 0 && (
+                          <span className="mono text-[length:var(--text-tiny)] text-[var(--t3)]">
+                            {evt.sources[0].name}
+                          </span>
+                        )}
                         {xc > 0 && <span className="mono text-[length:var(--text-tiny)] text-[var(--t2)]">𝕏{xc}</span>}
                         {evt.verified && <CheckCircle size={8} className="text-[var(--success)]" strokeWidth={2} />}
                       </div>

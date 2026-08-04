@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 
 import { CitySearchPanel } from '@/features/map/components/CitySearchPanel';
 import { LiveIntelFeed } from '@/features/map/components/LiveIntelFeed';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 
 import type { MapStory } from '@/types/domain';
 
@@ -57,6 +58,7 @@ export function MapSidebar({
         <span style={{ color: 'var(--blue)', fontWeight: 700, fontSize: 'var(--text-body)' }}>
           ◈ INTEL PANEL
         </span>
+        <LiveStatusBadge className="ml-2" />
         {onToggleExpand && (
           <Button 
             variant="ghost" 

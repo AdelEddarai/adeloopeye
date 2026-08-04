@@ -23,9 +23,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const event = await getEvent(id);
   if (!event) return { title: { absolute: 'Event not found | Conflicts.app | Pharos' } };
 
-  const description = buildDescription(`${event.summary} ${event.location}. ${event.type} event in the Iran conflict.`);
+  const description = buildDescription(`${event.summary} ${event.location}. ${event.type} event in the tracked conflict.`);
   return buildDetailMetadata({
-    title: `${event.title} - Iran Conflict Event`,
+    title: `${event.title} - Conflict Event`,
     description,
     path: `/browse/events/${id}`,
     image: { alt: `${event.title} on Conflicts.app` },

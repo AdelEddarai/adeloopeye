@@ -3,12 +3,15 @@ import { cache } from 'react';
 import { publicConflictId } from '@/shared/lib/env';
 import { fmtDate } from '@/shared/lib/format';
 import { prisma } from '@/server/lib/db';
+import { ensureConflictSynced } from '@/server/lib/real-time-sync';
 
 import { PAGE_SIZE } from './page-size';
 
 const CONFLICT_ID = publicConflictId;
 
 export const getBriefs = cache(async (filters?: { page?: number }) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const where = { conflictId: CONFLICT_ID };
   const page = Math.max(1, filters?.page ?? 1);
 
@@ -40,6 +43,8 @@ export const getBriefs = cache(async (filters?: { page?: number }) => {
 });
 
 export const getBrief = cache(async (day: string) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const date = new Date(day + 'T00:00:00Z');
 
   const row = await prisma.conflictDaySnapshot.findFirst({

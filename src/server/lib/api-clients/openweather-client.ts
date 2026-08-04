@@ -43,7 +43,8 @@ const BASE_URL = 'https://api.openweathermap.org/data/2.5';
  */
 export async function getWeatherByCoords(lat: number, lon: number): Promise<WeatherData | null> {
   if (!API_KEY) {
-    return getSimulatedWeather(lat, lon);
+    console.warn('OpenWeatherMap API key not configured');
+    return null;
   }
 
   try {
@@ -60,7 +61,7 @@ export async function getWeatherByCoords(lat: number, lon: number): Promise<Weat
 
     if (!response.ok) {
       console.error(`OpenWeatherMap API error: ${response.status}`);
-      return getSimulatedWeather(lat, lon);
+      return null;
     }
 
     const data = await response.json();
@@ -92,7 +93,7 @@ export async function getWeatherByCoords(lat: number, lon: number): Promise<Weat
     };
   } catch (error) {
     console.error('Failed to fetch weather:', error);
-    return getSimulatedWeather(lat, lon);
+    return null;
   }
 }
 
@@ -151,80 +152,6 @@ export async function getWeatherByCity(city: string): Promise<WeatherData | null
   } catch (error) {
     return null;
   }
-}
-
-/**
- * Get simulated weather data (fallback when API key not available)
- */
-function getSimulatedWeather(lat: number, lon: number): WeatherData {
-  const now = new Date();
-  const hour = now.getHours();
-  
-  // Simulate weather based on location and time
-  const isMiddleEast = lat > 20 && lat < 40 && lon > 30 && lon < 60;
-  const isDaytime = hour >= 6 && hour < 18;
-  
-  let weatherMain = 'Clear';
-  let weatherDesc = 'clear sky';
-  let weatherIcon = isDaytime ? '01d' : '01n';
-  let temp = 25;
-  let cloudiness = 0;
-  let rain = undefined;
-  
-  if (isMiddleEast) {
-    // Hot and dry
-    temp = 30 + Math.random() * 10;
-    cloudiness = Math.random() * 20;
-    if (cloudiness > 10) {
-      weatherMain = 'Clouds';
-      weatherDesc = 'few clouds';
-      weatherIcon = isDaytime ? '02d' : '02n';
-    }
-  } else {
-    // Varied weather
-    const rand = Math.random();
-    if (rand < 0.3) {
-      weatherMain = 'Rain';
-      weatherDesc = 'light rain';
-      weatherIcon = isDaytime ? '10d' : '10n';
-      cloudiness = 75 + Math.random() * 25;
-      rain = { '1h': 0.5 + Math.random() * 2 };
-      temp = 15 + Math.random() * 10;
-    } else if (rand < 0.6) {
-      weatherMain = 'Clouds';
-      weatherDesc = 'scattered clouds';
-      weatherIcon = isDaytime ? '03d' : '03n';
-      cloudiness = 40 + Math.random() * 40;
-      temp = 18 + Math.random() * 12;
-    } else {
-      temp = 20 + Math.random() * 15;
-    }
-  }
-  
-  return {
-    city: 'Location',
-    country: '',
-    temperature: Math.round(temp),
-    feelsLike: Math.round(temp - 2 + Math.random() * 4),
-    tempMin: Math.round(temp - 3),
-    tempMax: Math.round(temp + 3),
-    humidity: 40 + Math.round(Math.random() * 40),
-    pressure: 1010 + Math.round(Math.random() * 20),
-    windSpeed: Math.round(Math.random() * 10 * 10) / 10,
-    windDirection: Math.round(Math.random() * 360),
-    cloudiness,
-    visibility: 10000,
-    weather: {
-      id: 800,
-      main: weatherMain,
-      description: weatherDesc,
-      icon: weatherIcon,
-    },
-    rain,
-    timestamp: now.toISOString(),
-    sunrise: new Date(now.setHours(6, 0, 0)).toISOString(),
-    sunset: new Date(now.setHours(18, 30, 0)).toISOString(),
-  };
 }
 
 /**

@@ -3,6 +3,7 @@ import { cache } from 'react';
 import { publicConflictId } from '@/shared/lib/env';
 import { fmtDate } from '@/shared/lib/format';
 import { prisma } from '@/server/lib/db';
+import { ensureConflictSynced } from '@/server/lib/real-time-sync';
 
 import type { BrowseEventFilters } from '@/types/domain';
 
@@ -11,6 +12,8 @@ import { PAGE_SIZE } from './page-size';
 const CONFLICT_ID = publicConflictId;
 
 export const getEvents = cache(async (filters?: BrowseEventFilters) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const where: Record<string, unknown> = { conflictId: CONFLICT_ID };
 
   if (filters?.severity?.length) {
@@ -41,6 +44,7 @@ export const getEvents = cache(async (filters?: BrowseEventFilters) => {
         summary: true,
         verified: true,
         tags: true,
+        sources: { select: { name: true, url: true } },
       },
     }),
     prisma.intelEvent.count({ where }),
@@ -50,12 +54,18 @@ export const getEvents = cache(async (filters?: BrowseEventFilters) => {
     events: rows.map((r) => ({
       ...r,
       timestamp: r.timestamp.toISOString(),
+      sources: r.sources.map((s) => ({
+        name: s.name,
+        url: s.url,
+      })),
     })),
     total,
   };
 });
 
 export const getEvent = cache(async (eventId: string) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const row = await prisma.intelEvent.findFirst({
     where: { id: eventId, conflictId: CONFLICT_ID },
     include: {
@@ -75,6 +85,8 @@ export const getEvent = cache(async (eventId: string) => {
 });
 
 export async function getEventDates(): Promise<Set<string>> {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const rows = await prisma.intelEvent.findMany({
     where: { conflictId: CONFLICT_ID },
     select: { timestamp: true },
@@ -83,6 +95,8 @@ export async function getEventDates(): Promise<Set<string>> {
 }
 
 export const getXPostsByEvent = cache(async (eventId: string) => {
+  await ensureConflictSynced(CONFLICT_ID);
+
   const rows = await prisma.xPost.findMany({
     where: { conflictId: CONFLICT_ID, eventId },
     orderBy: { timestamp: 'desc' },

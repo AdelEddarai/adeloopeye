@@ -15,6 +15,7 @@ import {
   buildItemListJsonLd,
 } from '@/features/browse/lib/structured-data';
 import { getStories, STORY_PAGE_SIZE } from '@/features/browse/queries';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -24,14 +25,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const path = getCanonicalListPath('/browse/stories', page);
-  const title = page > 1 ? `Iran Conflict Stories - Page ${page}` : 'Iran Conflict Stories';
-  const description = buildDescription('Explore Iran conflict stories covering retaliations, naval incidents, intelligence operations, and strategic developments with mapped timelines and key facts.');
+  const title = page > 1 ? `Conflict Stories - Page ${page}` : 'Conflict Stories';
+  const description = buildDescription('Explore conflict stories covering retaliations, naval incidents, intelligence operations, and strategic developments with mapped timelines and key facts.');
 
   return buildBrowseMetadata({
     title,
     description,
     path,
-    image: { alt: 'Iran conflict stories and mapped narratives on Conflicts.app' },
+    image: { alt: 'Conflict stories and mapped narratives on Conflicts.app' },
   });
 }
 
@@ -50,12 +51,12 @@ export default async function BrowseStoriesPage({ searchParams }: Props) {
       { name: 'Stories', path: '/browse/stories' },
     ]),
     buildCollectionPageJsonLd({
-      name: 'Iran Conflict Stories',
-      description: 'Strategic Iran conflict narratives with mapped timelines, key facts, and conflict context.',
+      name: 'Conflict Stories',
+      description: 'Strategic conflict narratives with mapped timelines, key facts, and conflict context.',
       path: canonicalPath,
     }),
     buildItemListJsonLd({
-      name: 'Iran Conflict Stories',
+      name: 'Conflict Stories',
       path: canonicalPath,
       items: stories.map((story) => ({
         name: story.title,
@@ -70,10 +71,13 @@ export default async function BrowseStoriesPage({ searchParams }: Props) {
       <StructuredData data={jsonLd} />
       <BrowsePageHeader crumbs={[{ label: 'Stories' }]} hasAutoRefresh />
       <header className="mt-6 mb-8">
-        <p className="label mb-2">Conflict narratives</p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="label">Conflict narratives</p>
+          <LiveStatusBadge />
+        </div>
         <h1 className="text-lg font-bold text-[var(--t1)] mb-1">Stories</h1>
         <p className="text-xs text-[var(--t3)]">
-          {total > STORY_PAGE_SIZE ? `Showing ${from}–${to} of ${total} narratives` : `${total} narratives mapping the Iran conflict`}
+          {total > STORY_PAGE_SIZE ? `Showing ${from}–${to} of ${total} narratives` : `${total} narratives assembled from live reporting`}
         </p>
       </header>
       <StoryList stories={stories} />

@@ -15,6 +15,7 @@ import {
   buildItemListJsonLd,
 } from '@/features/browse/lib/structured-data';
 import { getBriefs, PAGE_SIZE } from '@/features/browse/queries';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -24,14 +25,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const path = getCanonicalListPath('/browse/brief', page);
-  const title = page > 1 ? `Iran Conflict Daily Briefs - Page ${page}` : 'Iran Conflict Daily Briefs';
-  const description = buildDescription('Read daily Iran conflict briefs with escalation scoring, key facts, casualties, economic impact, and scenario analysis updated throughout the crisis.');
+  const title = page > 1 ? `Conflict Daily Briefs - Page ${page}` : 'Conflict Daily Briefs';
+  const description = buildDescription('Read daily conflict briefs with escalation scoring, key facts, casualties, economic impact, and scenario analysis updated throughout the crisis.');
 
   return buildBrowseMetadata({
     title,
     description,
     path,
-    image: { alt: 'Iran conflict daily briefs on Conflicts.app' },
+    image: { alt: 'Conflict daily briefs on Conflicts.app' },
   });
 }
 
@@ -50,12 +51,12 @@ export default async function BrowseBriefPage({ searchParams }: Props) {
       { name: 'Briefs', path: '/browse/brief' },
     ]),
     buildCollectionPageJsonLd({
-      name: 'Iran Conflict Daily Briefs',
-      description: 'Daily intelligence briefs covering escalation, casualties, economic impact, and scenario analysis across the Iran conflict.',
+      name: 'Conflict Daily Briefs',
+      description: 'Daily intelligence briefs covering escalation, casualties, economic impact, and scenario analysis across the tracked conflict.',
       path: canonicalPath,
     }),
     buildItemListJsonLd({
-      name: 'Iran Conflict Daily Briefs',
+      name: 'Conflict Daily Briefs',
       path: canonicalPath,
       items: briefs.map((brief) => ({
         name: brief.dayLabel,
@@ -70,10 +71,13 @@ export default async function BrowseBriefPage({ searchParams }: Props) {
       <StructuredData data={jsonLd} />
       <BrowsePageHeader crumbs={[{ label: 'Briefs' }]} hasAutoRefresh />
       <header className="mt-6 mb-8">
-        <p className="label mb-2">Intelligence briefs</p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="label">Intelligence briefs</p>
+          <LiveStatusBadge />
+        </div>
         <h1 className="text-lg font-bold text-[var(--t1)] mb-1">Daily Briefs</h1>
         <p className="text-xs text-[var(--t3)]">
-          {total > PAGE_SIZE ? `Showing ${from}–${to} of ${total} briefs` : `${total} briefs`} covering the Iran conflict
+          {total > PAGE_SIZE ? `Showing ${from}–${to} of ${total} briefs` : `${total} briefs`} compiled from real-time reporting
         </p>
       </header>
       <BriefList briefs={briefs} />

@@ -120,3 +120,29 @@ export async function getMoroccoHeadlines(timeoutMs: number = 8000): Promise<GDE
     timeoutMs,
   });
 }
+
+/**
+ * Real-time global/Middle East conflict coverage. Keyless fallback used to
+ * keep the DB conflict feed populated from real news even when paid news API
+ * keys are not configured. Single flat OR block (GDELT rejects nested groups).
+ */
+export async function getGlobalConflictArticles(timeoutMs: number = 8000): Promise<GDELTArticle[]> {
+  const query =
+    '(iran OR israel OR gaza OR syria OR lebanon OR yemen OR ukraine OR russia OR ' +
+    'houthi OR hamas OR hezbollah OR attack OR strike OR missile OR drone OR war OR ' +
+    'conflict OR ceasefire OR sanctions OR escalation)';
+
+  return queryGDELT(query, { maxRecords: 60, timespan: '3d', timeoutMs });
+}
+
+/**
+ * General regional headlines (used to enrich day snapshots when news APIs are
+ * unavailable). Single flat OR block.
+ */
+export async function getGlobalHeadlines(timeoutMs: number = 8000): Promise<GDELTArticle[]> {
+  const query =
+    '(middle east OR persian gulf OR iran OR israel OR palestine OR yemen OR syria OR ' +
+    'iraq OR lebanon OR oil OR market OR diplomacy OR economy)';
+
+  return queryGDELT(query, { maxRecords: 40, timespan: '3d', timeoutMs });
+}

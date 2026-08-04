@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     console.error('[Commodity Prices API] Error:', error);
-    // Return empty array on error - the client will use simulated data
+    // Return empty array on error - only real API data is served
     return ok(
       { commodities: [], timestamp: new Date().toISOString() },
       {

@@ -17,7 +17,15 @@ type Props = {
 
 export function StoryList({ stories }: Props) {
   if (stories.length === 0) {
-    return <p className="text-sm text-[var(--t3)]">No stories available.</p>;
+    return (
+      <div className="border border-dashed border-[var(--bd)] p-8 text-center">
+        <p className="label text-[var(--t3)] mb-2">No narratives yet</p>
+        <p className="text-xs text-[var(--t4)] leading-relaxed">
+          Narratives are assembled from real-time reporting. Check back shortly as new
+          coverage is analyzed.
+        </p>
+      </div>
+    );
   }
 
   return (

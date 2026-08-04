@@ -190,39 +190,9 @@ export async function fetchMoroccoTraffic(): Promise<MoroccoTraffic[]> {
  * - Energy prices
  */
 export async function fetchMoroccoCommodities(): Promise<MoroccoCommodity[]> {
-  // Mock data for demonstration
-  // In production, integrate with real commodity APIs
-  const commodities: MoroccoCommodity[] = [
-    {
-      name: 'Wheat',
-      category: 'AGRICULTURE',
-      price: 3200,
-      unit: 'MAD/ton',
-      change: 2.5,
-      market: 'Casablanca',
-      timestamp: new Date().toISOString(),
-    },
-    {
-      name: 'Olive Oil',
-      category: 'AGRICULTURE',
-      price: 45,
-      unit: 'MAD/L',
-      change: -1.2,
-      market: 'Marrakech',
-      timestamp: new Date().toISOString(),
-    },
-    {
-      name: 'Phosphate',
-      category: 'MINERALS',
-      price: 850,
-      unit: 'USD/ton',
-      change: 3.8,
-      market: 'Casablanca',
-      timestamp: new Date().toISOString(),
-    },
-  ];
-  
-  return commodities;
+  // No live commodity source wired yet; returns empty array
+  // (would integrate with Casablanca Stock Exchange / agricultural markets)
+  return [];
 }
 
 /**

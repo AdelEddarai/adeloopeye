@@ -1,12 +1,15 @@
 import Link from 'next/link';
 
 import { SeverityBadge } from '@/features/browse/components/events/SeverityBadge';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 
 import { fmtDate, fmtTimeZ } from '@/shared/lib/format';
 
 import type { IntelEvent } from '@/types/domain';
 
-type EventItem = Pick<IntelEvent, 'id' | 'timestamp' | 'severity' | 'type' | 'title' | 'location' | 'summary' | 'verified'>;
+type EventItem = Pick<IntelEvent, 'id' | 'timestamp' | 'severity' | 'type' | 'title' | 'location' | 'summary' | 'verified'> & {
+  sources?: { name: string; url: string | null }[];
+};
 
 type Props = {
   events: EventItem[];
@@ -26,9 +29,28 @@ function groupByDay(events: EventItem[]): Map<string, EventItem[]> {
 }
 
 export function EventList({ events, page = 1, filterBar }: Props) {
-  if (events.length === 0) return null;
-
   const showHero = page === 1;
+
+  if (events.length === 0) {
+    return (
+      <div className="flex flex-col">
+        {filterBar && (
+          <div className="flex justify-end py-4">
+            {filterBar}
+          </div>
+        )}
+
+        <div className="mt-10 border border-dashed border-[var(--bd)] p-8 text-center">
+          <p className="label text-[var(--t3)] mb-2">No events found</p>
+          <p className="text-xs text-[var(--t4)] leading-relaxed">
+            The feed is populated from real-time news sources. Try clearing the filters, or
+            check back shortly — new reports arrive every few minutes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const listEvents = showHero ? events.slice(1) : events;
   const grouped = groupByDay(listEvents);
 
@@ -64,17 +86,24 @@ export function EventList({ events, page = 1, filterBar }: Props) {
 }
 
 function LatestEvent({ event }: { event: EventItem }) {
+  const primarySource = event.sources?.[0]?.name;
+
   return (
     <Link href={`/browse/events/${event.id}`} className="no-underline block group">
       <article className="pb-8 border-b border-[var(--bd)]">
         <div className="h-[3px] w-10 bg-[var(--danger)] mb-5" />
 
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="text-[length:var(--text-body-sm)] font-bold text-[var(--danger)] tracking-[0.08em]">
             LATEST
           </span>
           <SeverityBadge severity={event.severity} />
           <span className="mono text-[length:var(--text-label)] text-[var(--t4)]">{event.type}</span>
+          {primarySource && (
+            <span className="mono text-[length:var(--text-caption)] text-[var(--t3)]">
+              {primarySource}
+            </span>
+          )}
           {event.verified && (
             <span className="mono text-[length:var(--text-caption)] font-bold text-[var(--success)]">VERIFIED</span>
           )}
@@ -101,19 +130,26 @@ function LatestEvent({ event }: { event: EventItem }) {
 }
 
 function EventListItem({ event }: { event: EventItem }) {
+  const primarySource = event.sources?.[0]?.name;
+
   return (
     <Link
       href={`/browse/events/${event.id}`}
       className="no-underline block group py-5 border-b border-[var(--bd-s)]"
     >
       <article>
-        <div className="flex items-center gap-2 mb-1.5">
+        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           <SeverityBadge severity={event.severity} />
           <span className="mono text-[length:var(--text-label)] text-[var(--t4)]">{event.type}</span>
           <span className="mono text-[length:var(--text-label)] text-[var(--t4)]">·</span>
           <span className="mono text-[length:var(--text-label)] text-[var(--t4)]">
             {fmtTimeZ(event.timestamp)}
           </span>
+          {primarySource && (
+            <span className="mono text-[length:var(--text-caption)] text-[var(--t3)]">
+              {primarySource}
+            </span>
+          )}
           {event.verified && (
             <span className="mono text-[length:var(--text-caption)] text-[var(--success)] font-bold">VERIFIED</span>
           )}

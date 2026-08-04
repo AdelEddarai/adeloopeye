@@ -19,7 +19,7 @@ const DATA_SOURCES = [
   {
     href: '/dashboard/data/predictions',
     label: 'PREDICTION MARKETS',
-    description: 'Live Polymarket prediction markets on Iran conflict outcomes — regime change, military ops, Hormuz, nuclear deals, ceasefire, economic impact.',
+    description: 'Live Polymarket prediction markets on conflict outcomes — regime change, military ops, Hormuz, nuclear deals, ceasefire, economic impact.',
     count: '~60 markets',
     status: 'LIVE',
     color: 'var(--cyber)',

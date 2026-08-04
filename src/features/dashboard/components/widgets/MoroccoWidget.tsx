@@ -82,34 +82,36 @@ export function MoroccoWidget() {
           )}
 
           {/* Economic Indicators */}
-          <Card className="bg-[var(--bg-2)] border-[var(--bd)]">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <TrendingUp className="w-4 h-4 text-[var(--success)]" />
-                <span className="text-[var(--t2)] font-bold mono">ECONOMIC INDICATORS</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
-                <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
-                  <div className="text-[var(--t4)] text-[10px] mono mb-1">GDP GROWTH</div>
-                  <div className="text-[var(--success)] font-bold text-lg mono">{economicIndicators.gdpGrowth}%</div>
+          {economicIndicators.gdpGrowth !== null && (
+            <Card className="bg-[var(--bg-2)] border-[var(--bd)]">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="w-4 h-4 text-[var(--success)]" />
+                  <span className="text-[var(--t2)] font-bold mono">ECONOMIC INDICATORS</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                  <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
+                    <div className="text-[var(--t4)] text-[10px] mono mb-1">GDP GROWTH</div>
+                    <div className="text-[var(--success)] font-bold text-lg mono">{economicIndicators.gdpGrowth}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
+                    <div className="text-[var(--t4)] text-[10px] mono mb-1">INFLATION</div>
+                    <div className="text-[var(--warning)] font-bold text-lg mono">{economicIndicators.inflation}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
+                    <div className="text-[var(--t4)] text-[10px] mono mb-1">UNEMPLOYMENT</div>
+                    <div className="text-[var(--t3)] font-bold text-lg mono">{economicIndicators.unemployment}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
+                    <div className="text-[var(--t4)] text-[10px] mono mb-1">TRADE BALANCE</div>
+                    <div className="text-[var(--danger)] font-bold text-lg mono">{economicIndicators.tradeBalance}</div>
+                  </div>
                 </div>
-                <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
-                  <div className="text-[var(--t4)] text-[10px] mono mb-1">INFLATION</div>
-                  <div className="text-[var(--warning)] font-bold text-lg mono">{economicIndicators.inflation}%</div>
-                </div>
-                <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
-                  <div className="text-[var(--t4)] text-[10px] mono mb-1">UNEMPLOYMENT</div>
-                  <div className="text-[var(--t3)] font-bold text-lg mono">{economicIndicators.unemployment}%</div>
-                </div>
-                <div className="p-2 rounded bg-[var(--bg-1)] border border-[var(--bd)]">
-                  <div className="text-[var(--t4)] text-[10px] mono mb-1">TRADE BALANCE</div>
-                  <div className="text-[var(--danger)] font-bold text-lg mono">{economicIndicators.tradeBalance}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Key Locations */}
           <Card className="bg-[var(--bg-2)] border-[var(--bd)]">

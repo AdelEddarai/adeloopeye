@@ -16,6 +16,7 @@ import {
   buildItemListJsonLd,
 } from '@/features/browse/lib/structured-data';
 import { getActors, PAGE_SIZE } from '@/features/browse/queries';
+import { LiveStatusBadge } from '@/shared/components/shared/LiveStatusBadge';
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -31,18 +32,18 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const isFiltered = hasActiveFilters([type, affiliation]);
   const path = isFiltered ? '/browse/actors' : getCanonicalListPath('/browse/actors', page);
   const title = isFiltered
-    ? 'Filtered Iran Conflict Actors'
-    : page > 1 ? `Iran Conflict Actors - Page ${page}` : 'Iran Conflict Actors';
+    ? 'Filtered Actors'
+    : page > 1 ? `Actors - Page ${page}` : 'Actors';
   const description = isFiltered
-    ? buildDescription('Filtered Iran conflict actors by type and affiliation. Browse state and non-state entities with activity scores, stances, and intelligence assessments.')
-    : buildDescription('Browse Iran conflict actors across state and non-state entities with activity scores, affiliations, stances, and intelligence assessments.');
+    ? buildDescription('Filtered conflict actors by type and affiliation. Browse state and non-state entities with activity scores, stances, and intelligence assessments.')
+    : buildDescription('Browse conflict actors across state and non-state entities with activity scores, affiliations, stances, and intelligence assessments.');
 
   return buildBrowseMetadata({
     title,
     description,
     path,
     robots: { isIndexable: !isFiltered },
-    image: { alt: 'Iran conflict actor intelligence profiles on Conflicts.app' },
+    image: { alt: 'Conflict actor intelligence profiles on Conflicts.app' },
   });
 }
 
@@ -71,12 +72,12 @@ export default async function BrowseActorsPage({ searchParams }: Props) {
       { name: 'Actors', path: '/browse/actors' },
     ]),
     buildCollectionPageJsonLd({
-      name: 'Iran Conflict Actors',
-      description: 'State and non-state actors in the Iran conflict with affiliations, activity scores, and intelligence assessments.',
+      name: 'Actors',
+      description: 'State and non-state actors in the tracked conflict with affiliations, activity scores, and intelligence assessments.',
       path: canonicalPath,
     }),
     buildItemListJsonLd({
-      name: 'Iran Conflict Actors',
+      name: 'Actors',
       path: canonicalPath,
       items: actors.map((actor) => ({
         name: actor.name,
@@ -91,10 +92,13 @@ export default async function BrowseActorsPage({ searchParams }: Props) {
       <StructuredData data={jsonLd} />
       <BrowsePageHeader crumbs={[{ label: 'Actors' }]} hasAutoRefresh />
       <header className="mt-6 mb-8">
-        <p className="label mb-2">Intelligence profiles</p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="label">Intelligence profiles</p>
+          <LiveStatusBadge />
+        </div>
         <h1 className="text-lg font-bold text-[var(--t1)] mb-1">Actors</h1>
         <p className="text-xs text-[var(--t3)]">
-          {total > PAGE_SIZE ? `Showing ${from}–${to} of ${total} actors` : `${total} actors`} tracked in the Iran conflict
+          {total > PAGE_SIZE ? `Showing ${from}–${to} of ${total} actors` : `${total} actors`} tracked from real-time reporting
         </p>
       </header>
       <ActorGrid actors={actors} />

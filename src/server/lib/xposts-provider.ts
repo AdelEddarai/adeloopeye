@@ -1,35 +1,56 @@
 /**
  * X Posts (Signals) data provider
- * Combines seed data with live news data
+ * Reads signals from the database, which is populated from real-time news by
+ * the real-time sync layer (no seed/fake data).
  */
 
-import { X_POSTS } from '../../../prisma/seed-data/iran-x-posts';
-import { newsAPIClient } from './api-clients/newsapi-client';
-import { transformNewsToXPosts } from './live-data-transformer';
+import { prisma } from './db';
+import { ensureConflictSynced } from './real-time-sync';
 import type { XPost } from '@/types/domain';
 
 /**
- * Get all X posts for a conflict (seed data + live news)
+ * Get all X posts for a conflict (real-time synced)
  */
 export async function getXPosts(conflictId: string): Promise<XPost[]> {
-  try {
-    // Get seed posts (all posts are for iran-2026 conflict)
-    const seedPosts = X_POSTS;
+  await ensureConflictSynced(conflictId);
 
-    // Get live news posts
-    const articles = await newsAPIClient.searchNews('iran OR israel OR middle east conflict', 30, 'en');
-    const livePosts = transformNewsToXPosts(articles);
+  const rows = await prisma.xPost.findMany({
+    where: { conflictId },
+    orderBy: { timestamp: 'desc' },
+    take: 200,
+    include: {
+      actor: { select: { cssVar: true, colorRgb: true } },
+    },
+  });
 
-    // Combine and sort by timestamp (newest first)
-    const allPosts = [...seedPosts, ...livePosts].sort((a, b) =>
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    // @ts-ignore
-    return allPosts;
-  } catch (error) {
-    // Fallback to seed data only
-    return X_POSTS;
-  }
+  return rows.map((r) => ({
+    id: r.id,
+    tweetId: r.tweetId ?? undefined,
+    postType: r.postType as XPost['postType'],
+    handle: r.handle,
+    displayName: r.displayName,
+    avatar: r.avatar,
+    avatarColor: r.avatarColor,
+    verified: r.verified,
+    accountType: r.accountType as XPost['accountType'],
+    significance: r.significance as XPost['significance'],
+    timestamp: r.timestamp.toISOString(),
+    content: r.content,
+    images: r.images,
+    videoThumb: r.videoThumb ?? undefined,
+    likes: r.likes,
+    retweets: r.retweets,
+    replies: r.replies,
+    views: r.views,
+    eventId: r.eventId ?? undefined,
+    actorId: r.actorId ?? undefined,
+    actorCssVar: r.actor?.cssVar ?? null,
+    actorColorRgb: r.actor?.colorRgb ?? [],
+    adeloopeyeNote: r.pharosNote ?? undefined,
+    verificationStatus: r.verificationStatus as XPost['verificationStatus'],
+    verifiedAt: r.verifiedAt?.toISOString() ?? undefined,
+    xaiCitations: r.xaiCitations,
+  }));
 }
 
 /**
@@ -37,12 +58,5 @@ export async function getXPosts(conflictId: string): Promise<XPost[]> {
  */
 export async function getXPost(conflictId: string, postId: string): Promise<XPost | null> {
   const posts = await getXPosts(conflictId);
-  return posts.find(p => p.id === postId) || null;
-}
-
-/**
- * Get seed posts only (no live data)
- */
-export function getSeedXPosts(conflictId: string): XPost[] {
-  return X_POSTS;
+  return posts.find((p) => p.id === postId) || null;
 }

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: conflictId, actorId } = await params;
 
   // Find actor in data
-  const actor = getActor(conflictId, actorId);
+  const actor = await getActor(conflictId, actorId);
   
   if (!actor) {
     return err('NOT_FOUND', `Actor ${actorId} not found`, 404);
