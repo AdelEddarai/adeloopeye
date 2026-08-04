@@ -61,7 +61,6 @@ export function CookieConsentProvider({ children }: { children: React.ReactNode 
     if (!hasHydrated || preferencesEnabled) return;
 
     clearPreferenceStorage();
-    void fetch('/api/v1/chat/visitor', { method: 'DELETE' }).catch(() => {});
   }, [hasHydrated, preferencesEnabled]);
 
   useEffect(() => {

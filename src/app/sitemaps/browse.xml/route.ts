@@ -1,17 +1,20 @@
 import { BROWSE_PAGE_SIZES, BROWSE_STATIC_ROUTES, buildPaginatedUrls, createXmlResponse, renderSitemap, toAbsoluteUrl } from '@/features/browse/lib/sitemap';
 
 import { publicConflictId } from '@/shared/lib/env';
-import { prisma } from '@/server/lib/db';
+import { ensureConflictSynced } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 const CONFLICT_ID = publicConflictId;
 
 export async function GET() {
-  const [eventTotal, actorTotal, briefTotal, storyTotal] = await Promise.all([
-    prisma.intelEvent.count({ where: { conflictId: CONFLICT_ID } }),
-    prisma.actor.count({ where: { conflictId: CONFLICT_ID } }),
-    prisma.conflictDaySnapshot.count({ where: { conflictId: CONFLICT_ID } }),
-    prisma.mapStory.count({ where: { conflictId: CONFLICT_ID } }),
-  ]);
+  await ensureConflictSynced(CONFLICT_ID).catch(() => {
+    /* Serve whatever is currently in the in-memory store */
+  });
+
+  const eventTotal = store.getEvents(CONFLICT_ID).length;
+  const actorTotal = store.getActors(CONFLICT_ID).length;
+  const briefTotal = store.getSnapshots(CONFLICT_ID).length;
+  const storyTotal = store.getMapStories(CONFLICT_ID).length;
 
   return createXmlResponse(
     renderSitemap([

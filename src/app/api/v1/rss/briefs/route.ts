@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { reassembleCasualties } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
+import { ensureConflictSynced } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 function escapeXml(input: string): string {
   return input
@@ -10,10 +11,6 @@ function escapeXml(input: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
-}
-
-function toIsoDay(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 function asRfc822(date: Date): string {
@@ -71,23 +68,11 @@ export async function GET(req: NextRequest) {
   const limitParam = Number(req.nextUrl.searchParams.get('limit') ?? '30');
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 30;
 
-  const conflict = await prisma.conflict.findUnique({
-    where: { id: conflictId },
-    select: {
-      id: true,
-      name: true,
-      summary: true,
-      daySnapshots: {
-        orderBy: { day: 'desc' },
-        take: limit,
-        include: {
-          casualties: true,
-          economicChips: { orderBy: { ord: 'asc' } },
-          scenarios: { orderBy: { ord: 'asc' } },
-        },
-      },
-    },
+  await ensureConflictSynced(conflictId).catch(() => {
+    /* Serve whatever is currently in the in-memory store */
   });
+
+  const conflict = store.getConflict(conflictId);
 
   if (!conflict) {
     return NextResponse.json(
@@ -96,13 +81,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const snapshots = [...store.getSnapshots(conflictId)].reverse().slice(0, limit);
+
   const origin = req.nextUrl.origin;
   const feedPath = `/api/v1/rss/briefs?conflictId=${encodeURIComponent(conflict.id)}&limit=${limit}`;
   const siteBriefBase = `${origin}/dashboard/brief`;
 
-  const items = conflict.daySnapshots
+  const items = snapshots
     .map(snapshot => {
-      const day = toIsoDay(snapshot.day);
+      const day = snapshot.day;
       const link = `${siteBriefBase}?day=${day}`;
       const title = `${conflict.name} - ${snapshot.dayLabel} Brief`;
       const description = `${snapshot.summary}\n\nEscalation: ${snapshot.escalation}/100`;
@@ -114,7 +101,7 @@ export async function GET(req: NextRequest) {
         `<title>${escapeXml(title)}</title>`,
         `<link>${escapeXml(link)}</link>`,
         `<guid isPermaLink="false">${escapeXml(guid)}</guid>`,
-        `<pubDate>${asRfc822(snapshot.day)}</pubDate>`,
+        `<pubDate>${asRfc822(new Date(day))}</pubDate>`,
         `<description>${escapeXml(description)}</description>`,
         `<content:encoded><![CDATA[${fullHtml}]]></content:encoded>`,
         '</item>',
@@ -122,12 +109,12 @@ export async function GET(req: NextRequest) {
     })
     .join('');
 
-  const lastBuildDate = conflict.daySnapshots[0]?.day ?? new Date();
+  const lastBuildDate = snapshots[0] ? new Date(snapshots[0].day) : new Date();
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">',
     '<channel>',
-    `<title>${escapeXml(`Pharos Briefs - ${conflict.name}`)}</title>`,
+    `<title>${escapeXml(`Adeloopeye Briefs - ${conflict.name}`)}</title>`,
     `<link>${escapeXml(siteBriefBase)}</link>`,
     `<atom:link href="${escapeXml(origin + feedPath)}" rel="self" type="application/rss+xml" />`,
     `<description>${escapeXml(conflict.summary || `Daily intelligence briefs for ${conflict.name}`)}</description>`,

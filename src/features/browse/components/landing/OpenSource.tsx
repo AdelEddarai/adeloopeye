@@ -1,8 +1,8 @@
 const TECH_STACK = [
   'Next.js App Router',
   'TypeScript',
-  'Supabase (PostgreSQL)',
-  'Prisma 7',
+  'Real-time API Integration',
+  'In-memory Data Store',
   'Redux Toolkit',
   'TanStack Query v5',
   'DeckGL / MapLibre',
@@ -17,8 +17,8 @@ export function OpenSource() {
       <div className="flex flex-col gap-4">
         <p className="text-sm text-[var(--t2)] leading-relaxed">
           AdeloopEye is a comprehensive open-source OSINT platform developed by Adeloop AI Lab.
-          The entire codebase includes dashboard, API routes, data pipelines,
-          and AI intelligence generation. Licensed under AGPL-3.0.
+          The entire codebase includes dashboard, API routes, real-time data pipelines,
+          and conflict analytics. Licensed under AGPL-3.0.
         </p>
 
         <div className="mt-4">

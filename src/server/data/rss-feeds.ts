@@ -1,9 +1,9 @@
 /**
- * PHAROS — RSS News Feeds
+ * PHAROS — RSS News Feeds (runtime config, no database)
  * 30 curated feeds from major global news sources + conflict-specific collections.
  */
 
-import type { RssFeed, ConflictCollection, ConflictChannel } from '@/types/domain';
+import type { RssFeed, ConflictCollection } from '@/types/domain';
 
 // ─── ALL FEEDS (30) ───────────────────────────────────────────
 
@@ -61,7 +61,7 @@ export const CONFLICT_COLLECTIONS: ConflictCollection[] = [
   {
     id: 'iran-israel-us',
     name: 'IRAN–ISRAEL–US CONFLICT',
-    description: 'Operation Epic Fury / Operation Roaring Lion — Multi-perspective monitoring of the Iran-Israel-US military confrontation.',
+    description: 'Global & Middle East Conflict Monitor — Multi-perspective monitoring of regional military, diplomatic, and economic developments.',
     channels: [
       {
         label: 'WESTERN WIRE',

@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 
 import { err, ok } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
 import { ensureConflictSynced } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string; day: string }> }) {
   const { id: conflictId, day } = await params;
@@ -12,19 +12,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   await ensureConflictSynced(conflictId).catch(() => {
-    /* Serve whatever is available in the DB */
+    /* Serve whatever is currently in the in-memory store */
   });
 
-  const date = new Date(day + 'T00:00:00Z');
-
-  const snapshot = await prisma.conflictDaySnapshot.findFirst({
-    where: { conflictId, day: date },
-    include: {
-      casualties: true,
-      economicChips: { orderBy: { ord: 'asc' } },
-      scenarios: { orderBy: { ord: 'asc' } },
-    },
-  });
+  const snapshot = store.getSnapshotByDay(conflictId, day);
 
   if (!snapshot) {
     return ok(

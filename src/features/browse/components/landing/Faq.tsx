@@ -25,7 +25,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What tech stack is it built with?',
-    a: 'Next.js 16 with the App Router, TypeScript, DeckGL v9 and MapLibre for maps, Prisma 7 with Supabase (PostgreSQL), Redux Toolkit for state management, and deployed on Vercel.',
+    a: 'Next.js 16 with the App Router, TypeScript, DeckGL v9 and MapLibre for maps, real-time public API integration, Redux Toolkit for state management, and deployed on Vercel.',
   },
 ] as const;
 

@@ -1,24 +1,15 @@
 import { ok } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
 import { ensureConflictSynced, generateDaysList } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 export async function GET() {
   const conflictId = process.env.NEXT_PUBLIC_CONFLICT_ID ?? 'iran-2026';
 
   await ensureConflictSynced(conflictId).catch(() => {
-    /* Serve whatever is available in the DB */
+    /* Serve whatever is currently in the in-memory store */
   });
 
-  const conflict = await prisma.conflict.findUnique({
-    where: { id: conflictId },
-    select: {
-      id: true,
-      name: true,
-      status: true,
-      threatLevel: true,
-      escalation: true,
-    },
-  });
+  const conflict = store.getConflict(conflictId);
 
   return ok(
     {

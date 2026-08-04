@@ -2,8 +2,8 @@ import { cache } from 'react';
 
 import { publicConflictId } from '@/shared/lib/env';
 import { fmtDate } from '@/shared/lib/format';
-import { prisma } from '@/server/lib/db';
 import { ensureConflictSynced } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 import { PAGE_SIZE } from './page-size';
 
@@ -12,31 +12,19 @@ const CONFLICT_ID = publicConflictId;
 export const getBriefs = cache(async (filters?: { page?: number }) => {
   await ensureConflictSynced(CONFLICT_ID);
 
-  const where = { conflictId: CONFLICT_ID };
   const page = Math.max(1, filters?.page ?? 1);
-
-  const [rows, total] = await Promise.all([
-    prisma.conflictDaySnapshot.findMany({
-      where,
-      orderBy: { day: 'desc' },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        day: true,
-        dayLabel: true,
-        summary: true,
-        escalation: true,
-        keyFacts: true,
-      },
-    }),
-    prisma.conflictDaySnapshot.count({ where }),
-  ]);
+  const rows = [...store.getSnapshots(CONFLICT_ID)].reverse();
+  const total = rows.length;
+  const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return {
-    briefs: rows.map((r) => ({
-      ...r,
-      day: fmtDate(r.day.toISOString()),
+    briefs: paged.map((r) => ({
+      id: r.id,
+      day: fmtDate(r.day),
+      dayLabel: r.dayLabel,
+      summary: r.summary,
+      escalation: r.escalation,
+      keyFacts: r.keyFacts,
     })),
     total,
   };
@@ -45,38 +33,21 @@ export const getBriefs = cache(async (filters?: { page?: number }) => {
 export const getBrief = cache(async (day: string) => {
   await ensureConflictSynced(CONFLICT_ID);
 
-  const date = new Date(day + 'T00:00:00Z');
-
-  const row = await prisma.conflictDaySnapshot.findFirst({
-    where: { conflictId: CONFLICT_ID, day: date },
-    include: {
-      casualties: true,
-      economicChips: { orderBy: { ord: 'asc' } },
-      scenarios: { orderBy: { ord: 'asc' } },
-    },
-  });
+  const row = store.getSnapshotByDay(CONFLICT_ID, day);
 
   if (!row) return null;
 
   const previousSnapshot = row.casualties.length === 0
-    ? await prisma.conflictDaySnapshot.findFirst({
-      where: {
-        conflictId: CONFLICT_ID,
-        day: { lt: date },
-        casualties: { some: {} },
-      },
-      orderBy: { day: 'desc' },
-      select: {
-        casualties: true,
-      },
-    })
-    : null;
+    ? [...store.getSnapshots(CONFLICT_ID)]
+      .filter((s) => s.day < day && s.casualties.length > 0)
+      .sort((a, b) => b.day.localeCompare(a.day))[0]
+    : undefined;
 
   return {
     ...row,
     casualties: row.casualties.length > 0 ? row.casualties : (previousSnapshot?.casualties ?? []),
-    day: fmtDate(row.day.toISOString()),
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    day: fmtDate(row.day),
+    createdAt: `${row.day}T00:00:00.000Z`,
+    updatedAt: `${row.day}T00:00:00.000Z`,
   };
 });

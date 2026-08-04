@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { prisma } from '@/server/lib/db';
-
-import type { Prisma } from '@/generated/prisma/client';
+import { ensureConflictSynced } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
+import type { StoredEvent } from '@/server/lib/store';
 
 function escapeXml(input: string): string {
   return input
@@ -76,19 +76,11 @@ export async function GET(req: NextRequest) {
   const verified = req.nextUrl.searchParams.get('verified');
   const day = req.nextUrl.searchParams.get('day');
 
-  const where: Prisma.IntelEventWhereInput = { conflictId };
-  if (severity) where.severity = severity as Prisma.EnumSeverityFilter['equals'];
-  if (type) where.type = type as Prisma.EnumEventTypeFilter['equals'];
-  if (verified !== null) where.verified = verified === 'true';
-  if (day) {
-    const range = parseDayRange(day);
-    where.timestamp = { gte: range.gte, lt: range.lt };
-  }
-
-  const conflict = await prisma.conflict.findUnique({
-    where: { id: conflictId },
-    select: { id: true, name: true, summary: true },
+  await ensureConflictSynced(conflictId).catch(() => {
+    /* Serve whatever is currently in the in-memory store */
   });
+
+  const conflict = store.getConflict(conflictId);
 
   if (!conflict) {
     return NextResponse.json(
@@ -97,15 +89,24 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const events = await prisma.intelEvent.findMany({
-    where,
-    orderBy: { timestamp: 'desc' },
-    take: limit,
-    include: {
-      sources: true,
-      actorResponses: true,
-    },
-  });
+  let events: StoredEvent[] = store.getEvents(conflictId);
+
+  if (severity) events = events.filter(e => e.severity === severity);
+  if (type) events = events.filter(e => e.type === type);
+  if (verified !== null) events = events.filter(e => e.verified === (verified === 'true'));
+  if (day) {
+    const range = parseDayRange(day);
+    const gteMs = range.gte.getTime();
+    const ltMs = range.lt.getTime();
+    events = events.filter(e => {
+      const ts = new Date(e.timestamp).getTime();
+      return ts >= gteMs && ts < ltMs;
+    });
+  }
+
+  events = events
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
 
   const origin = req.nextUrl.origin;
   const feedPath = `/api/v1/rss/events?conflictId=${encodeURIComponent(conflict.id)}&limit=${limit}`;
@@ -117,14 +118,14 @@ export async function GET(req: NextRequest) {
       const title = `${event.severity} - ${event.title}`;
       const description = `${event.summary}\n\n${event.location} · ${event.type}`;
       const guid = `${conflict.id}:${event.id}`;
-      const fullHtml = renderEventHtml(event);
+      const fullHtml = renderEventHtml({ ...event, timestamp: new Date(event.timestamp) });
 
       return [
         '<item>',
         `<title>${escapeXml(title)}</title>`,
         `<link>${escapeXml(eventLink)}</link>`,
         `<guid isPermaLink="false">${escapeXml(guid)}</guid>`,
-        `<pubDate>${asRfc822(event.timestamp)}</pubDate>`,
+        `<pubDate>${asRfc822(new Date(event.timestamp))}</pubDate>`,
         `<description>${escapeXml(description)}</description>`,
         `<content:encoded><![CDATA[${fullHtml}]]></content:encoded>`,
         '</item>',
@@ -132,12 +133,12 @@ export async function GET(req: NextRequest) {
     })
     .join('');
 
-  const lastBuildDate = events[0]?.timestamp ?? new Date();
+  const lastBuildDate = events[0] ? new Date(events[0].timestamp) : new Date();
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">',
     '<channel>',
-    `<title>${escapeXml(`Pharos Events - ${conflict.name}`)}</title>`,
+    `<title>${escapeXml(`Adeloopeye Events - ${conflict.name}`)}</title>`,
     `<link>${escapeXml(channelLink)}</link>`,
     `<atom:link href="${escapeXml(origin + feedPath)}" rel="self" type="application/rss+xml" />`,
     `<description>${escapeXml(conflict.summary || `Latest intelligence events for ${conflict.name}`)}</description>`,

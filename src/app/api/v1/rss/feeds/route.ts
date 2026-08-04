@@ -1,10 +1,8 @@
 import { ok } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
+import { RSS_FEEDS } from '@/server/data/rss-feeds';
 
 export async function GET() {
-  const feeds = await prisma.rssFeed.findMany({
-    orderBy: [{ tier: 'asc' }, { name: 'asc' }],
-  });
+  const feeds = [...RSS_FEEDS].sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
 
   return ok(feeds, {
     headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' },

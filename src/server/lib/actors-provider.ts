@@ -1,10 +1,10 @@
 /**
  * Actors data provider
- * Reads actors from the database, which is populated from real-time sources
- * by the real-time sync layer (no seed/fake data).
+ * Reads actors from the in-memory store, which is populated from real-time
+ * sources by the real-time sync layer (no database, no fake data).
  */
 
-import { prisma } from './db';
+import { store } from './store';
 import { ensureConflictSynced } from './real-time-sync';
 import type { Actor } from '@/types/domain';
 
@@ -14,54 +14,27 @@ import type { Actor } from '@/types/domain';
 export async function getActors(conflictId: string): Promise<Actor[]> {
   await ensureConflictSynced(conflictId);
 
-  const rows = await prisma.actor.findMany({
-    where: { conflictId },
-    orderBy: { activityScore: 'desc' },
-    include: {
-      actions: { orderBy: { date: 'desc' }, take: 20 },
-      daySnapshots: true,
-    },
-  });
-
-  return rows.map((row) => ({
+  return store.getActors(conflictId).map((row) => ({
     id: row.id,
     name: row.name,
     fullName: row.fullName,
-    countryCode: row.countryCode ?? undefined,
-    type: (row.type === 'NON_STATE' ? 'NON-STATE' : row.type) as Actor['type'],
-    mapKey: row.mapKey ?? undefined,
-    cssVar: row.cssVar ?? undefined,
-    colorRgb: row.colorRgb ?? undefined,
-    affiliation: row.affiliation ?? undefined,
-    mapGroup: row.mapGroup ?? undefined,
-    activityLevel: row.activityLevel as Actor['activityLevel'],
+    countryCode: row.countryCode,
+    type: row.type,
+    mapKey: row.mapKey,
+    cssVar: row.cssVar,
+    colorRgb: row.colorRgb,
+    affiliation: row.affiliation,
+    mapGroup: row.mapGroup,
+    activityLevel: row.activityLevel,
     activityScore: row.activityScore,
-    stance: row.stance as Actor['stance'],
+    stance: row.stance,
     saying: row.saying,
     doing: row.doing,
     assessment: row.assessment,
-    recentActions: row.actions.map((a) => ({
-      date: a.date,
-      type: a.type as 'MILITARY' | 'DIPLOMATIC' | 'POLITICAL' | 'ECONOMIC' | 'INTELLIGENCE',
-      description: a.description,
-      verified: a.verified,
-      significance: a.significance as 'HIGH' | 'MEDIUM' | 'LOW',
-    })),
+    recentActions: row.recentActions,
     keyFigures: row.keyFigures,
     linkedEventIds: row.linkedEventIds,
-    daySnapshots: Object.fromEntries(
-      row.daySnapshots.map((s) => [
-        s.day.toISOString().split('T')[0],
-        {
-          activityLevel: s.activityLevel,
-          activityScore: s.activityScore,
-          stance: s.stance,
-          saying: s.saying,
-          doing: s.doing,
-          assessment: s.assessment,
-        },
-      ])
-    ),
+    daySnapshots: row.daySnapshots,
   }));
 }
 

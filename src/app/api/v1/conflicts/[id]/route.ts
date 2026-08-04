@@ -1,17 +1,17 @@
 import { NextRequest } from 'next/server';
 
 import { ok } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
 import { ensureConflictSynced } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: conflictId } = await params;
 
   await ensureConflictSynced(conflictId).catch(() => {
-    /* Serve whatever is available in the DB */
+    /* Serve whatever is currently in the in-memory store */
   });
 
-  const conflict = await prisma.conflict.findUnique({ where: { id: conflictId } });
+  const conflict = store.getConflict(conflictId);
 
   if (!conflict) {
     return ok({ id: conflictId, summary: 'Awaiting first real-time sync', escalation: 5, status: 'ONGOING', threatLevel: 'MONITORING' });
@@ -24,7 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       codename: conflict.codename,
       status: conflict.status,
       threatLevel: conflict.threatLevel,
-      startDate: conflict.startDate.toISOString().split('T')[0],
+      startDate: conflict.startDate,
       region: conflict.region,
       timezone: conflict.timezone,
       escalation: conflict.escalation,

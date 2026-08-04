@@ -23,12 +23,3 @@ export const publicPosthogHost: string =
 export const publicAnalyticsEnabled: boolean =
   process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'true';
 
-/* ── server-only env vars ──────────────────────────────────────── */
-
-// Lazy getter — only evaluated when called on the server.
-export function getDatabaseUrl(): string {
-  if (!process.env.DATABASE_URL) {
-    return 'postgres://dummy:dummy@localhost:5432/dummy';
-  }
-  return process.env.DATABASE_URL;
-}

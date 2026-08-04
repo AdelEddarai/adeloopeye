@@ -1,15 +1,15 @@
 import { NextRequest } from 'next/server';
 
 import { ok } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
 import { ensureConflictSynced, generateDaysList } from '@/server/lib/real-time-sync';
+import { store } from '@/server/lib/store';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: conflictId } = await params;
   const lite = req.nextUrl.searchParams.get('lite') === 'true';
 
   await ensureConflictSynced(conflictId).catch(() => {
-    /* Serve whatever is available in the DB */
+    /* Serve whatever is currently in the in-memory store */
   });
 
   const days = generateDaysList(30);
@@ -21,22 +21,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 
-  const snapshots = await prisma.conflictDaySnapshot.findMany({
-    where: { conflictId },
-    orderBy: { day: 'desc' },
-    take: 30,
-    include: {
-      casualties: true,
-      economicChips: { orderBy: { ord: 'asc' } },
-      scenarios: { orderBy: { ord: 'asc' } },
-    },
-  });
+  const snapshots = [...store.getSnapshots(conflictId)].reverse();
 
   return ok(
     snapshots.map((s) => ({
       id: s.id,
       conflictId: s.conflictId,
-      day: s.day.toISOString().split('T')[0],
+      day: s.day,
       dayLabel: s.dayLabel,
       summary: s.summary,
       keyFacts: s.keyFacts,

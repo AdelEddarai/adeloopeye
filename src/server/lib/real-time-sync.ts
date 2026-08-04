@@ -1,16 +1,15 @@
 /**
  * Real-Time Sync
- * Populates the application database tables (conflict, events, actors,
- * x-posts, day snapshots, map features, map stories) from real, live data
+ * Populates the in-memory data store (no database) from real, live data
  * sources — GDELT (keyless) and the multi-source news client. No mock or
  * fabricated intelligence is ever written.
  *
  * Consumers call `ensureConflictSynced()` before reading. A freshness guard
- * (in-memory TTL + a cheap DB recency check) keeps steady-state requests fast
- * and only performs the expensive network sync when the feed is stale/empty.
+ * (in-memory TTL + a cheap store recency check) keeps steady-state requests
+ * fast and only performs the expensive network sync when the feed is stale or
+ * empty.
  */
 
-import { prisma } from './db';
 import { multiNewsClient, type NewsArticle } from './api-clients/multi-news-client';
 import {
   getGlobalConflictArticles,
@@ -24,6 +23,22 @@ import {
 import { fetchCommodityPrices } from './api-clients/commodity-prices-client';
 import { fetchCryptoPrices } from './api-clients/crypto-client';
 
+import {
+  store,
+  type StoredActor,
+  type StoredCasualty,
+  type StoredEconChip,
+  type StoredEvent,
+  type StoredMapFeature,
+  type StoredScenario,
+  type StoredSnapshot,
+  type StoredSource,
+  type StoredStory,
+  type StoredXPost,
+} from './store';
+
+import type { Actor, Conflict } from '@/types/domain';
+
 const SYNC_TTL_MS = 10 * 60 * 1000;
 const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SNAPSHOT_DAYS = 14;
@@ -33,7 +48,7 @@ const lastSync: Record<string, number> = {};
 
 /**
  * Ensure the conflict feed is populated with recent real data before reads.
- * Cheap (single indexed count) when fresh; full network sync only when stale.
+ * Cheap (in-memory recency check) when fresh; full network sync only when stale.
  */
 export async function ensureConflictSynced(conflictId: string): Promise<void> {
   if (inFlight[conflictId]) return inFlight[conflictId];
@@ -44,20 +59,13 @@ export async function ensureConflictSynced(conflictId: string): Promise<void> {
   // Skip during static build — data syncs at runtime on first request.
   if (process.env.NEXT_PHASE === 'phase-production-build') return;
 
-  // Cheap DB recency check: recent real events present => already synced.
-  try {
-    const recent = await prisma.intelEvent.count({
-      where: {
-        conflictId,
-        timestamp: { gte: new Date(Date.now() - RECENT_WINDOW_MS) },
-      },
-    });
-    if (recent > 0) {
-      lastSync[conflictId] = Date.now();
-      return;
-    }
-  } catch (error) {
-    console.warn('[sync] recency check failed:', error);
+  // Cheap recency check: recent real events present in the store => already synced.
+  const recent = store
+    .getEvents(conflictId)
+    .some((e) => Date.now() - new Date(e.timestamp).getTime() < RECENT_WINDOW_MS);
+  if (recent) {
+    lastSync[conflictId] = Date.now();
+    return;
   }
 
   inFlight[conflictId] = syncConflict(conflictId)
@@ -155,7 +163,7 @@ function scoreArticles(articles: NewsArticle[]): number {
   return Math.min(10, Math.max(1, Math.round(score / Math.max(1, articles.length) * 2)));
 }
 
-function threatLevelFromScore(score: number): 'CRITICAL' | 'HIGH' | 'ELEVATED' | 'MONITORING' {
+function threatLevelFromScore(score: number): Conflict['threatLevel'] {
   if (score >= 8) return 'CRITICAL';
   if (score >= 6) return 'HIGH';
   if (score >= 4) return 'ELEVATED';
@@ -171,7 +179,7 @@ function generateKeyFacts(articles: NewsArticle[]): string[] {
   return articles.slice(0, 5).map((a) => a.title).filter(Boolean);
 }
 
-function generateScenarios(escalation: number) {
+function generateScenarios(escalation: number): StoredScenario[] {
   if (escalation > 7) {
     return [
       { label: 'Escalation', subtitle: 'Heightened tensions', color: 'var(--danger)', prob: '50%', body: 'Current indicators suggest an elevated risk of further escalation.' },
@@ -217,32 +225,17 @@ function hashId(value: string): string {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Section writers
+// Section builders (store shapes)
 // ────────────────────────────────────────────────────────────────────────────
 
-type EventRow = {
-  id: string;
-  conflictId: string;
-  timestamp: Date;
-  severity: 'CRITICAL' | 'HIGH' | 'STANDARD';
-  type: 'MILITARY' | 'DIPLOMATIC' | 'INTELLIGENCE' | 'ECONOMIC' | 'HUMANITARIAN' | 'POLITICAL';
-  title: string;
-  location: string;
-  summary: string;
-  fullContent: string;
-  verified: boolean;
-  tags: string[];
-  sources: { name: string; tier: number; reliability: number; url: string | null }[];
-};
-
-function buildEvents(conflictId: string, articles: NewsArticle[]): EventRow[] {
+function buildEvents(conflictId: string, articles: NewsArticle[]): StoredEvent[] {
   return articles.slice(0, 60).map((a, idx) => {
     const content = `${a.title} ${a.description}`.toLowerCase();
-    let severity: EventRow['severity'] = 'STANDARD';
+    let severity: StoredEvent['severity'] = 'STANDARD';
     if (CRITICAL_KEYWORDS.some((k) => content.includes(k))) severity = 'CRITICAL';
     else if (HIGH_KEYWORDS.some((k) => content.includes(k))) severity = 'HIGH';
 
-    let type: EventRow['type'] = 'POLITICAL';
+    let type: StoredEvent['type'] = 'POLITICAL';
     if (/military|attack|strike|troops|missile|drone|bomb/.test(content)) type = 'MILITARY';
     else if (/diplomat|negotiat|talks|summit/.test(content)) type = 'DIPLOMATIC';
     else if (/econom|sanction|trade|oil|market/.test(content)) type = 'ECONOMIC';
@@ -252,10 +245,13 @@ function buildEvents(conflictId: string, articles: NewsArticle[]): EventRow[] {
     const locations = ['Tehran', 'Jerusalem', 'Tel Aviv', 'Baghdad', 'Damascus', 'Beirut', 'Gaza', 'Yemen', 'Iran', 'Israel', 'Lebanon', 'Syria', 'Iraq', 'Ukraine', 'Russia'];
     const found = locations.filter((loc) => content.includes(loc.toLowerCase()));
 
+    const published = new Date(a.publishedAt).toISOString();
+
     return {
       id: `evt-${hashId(a.url || a.title)}-${idx}`,
       conflictId,
-      timestamp: new Date(a.publishedAt),
+      timestamp: published,
+      createdAt: published,
       severity,
       type,
       title: a.title,
@@ -264,39 +260,17 @@ function buildEvents(conflictId: string, articles: NewsArticle[]): EventRow[] {
       fullContent: a.content || a.description || a.title,
       verified: true,
       tags: [type.toLowerCase()],
-      sources: [{ name: a.source, tier: 1, reliability: 90, url: a.url || null }],
+      sources: [{ name: a.source, tier: 1, reliability: 90, url: a.url || null } as StoredSource],
+      actorResponses: [],
     };
   });
 }
 
-type PostRow = {
-  id: string;
-  conflictId: string;
-  postType: 'NEWS_ARTICLE';
-  handle: string;
-  displayName: string;
-  avatar: string;
-  avatarColor: string;
-  verified: boolean;
-  accountType: 'journalist';
-  significance: 'BREAKING' | 'HIGH' | 'STANDARD';
-  timestamp: Date;
-  content: string;
-  images: string[];
-  likes: number;
-  retweets: number;
-  replies: number;
-  views: number;
-  pharosNote: string | null;
-  eventId: string | null;
-  actorId: string | null;
-};
-
-function buildPosts(events: EventRow[], articles: NewsArticle[]): PostRow[] {
+function buildPosts(events: StoredEvent[], articles: NewsArticle[]): StoredXPost[] {
   return events.map((event, idx) => {
     const a = articles[idx];
     const content = `${a.title} ${a.description}`.toLowerCase();
-    let significance: PostRow['significance'] = 'STANDARD';
+    let significance: StoredXPost['significance'] = 'STANDARD';
     if (/breaking|urgent|alert|just in/.test(content)) significance = 'BREAKING';
     else if (/major|significant|critical/.test(content)) significance = 'HIGH';
 
@@ -318,9 +292,13 @@ function buildPosts(events: EventRow[], articles: NewsArticle[]): PostRow[] {
       retweets: 0,
       replies: 0,
       views: 0,
-      pharosNote: a.description || null,
+      adeloopeyeNote: a.description || undefined,
       eventId: event.id,
-      actorId: null,
+      actorId: undefined,
+      actorCssVar: null,
+      actorColorRgb: [],
+      verificationStatus: 'UNVERIFIED',
+      xaiCitations: [],
     };
   });
 }
@@ -334,7 +312,7 @@ type ActorSeed = {
   name: string;
   fullName: string;
   countryCode: string;
-  type: 'STATE' | 'NON_STATE' | 'ORGANIZATION' | 'INDIVIDUAL';
+  type: Actor['type'];
   mapKey: string;
   cssVar: string;
   colorRgb: number[];
@@ -347,13 +325,13 @@ const ACTOR_SEEDS: ActorSeed[] = [
   { id: 'us', name: 'United States', fullName: 'United States of America', countryCode: 'US', type: 'STATE', mapKey: 'US', cssVar: 'var(--blue)', colorRgb: [45, 114, 210], affiliation: 'FRIENDLY', mapGroup: 'Coalition', keywords: ['united states', 'us ', 'america', 'american', 'washington', 'penta'] },
   { id: 'iran', name: 'Iran', fullName: 'Islamic Republic of Iran', countryCode: 'IR', type: 'STATE', mapKey: 'IRAN', cssVar: 'var(--danger)', colorRgb: [231, 106, 110], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['iran', 'tehran', 'irgc'] },
   { id: 'israel', name: 'Israel', fullName: 'State of Israel', countryCode: 'IL', type: 'STATE', mapKey: 'ISRAEL', cssVar: 'var(--teal)', colorRgb: [50, 200, 200], affiliation: 'FRIENDLY', mapGroup: 'Coalition', keywords: ['israel', 'idf', 'jerusalem', 'tel aviv'] },
-  { id: 'houthis', name: 'Houthis', fullName: 'Ansar Allah (Houthi movement)', countryCode: 'YE', type: 'NON_STATE', mapKey: 'HOUTHI', cssVar: 'var(--warning)', colorRgb: [236, 154, 60], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['houthi', 'yemen', 'bab el-mandeb', 'ansar allah'] },
-  { id: 'hezbollah', name: 'Hezbollah', fullName: 'Hezbollah', countryCode: 'LB', type: 'NON_STATE', mapKey: 'HEZBOLLAH', cssVar: 'var(--danger)', colorRgb: [180, 40, 40], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['hezbollah', 'lebanon', 'beirut'] },
+  { id: 'houthis', name: 'Houthis', fullName: 'Ansar Allah (Houthi movement)', countryCode: 'YE', type: 'NON-STATE', mapKey: 'HOUTHI', cssVar: 'var(--warning)', colorRgb: [236, 154, 60], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['houthi', 'yemen', 'bab el-mandeb', 'ansar allah'] },
+  { id: 'hezbollah', name: 'Hezbollah', fullName: 'Hezbollah', countryCode: 'LB', type: 'NON-STATE', mapKey: 'HEZBOLLAH', cssVar: 'var(--danger)', colorRgb: [180, 40, 40], affiliation: 'HOSTILE', mapGroup: 'Adversary', keywords: ['hezbollah', 'lebanon', 'beirut'] },
   { id: 'russia', name: 'Russia', fullName: 'Russian Federation', countryCode: 'RU', type: 'STATE', mapKey: 'RUSSIA', cssVar: 'var(--russia)', colorRgb: [200, 80, 80], affiliation: 'NEUTRAL', mapGroup: 'Observer', keywords: ['russia', 'moscow', 'putin'] },
   { id: 'china', name: 'China', fullName: 'People\'s Republic of China', countryCode: 'CN', type: 'STATE', mapKey: 'CHINA', cssVar: 'var(--china)', colorRgb: [220, 100, 100], affiliation: 'NEUTRAL', mapGroup: 'Observer', keywords: ['china', 'beijing', 'chinese'] },
 ];
 
-function buildActorRows(conflictId: string, articles: NewsArticle[]) {
+function buildActorRows(conflictId: string, articles: NewsArticle[]): StoredActor[] {
   return ACTOR_SEEDS.map((seed) => {
     const mentions = articles.filter((a) => {
       const content = `${a.title} ${a.description}`.toLowerCase();
@@ -389,14 +367,17 @@ function buildActorRows(conflictId: string, articles: NewsArticle[]) {
       colorRgb: seed.colorRgb,
       affiliation: seed.affiliation,
       mapGroup: seed.mapGroup,
-      activityLevel: activityLevel as 'CRITICAL' | 'HIGH' | 'ELEVATED' | 'MODERATE',
+      activityLevel: activityLevel as Actor['activityLevel'],
       activityScore: score,
-      stance: stance as 'AGGRESSOR' | 'DEFENDER' | 'RETALIATING' | 'PROXY' | 'NEUTRAL' | 'CONDEMNING',
+      stance: stance as Actor['stance'],
       saying: mentions[0]?.title || `No recent ${seed.name} coverage in monitored feeds`,
       doing,
       assessment: `${seed.name} detected in ${mentions.length} of ${articles.length} monitored articles.`,
+      recentActions: [],
       keyFigures: [],
       linkedEventIds: [],
+      daySnapshots: {},
+      responses: [],
     };
   });
 }
@@ -409,7 +390,13 @@ function formatISODay(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-function buildSnapshots(conflictId: string, articles: NewsArticle[]) {
+function buildSnapshots(
+  conflictId: string,
+  articles: NewsArticle[],
+  chips: StoredEconChip[],
+  scenarios: StoredScenario[],
+  today: string,
+): StoredSnapshot[] {
   const byDay = new Map<string, NewsArticle[]>();
   for (const a of articles) {
     const day = formatISODay(new Date(a.publishedAt));
@@ -422,20 +409,25 @@ function buildSnapshots(conflictId: string, articles: NewsArticle[]) {
   return days.map((day, idx) => {
     const dayArticles = byDay.get(day) ?? [];
     const escalation = scoreArticles(dayArticles);
+    const isToday = day === today;
     return {
+      id: `snap-${day}`,
       conflictId,
-      day: new Date(day + 'T00:00:00Z'),
+      day,
       dayLabel: idx === days.length - 1 ? 'Today' : `Day ${idx + 1}`,
       summary: dayArticles[0]?.title || 'No significant developments reported in monitored feeds on this day.',
       keyFacts: dayArticles.slice(0, 3).map((a) => a.title),
       escalation,
-      economicNarrative: '',
+      economicNarrative: isToday ? generateSummary(articles) : '',
+      casualties: [] as StoredCasualty[],
+      economicChips: isToday ? chips : [],
+      scenarios: isToday ? scenarios : [],
     };
   });
 }
 
-async function buildEconomicChips(): Promise<{ label: string; val: string; sub: string; color: string }[]> {
-  const chips: { label: string; val: string; sub: string; color: string }[] = [];
+async function buildEconomicChips(): Promise<StoredEconChip[]> {
+  const chips: StoredEconChip[] = [];
   const [commodities, crypto] = await Promise.allSettled([fetchCommodityPrices(), fetchCryptoPrices()]);
 
   if (commodities.status === 'fulfilled') {
@@ -467,21 +459,8 @@ async function buildEconomicChips(): Promise<{ label: string; val: string; sub: 
 // Map features + stories
 // ────────────────────────────────────────────────────────────────────────────
 
-function buildMapFeatures(conflictId: string, articles: NewsArticle[]) {
-  const features: {
-    id: string;
-    conflictId: string;
-    featureType: 'TARGET' | 'HEAT_POINT';
-    sourceEventId: string | null;
-    actor: string;
-    priority: string;
-    category: string;
-    type: string;
-    status: string | null;
-    timestamp: Date | null;
-    geometry: Record<string, unknown>;
-    properties: Record<string, unknown>;
-  }[] = [];
+function buildMapFeatures(conflictId: string, articles: NewsArticle[]): StoredMapFeature[] {
+  const features: StoredMapFeature[] = [];
 
   for (const evt of transformNewsToCriticalEvents(articles)) {
     if (!evt.position) continue;
@@ -495,7 +474,7 @@ function buildMapFeatures(conflictId: string, articles: NewsArticle[]) {
       category: 'CRITICAL_EVENT',
       type: evt.type || 'INCIDENT',
       status: 'ACTIVE',
-      timestamp: evt.timestamp ? new Date(evt.timestamp) : null,
+      timestamp: evt.timestamp ? new Date(evt.timestamp).toISOString() : null,
       geometry: { position: evt.position },
       properties: { name: evt.name, description: evt.description, severity: evt.severity, url: evt.url },
     });
@@ -522,11 +501,11 @@ function buildMapFeatures(conflictId: string, articles: NewsArticle[]) {
   return features;
 }
 
-function evtIdFromHeat(hp: any): string {
+function evtIdFromHeat(hp: { position?: [number, number]; weight?: number }): string {
   return `${hp.position?.[0] ?? 0}-${hp.position?.[1] ?? 0}-${hp.weight ?? 0}`;
 }
 
-function buildStories(conflictId: string, events: EventRow[]) {
+function buildStories(conflictId: string, events: StoredEvent[]): StoredStory[] {
   return events.slice(0, 6).map((event, idx) => {
     const category = event.type === 'MILITARY' ? 'STRIKE' : event.type === 'DIPLOMATIC' ? 'DIPLOMATIC' : event.type === 'ECONOMIC' ? 'INTEL' : 'INTEL';
     return {
@@ -537,7 +516,7 @@ function buildStories(conflictId: string, events: EventRow[]) {
       title: event.title.slice(0, 90),
       tagline: event.summary.slice(0, 140),
       iconName: category === 'STRIKE' ? 'target' : 'radio',
-      category,
+      category: category as StoredStory['category'],
       narrative: `${event.summary}\n\nSource: ${event.sources[0]?.name ?? 'GDELT'}`,
       highlightStrikeIds: category === 'STRIKE' ? [event.id] : [],
       highlightMissileIds: [],
@@ -547,7 +526,7 @@ function buildStories(conflictId: string, events: EventRow[]) {
       keyFacts: [event.summary],
       timestamp: event.timestamp,
       events: [
-        { time: event.timestamp.toISOString(), label: event.title.slice(0, 80), type: category === 'STRIKE' ? 'STRIKE' : 'POLITICAL' },
+        { time: event.timestamp, label: event.title.slice(0, 80), type: category === 'STRIKE' ? 'STRIKE' : 'POLITICAL' },
       ],
     };
   });
@@ -568,121 +547,40 @@ async function syncConflict(conflictId: string): Promise<void> {
   const events = buildEvents(conflictId, articles);
   const posts = buildPosts(events, articles);
 
-  const conflict = await prisma.conflict.upsert({
-    where: { id: conflictId },
-    update: {
-      status: 'ONGOING',
-      threatLevel: threatLevelFromScore(score),
-      escalation: score,
-      summary: generateSummary(articles),
-      keyFacts: generateKeyFacts(articles),
-    },
-    create: {
-      id: conflictId,
-      name: 'Global & Middle East Conflict Monitor',
-      codename: { us: 'Regional Monitor', il: 'Regional Monitor' },
-      status: 'ONGOING',
-      threatLevel: threatLevelFromScore(score),
-      startDate: new Date(generateDaysList(1)[0] + 'T00:00:00Z'),
-      region: 'Middle East & Global',
-      timezone: 'UTC',
-      escalation: score,
-      summary: generateSummary(articles),
-      keyFacts: generateKeyFacts(articles),
-      objectives: { us: 'Monitor regional stability and protect allies', il: 'Ensure national security and deter threats' },
-      commanders: { us: [], il: [], ir: [] },
-    },
-  });
-  void conflict;
+  const today = generateDaysList(1)[0];
+  const conflict: Conflict = {
+    id: conflictId,
+    name: 'Global & Middle East Conflict Monitor',
+    codename: { us: 'Regional Monitor', il: 'Regional Monitor' },
+    status: 'ONGOING',
+    threatLevel: threatLevelFromScore(score),
+    startDate: today,
+    region: 'Middle East & Global',
+    timezone: 'UTC',
+    escalation: score,
+    summary: generateSummary(articles),
+    keyFacts: generateKeyFacts(articles),
+    objectives: { us: 'Monitor regional stability and protect allies', il: 'Ensure national security and deter threats' },
+    commanders: { us: [], il: [], ir: [] },
+  };
+  store.setConflict(conflict);
 
-  // Events + sources + posts
-  await prisma.$transaction([
-    prisma.intelEvent.deleteMany({ where: { conflictId } }),
-    prisma.xPost.deleteMany({ where: { conflictId } }),
-  ]);
+  store.setEvents(conflictId, events);
+  store.setPosts(conflictId, posts);
 
-  for (let i = 0; i < events.length; i += 50) {
-    const batch = events.slice(i, i + 50);
-    await prisma.intelEvent.createMany({ data: batch.map(({ sources, ...row }) => row) });
-  }
-  await prisma.eventSource.createMany({
-    data: events.flatMap((e) => e.sources.map((s) => ({ eventId: e.id, ...s }))),
-    skipDuplicates: true,
-  });
-  await prisma.xPost.createMany({ data: posts, skipDuplicates: true });
+  const actors = buildActorRows(conflictId, articles);
+  store.setActors(conflictId, actors);
 
-  // Actors
-  const actorRows = buildActorRows(conflictId, articles);
-  for (const actor of actorRows) {
-    await prisma.actor.upsert({
-      where: { id: actor.id },
-      update: {
-        activityLevel: actor.activityLevel,
-        activityScore: actor.activityScore,
-        stance: actor.stance,
-        saying: actor.saying,
-        doing: actor.doing,
-        assessment: actor.assessment,
-      },
-      create: actor,
-    });
-  }
+  const chips = await buildEconomicChips();
+  const scenarios = generateScenarios(score);
+  const snapshots = buildSnapshots(conflictId, articles, chips, scenarios, today);
+  store.setSnapshots(conflictId, snapshots);
 
-  // Day snapshots + chips + scenarios
-  const snapshots = buildSnapshots(conflictId, articles);
-  await prisma.$transaction([
-    prisma.conflictDaySnapshot.deleteMany({ where: { conflictId } }),
-    prisma.mapFeature.deleteMany({ where: { conflictId } }),
-    prisma.mapStory.deleteMany({ where: { conflictId } }),
-  ]);
-
-  for (const snap of snapshots) {
-    await prisma.conflictDaySnapshot.upsert({
-      where: { conflictId_day: { conflictId: snap.conflictId, day: snap.day } },
-      update: {
-        dayLabel: snap.dayLabel,
-        summary: snap.summary,
-        keyFacts: snap.keyFacts,
-        escalation: snap.escalation,
-      },
-      create: snap,
-    });
-  }
-
-  const today = new Date(generateDaysList(1)[0] + 'T00:00:00Z');
-  const todaySnap = await prisma.conflictDaySnapshot.findFirst({ where: { conflictId, day: today } });
-  if (todaySnap) {
-    const chips = await buildEconomicChips();
-    const scenarios = generateScenarios(score);
-    await prisma.$transaction([
-      prisma.economicImpactChip.deleteMany({ where: { snapshotId: todaySnap.id } }),
-      prisma.scenario.deleteMany({ where: { snapshotId: todaySnap.id } }),
-      prisma.economicImpactChip.createMany({
-        data: chips.map((c, ord) => ({ snapshotId: todaySnap.id, ord, ...c })),
-      }),
-      prisma.scenario.createMany({
-        data: scenarios.map((s, ord) => ({ snapshotId: todaySnap.id, ord, ...s })),
-      }),
-      prisma.conflictDaySnapshot.update({
-        where: { id: todaySnap.id },
-        data: { economicNarrative: generateSummary(articles) },
-      }),
-    ]);
-  }
-
-  // Map features + stories
   const mapFeatures = buildMapFeatures(conflictId, articles);
-  await prisma.mapFeature.createMany({ data: mapFeatures, skipDuplicates: true });
+  store.setMapFeatures(conflictId, mapFeatures);
 
   const stories = buildStories(conflictId, events);
-  for (const story of stories) {
-    await prisma.mapStory.create({
-      data: {
-        ...story,
-        events: { create: story.events.map((e, ord) => ({ ord, ...e })) },
-      },
-    });
-  }
+  store.setMapStories(conflictId, stories);
 
-  console.log(`[sync] Synced ${conflictId}: ${articles.length} articles, ${events.length} events, ${actorRows.length} actors, ${snapshots.length} snapshots, ${mapFeatures.length} map features.`);
+  console.log(`[sync] Synced ${conflictId}: ${articles.length} articles, ${events.length} events, ${actors.length} actors, ${snapshots.length} snapshots, ${mapFeatures.length} map features.`);
 }

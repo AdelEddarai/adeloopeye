@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import Parser from 'rss-parser';
 
 import { err, ok } from '@/server/lib/api-utils';
-import { prisma } from '@/server/lib/db';
+import { RSS_FEEDS } from '@/server/data/rss-feeds';
 
 import type { FeedResult } from '@/types/domain';
 
@@ -136,7 +136,7 @@ async function getFeedCached(id: string, url: string): Promise<FeedResult> {
 
 // POST /api/v1/rss/fetch — bulk prefetch
 export async function POST(req: NextRequest) {
-  const allFeeds = await prisma.rssFeed.findMany();
+  const allFeeds = RSS_FEEDS;
   const body = await req.json().catch(() => ({}));
   const ids: string[] = body.ids ?? allFeeds.map(f => f.id);
 
@@ -163,7 +163,7 @@ export async function GET(req: NextRequest) {
     return err('BAD_REQUEST', 'Provide ?ids=id1,id2');
   }
 
-  const allFeeds = await prisma.rssFeed.findMany();
+  const allFeeds = RSS_FEEDS;
   const ids = feedIds.split(',').map(s => s.trim());
 
   const urlsToFetch: { id: string; url: string }[] = [];

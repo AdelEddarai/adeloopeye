@@ -1,4 +1,3 @@
-import { ChatWidget } from '@/features/chat/components/ChatWidget';
 import { NotificationRuntime } from '@/features/notifications/components/NotificationRuntime';
 import { FloatingChannelWindow } from '@/features/perspectives/components/FloatingChannelWindow';
 import { FloatingChannelWindowProvider } from '@/features/perspectives/components/FloatingChannelWindowProvider';
@@ -18,7 +17,6 @@ export default function DashboardShellLayout({ children }: { children: React.Rea
           {children}
         </div>
       </div>
-      <ChatWidget />
       <FloatingChannelWindow />
     </FloatingChannelWindowProvider>
   );

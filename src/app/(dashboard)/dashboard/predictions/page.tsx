@@ -1,7 +1,7 @@
 'use client';
 
-import { IntelligenceDashboard } from '@/features/intelligence/components/IntelligenceDashboard';
+import { PredictionsContent } from '@/features/predictions/components/PredictionsContent';
 
 export default function PredictionsPage() {
-  return <IntelligenceDashboard />;
+  return <PredictionsContent />;
 }

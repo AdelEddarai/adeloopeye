@@ -1,10 +1,10 @@
 /**
  * Events data provider
- * Reads events from the database, which is populated from real-time sources
- * by the real-time sync layer (no seed/fake data).
+ * Reads events from the in-memory store, which is populated from real-time
+ * sources by the real-time sync layer (no database, no fake data).
  */
 
-import { prisma } from './db';
+import { store } from './store';
 import { ensureConflictSynced } from './real-time-sync';
 import type { IntelEvent } from '@/types/domain';
 
@@ -14,41 +14,20 @@ import type { IntelEvent } from '@/types/domain';
 export async function getEvents(conflictId: string): Promise<IntelEvent[]> {
   await ensureConflictSynced(conflictId);
 
-  const rows = await prisma.intelEvent.findMany({
-    where: { conflictId },
-    orderBy: { timestamp: 'desc' },
-    take: 200,
-    include: {
-      sources: true,
-      actorResponses: true,
-    },
-  });
-
-  return rows.map((r) => ({
-    id: r.id,
-    timestamp: r.timestamp.toISOString(),
-    createdAt: r.createdAt.toISOString(),
-    severity: r.severity as IntelEvent['severity'],
-    type: r.type as IntelEvent['type'],
-    title: r.title,
-    location: r.location,
-    summary: r.summary,
-    fullContent: r.fullContent,
-    verified: r.verified,
-    sources: r.sources.map((s) => ({
-      name: s.name,
-      tier: s.tier,
-      reliability: s.reliability,
-      url: s.url,
-    })),
-    actorResponses: r.actorResponses.map((a) => ({
-      actorId: a.actorId,
-      actorName: a.actorName,
-      stance: a.stance as 'SUPPORTING' | 'OPPOSING' | 'NEUTRAL' | 'UNKNOWN',
-      type: a.type,
-      statement: a.statement,
-    })),
-    tags: r.tags,
+  return store.getEvents(conflictId).map((e) => ({
+    id: e.id,
+    timestamp: e.timestamp,
+    createdAt: e.createdAt,
+    severity: e.severity,
+    type: e.type,
+    title: e.title,
+    location: e.location,
+    summary: e.summary,
+    fullContent: e.fullContent,
+    verified: e.verified,
+    sources: e.sources,
+    actorResponses: e.actorResponses,
+    tags: e.tags,
   }));
 }
 

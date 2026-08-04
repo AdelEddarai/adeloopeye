@@ -1,10 +1,10 @@
 /**
  * X Posts (Signals) data provider
- * Reads signals from the database, which is populated from real-time news by
- * the real-time sync layer (no seed/fake data).
+ * Reads signals from the in-memory store, which is populated from real-time
+ * news by the real-time sync layer (no database, no fake data).
  */
 
-import { prisma } from './db';
+import { store } from './store';
 import { ensureConflictSynced } from './real-time-sync';
 import type { XPost } from '@/types/domain';
 
@@ -14,41 +14,32 @@ import type { XPost } from '@/types/domain';
 export async function getXPosts(conflictId: string): Promise<XPost[]> {
   await ensureConflictSynced(conflictId);
 
-  const rows = await prisma.xPost.findMany({
-    where: { conflictId },
-    orderBy: { timestamp: 'desc' },
-    take: 200,
-    include: {
-      actor: { select: { cssVar: true, colorRgb: true } },
-    },
-  });
-
-  return rows.map((r) => ({
+  return store.getPosts(conflictId).map((r) => ({
     id: r.id,
-    tweetId: r.tweetId ?? undefined,
-    postType: r.postType as XPost['postType'],
+    tweetId: r.tweetId,
+    postType: r.postType,
     handle: r.handle,
     displayName: r.displayName,
     avatar: r.avatar,
     avatarColor: r.avatarColor,
     verified: r.verified,
-    accountType: r.accountType as XPost['accountType'],
-    significance: r.significance as XPost['significance'],
-    timestamp: r.timestamp.toISOString(),
+    accountType: r.accountType,
+    significance: r.significance,
+    timestamp: r.timestamp,
     content: r.content,
     images: r.images,
-    videoThumb: r.videoThumb ?? undefined,
+    videoThumb: r.videoThumb,
     likes: r.likes,
     retweets: r.retweets,
     replies: r.replies,
     views: r.views,
-    eventId: r.eventId ?? undefined,
-    actorId: r.actorId ?? undefined,
-    actorCssVar: r.actor?.cssVar ?? null,
-    actorColorRgb: r.actor?.colorRgb ?? [],
-    adeloopeyeNote: r.pharosNote ?? undefined,
-    verificationStatus: r.verificationStatus as XPost['verificationStatus'],
-    verifiedAt: r.verifiedAt?.toISOString() ?? undefined,
+    eventId: r.eventId,
+    actorId: r.actorId,
+    actorCssVar: r.actorCssVar,
+    actorColorRgb: r.actorColorRgb,
+    adeloopeyeNote: r.adeloopeyeNote,
+    verificationStatus: r.verificationStatus,
+    verifiedAt: r.verifiedAt,
     xaiCitations: r.xaiCitations,
   }));
 }
