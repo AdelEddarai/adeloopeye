@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Ship, Plane, Train, BorderAll, AlertTriangle, Package } from 'lucide-react';
+import { Ship, Plane, Train, MapPin, AlertTriangle, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { LogisticsEntry } from '@/server/lib/api-clients/morocco-logistics';
@@ -14,7 +14,7 @@ const CATEGORY_META: Record<LogisticsEntry['category'], { label: string; icon: R
   PORT: { label: 'PORT', icon: <Ship className="w-3.5 h-3.5 text-sky-400" /> },
   AIRPORT: { label: 'AIRPORT', icon: <Plane className="w-3.5 h-3.5 text-indigo-400" /> },
   RAIL: { label: 'RAIL', icon: <Train className="w-3.5 h-3.5 text-emerald-400" /> },
-  BORDER_CROSSING: { label: 'BORDER', icon: <BorderAll className="w-3.5 h-3.5 text-amber-400" /> },
+  BORDER_CROSSING: { label: 'BORDER', icon: <MapPin className="w-3.5 h-3.5 text-amber-400" /> },
   TRADE_CORRIDOR: { label: 'CORRIDOR', icon: <Package className="w-3.5 h-3.5 text-violet-400" /> },
 };
 
