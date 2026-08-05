@@ -49,7 +49,7 @@ export type GeopoliticalRelationship = {
 };
 
 // Country coordinates (capitals) - EXPANDED WORLDWIDE
-const COUNTRY_COORDS: Record<string, [number, number]> = {
+export const COUNTRY_COORDS: Record<string, [number, number]> = {
   // Middle East
   'Iran': [51.3890, 35.6892],
   'Israel': [35.2137, 31.7683],

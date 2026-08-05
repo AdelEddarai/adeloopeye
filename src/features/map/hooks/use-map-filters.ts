@@ -28,12 +28,12 @@ export type { FilteredData, FilterFacets,FilterState };
 
 // Dataset names
 
-export type DatasetName = 'strikes' | 'missiles' | 'targets' | 'assets' | 'zones' | 'conflictRelationships' | 'logisticsCrises' | 'investmentFlows';
+export type DatasetName = 'strikes' | 'missiles' | 'targets' | 'assets' | 'zones' | 'conflictRelationships' | 'logisticsCrises' | 'investmentFlows' | 'newsPulses';
 
-export const ALL_DATASETS: DatasetName[] = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships', 'logisticsCrises', 'investmentFlows'];
+export const ALL_DATASETS: DatasetName[] = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships', 'logisticsCrises', 'investmentFlows', 'newsPulses'];
 
 export const DATASET_LABEL: Record<DatasetName, string> = {
-  strikes: 'STRIKES', missiles: 'MISSILES', targets: 'TARGETS', assets: 'ASSETS', zones: 'ZONES', conflictRelationships: 'RELATIONS', logisticsCrises: 'LOGISTICS', investmentFlows: 'INVESTMENT',
+  strikes: 'STRIKES', missiles: 'MISSILES', targets: 'TARGETS', assets: 'ASSETS', zones: 'ZONES', conflictRelationships: 'RELATIONS', logisticsCrises: 'LOGISTICS', investmentFlows: 'INVESTMENT', newsPulses: 'NEWS PULSES',
 };
 
 function buildFingerprint(rawData: DataArrays): string {
@@ -44,6 +44,7 @@ function buildFingerprint(rawData: DataArrays): string {
     ...(rawData.conflictRelationships ?? []),
     ...(rawData.logisticsCrises ?? []),
     ...(rawData.investmentFlows ?? []),
+    ...(rawData.newsPulses ?? []),
   ]) {
     if (!entry.timestamp) continue;
     const ts = new Date(entry.timestamp).getTime();
@@ -85,6 +86,7 @@ const EMPTY_RESULT: { filtered: FilteredData; facets: FilterFacets } = {
     conflictRelationships: [],
     logisticsCrises: [],
     investmentFlows: [],
+    newsPulses: [],
   },
   facets:   { datasets: [], perDataset: {}, totalVisible: 0, totalAll: 0 },
 };
@@ -184,6 +186,7 @@ export function useMapFilters(enabled: boolean = true): UseMapFiltersReturn {
         case 'conflictRelationships': items = rawData.conflictRelationships ?? []; break;
         case 'logisticsCrises': items = (rawData.logisticsCrises ?? []).map(c => ({ type: 'LOGISTICS_CRISIS' })); break;
         case 'investmentFlows': items = (rawData.investmentFlows ?? []).map(f => ({ type: 'INVESTMENT_FLOW' })); break;
+        case 'newsPulses': items = (rawData.newsPulses ?? []).map(p => ({ type: 'NEWS_PULSE' })); break;
         default: items = rawData[key] as Array<{ type: string }>; break;
       }
       if (items) map[key] = [...new Set(items.map(i => i.type))];

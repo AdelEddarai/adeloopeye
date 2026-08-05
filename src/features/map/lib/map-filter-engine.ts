@@ -1,4 +1,4 @@
-import type { Asset, CityMarker, ConflictRelationship, CyberThreat, HeatPoint, MaritimeLane, MaritimeVessel, MissileTrack, StrikeArc, Target, ThreatZone } from '@/data/map-data';
+import type { Asset, CityMarker, ConflictRelationship, CyberThreat, HeatPoint, MaritimeLane, MaritimeVessel, MissileTrack, NewsPulse, StrikeArc, Target, ThreatZone } from '@/data/map-data';
 import type { ActorMeta } from '@/data/map-tokens';
 import { PRIORITY_META,STATUS_META, TYPE_META } from '@/data/map-tokens';
 
@@ -18,6 +18,7 @@ export type DataArrays = {
   vessels?: MaritimeVessel[];
   logisticsCrises?: { id: string; actor: string; position: [number, number]; type: string; severity: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
   investmentFlows?: { id: string; actor: string; position: [number, number]; type: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
+  newsPulses?: NewsPulse[];
 };
 
 export type FacetOption = {
@@ -72,16 +73,17 @@ export type FilteredData = {
   vessels?: MaritimeVessel[];
   logisticsCrises?: { id: string; actor: string; position: [number, number]; type: string; severity: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
   investmentFlows?: { id: string; actor: string; position: [number, number]; type: string; description: string; timestamp: string; url?: string | null; source?: string | null }[];
+  newsPulses?: NewsPulse[];
 };
 
 type DataItem = { actor: string; priority: string; type: string; status?: string; timestamp?: string };
 
 // Helpers
 
-const DATASET_KEYS = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'logisticsCrises', 'investmentFlows', 'conflictRelationships'] as const;
+const DATASET_KEYS = ['strikes', 'missiles', 'targets', 'assets', 'zones', 'logisticsCrises', 'investmentFlows', 'conflictRelationships', 'newsPulses'] as const;
 
 const DATASET_LABELS: Record<string, string> = {
-  strikes: 'Strikes', missiles: 'Missiles', targets: 'Targets', assets: 'Assets', zones: 'Zones', logisticsCrises: 'Logistics Crises', investmentFlows: 'Investment Flows', conflictRelationships: 'Geopolitical Relations',
+  strikes: 'Strikes', missiles: 'Missiles', targets: 'Targets', assets: 'Assets', zones: 'Zones', logisticsCrises: 'Logistics Crises', investmentFlows: 'Investment Flows', conflictRelationships: 'Geopolitical Relations', newsPulses: 'News Pulses',
 };
 
 function datasetItems(data: DataArrays, key: string): DataItem[] {
@@ -108,6 +110,12 @@ function datasetItems(data: DataArrays, key: string): DataItem[] {
       priority: r.intensity >= 7 ? 'P1' : r.intensity >= 4 ? 'P2' : 'P3',
       type: r.type,
       timestamp: r.timestamp,
+    }));
+    case 'newsPulses': return (data.newsPulses ?? []).map(p => ({
+      actor: p.source,
+      priority: 'P2',
+      type: 'NEWS_PULSE',
+      timestamp: p.publishedAt,
     }));
     default:         return [];
   }
@@ -150,7 +158,7 @@ export function extractInitialState(data: DataArrays): FilterState {
 export function extractTimeExtent(data: DataArrays): [number, number] {
   let min = Infinity;
   let max = -Infinity;
-  for (const dk of ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships', 'logisticsCrises', 'investmentFlows'] as const) {
+  for (const dk of ['strikes', 'missiles', 'targets', 'assets', 'zones', 'conflictRelationships', 'logisticsCrises', 'investmentFlows', 'newsPulses'] as const) {
     for (const d of datasetItems(data, dk)) {
       if (!d.timestamp) continue;
       const t = new Date(d.timestamp).getTime();
@@ -223,6 +231,14 @@ export function applyFilters(
           priority: 'P2',
           type: 'INVESTMENT_FLOW',
           timestamp: f.timestamp,
+        }))
+      : [],
+    newsPulses: state.datasets.has('newsPulses')
+      ? (data.newsPulses ?? []).filter(p => passes({
+          actor: p.source,
+          priority: 'P2',
+          type: 'NEWS_PULSE',
+          timestamp: p.publishedAt,
         }))
       : [],
   };

@@ -79,6 +79,7 @@ export const TYPE_META: Record<string, { label: string; category: MarkerCategory
   ENERGY_DEPENDENCY:     { label: 'Energy Dependency',     category: 'INSTALLATION' },
   MIGRATION_FLOW:        { label: 'Migration Flow',        category: 'INSTALLATION' },
   INVESTMENT_FLOW:       { label: 'Investment Flow',       category: 'INSTALLATION' },
+  NEWS_PULSE:            { label: 'News Pulse',            category: 'KINETIC' },
 };
 
 // Naval strikes use teal regardless of actor (visual convention: teal = maritime)
@@ -140,5 +141,6 @@ export const LAYER_DISPLAY: Record<string, LayerDisplayMeta> = {
   conflictRelationships: { color: 'var(--blue-l)', border: 'var(--blue)', bg: 'var(--blue-dim)' },
   logisticsCrises: { color: 'var(--warning)', border: 'var(--warning)', bg: 'var(--warning-dim)' },
   investmentFlows: { color: 'var(--teal)', border: 'var(--teal)', bg: 'var(--teal-dim)' },
+  newsPulses: { color: 'var(--danger)', border: 'var(--danger)', bg: 'var(--danger-dim)' },
   heat:     { color: 'var(--cyber)',   border: 'var(--cyber)',   bg: 'var(--cyber-dim)' },
 };

@@ -9,11 +9,13 @@ import { ArcLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, TextLay
 import type { SelectedItem } from '@/features/map/components/types';
 import { selectVisibleLabels } from '@/features/map/lib/label-visibility';
 
-import type { Asset, CyberThreat, HeatPoint, MaritimeLane, MaritimeVessel, MissileTrack, StrikeArc, Target, ThreatZone } from '@/data/map-data';
+import type { Asset, CyberThreat, HeatPoint, MaritimeLane, MaritimeVessel, MissileTrack, NewsPulse, StrikeArc, Target, ThreatZone } from '@/data/map-data';
 import type { ActorMeta } from '@/data/map-tokens';
 import { NAVAL_RGB, STATUS_META } from '@/data/map-tokens';
 import type { OpenSkyFlight } from '@/server/lib/api-clients/adsbfi-client';
 import type { MapStory } from '@/types/domain';
+
+import { useAppSelector } from '@/shared/state';
 
 import type { FilteredData } from './use-map-filters';
 import { useMoroccoLayer } from './use-morocco-layer';
@@ -139,8 +141,13 @@ export function useMapLayers({
   selectedEventId = null,
   globalFlights = [],
 }: Props): Layer[] {
-  const cyberThreats = (filtered as any).cyberThreats || [];
-  const [pulseTime, setPulseTime] = useState(0);
+   const cyberThreats = (filtered as any).cyberThreats || [];
+   const reduxNewsPulses = useAppSelector(s => s.newsPulses.pulses);
+   const allNewsPulses = useMemo(() => {
+     const server = (filtered as any).newsPulses || [];
+     return [...server, ...reduxNewsPulses];
+   }, [filtered, reduxNewsPulses]);
+   const [pulseTime, setPulseTime] = useState(0);
 
   const moroccoNeedsPulse = useMemo(() => {
     if (!showMoroccoLayer || !moroccoIntelligence) return false;
@@ -783,8 +790,41 @@ export function useMapLayers({
       },
     });
 
-    // City markers - clickable for weather
-    const cities = (filtered as any).cities || [];
+     // News pulses — pulsing red markers for every new news article
+     const newsPulses = allNewsPulses;
+     const newsPulseLayer = newsPulses.length > 0 && new IconLayer<any>({
+       id: 'news-pulses',
+       data: newsPulses,
+       getPosition: (d: any): [number, number] => d.position,
+       getIcon: () => 'pulse',
+       getSize: (d: any): number => 48 + Math.sin(Date.now() / 600 + d.id.length) * 16,
+       getColor: (d: any): RGBA => {
+         const pos = d.position;
+         if (!pos) return [255, 60, 60, 200];
+         return [255, 50, 50, 230];
+       },
+       iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
+         <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+           <g id="pulse">
+             <circle cx="64" cy="64" r="30" fill="currentColor" opacity="0.9"/>
+             <circle cx="64" cy="64" r="18" fill="white" opacity="0.7"/>
+             <path d="M64 20 L64 108 M20 64 L108 64" stroke="currentColor" stroke-width="3" opacity="0.5"/>
+           </g>
+         </svg>
+       `),
+       iconMapping: {
+         pulse: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+       },
+       pickable: true,
+       autoHighlight: true,
+       updateTriggers: {
+         getSize: [],
+         getColor: [],
+       },
+     });
+
+     // City markers - clickable for weather
+     const cities = (filtered as any).cities || [];
     const cityLayer = cities.length > 0 && new ScatterplotLayer<any>({
       id: 'cities',
       data: cities,
@@ -978,9 +1018,10 @@ export function useMapLayers({
       relationshipGlowLayer,
       relationshipLayer,
       relationshipLabels,
-      logisticsCrisisLayer,
-      investmentFlowLayer,
-      cityLayer,
+       logisticsCrisisLayer,
+       investmentFlowLayer,
+       newsPulseLayer,
+       cityLayer,
       targetLabels,
       assetLabels,
       cityLabels,
@@ -992,7 +1033,7 @@ export function useMapLayers({
     ].filter(Boolean);
 
     return layers as Layer[];
-  }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights]);
+   }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights, allNewsPulses]);
 }
 
 // Re-export so tooltip handler can share STATUS_META without another import

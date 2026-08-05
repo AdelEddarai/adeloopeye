@@ -148,6 +148,18 @@ export type CityMarker = {
   type:        'CAPITAL' | 'MAJOR_CITY' | 'CITY';
 };
 
+export type NewsPulse = {
+  id:          string;
+  title:       string;
+  description: string;
+  url:         string;
+  source:      string;
+  publishedAt: string;
+  timestamp:   string;
+  position:    [number, number] | null;
+  receivedAt:  string;
+};
+
 /** Approximate commercial sea lane / chokepoint polyline (not vessel positions). */
 export type MaritimeLane = {
   id: string;

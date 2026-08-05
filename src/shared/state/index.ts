@@ -29,6 +29,7 @@ import mapReducer, {
   toggleType,
 } from '@/features/map/state/map-slice';
 import eventSelectionReducer from './event-selection-slice';
+import newsPulseReducer from './news-pulse-slice';
 
 import {
   hasPreferencesConsent,
@@ -139,6 +140,7 @@ export const store = configureStore({
     workspace: workspaceReducer,
     map: mapReducer,
     eventSelection: eventSelectionReducer,
+    newsPulses: newsPulseReducer,
   },
   preloadedState: loadPersistedState(),
   middleware: (getDefaultMiddleware) =>
