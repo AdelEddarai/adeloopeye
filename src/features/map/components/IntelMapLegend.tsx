@@ -12,6 +12,8 @@ const LEGEND_ITEMS = [
   { color: 'var(--purple)', shape: 'airplane', label: 'LIVE FLIGHTS' },
   { color: 'var(--danger)', shape: 'zone', label: 'CLOSURE ZONE' },
   { color: 'var(--warning)', shape: 'zone', label: 'PATROL ZONE' },
+  { color: 'var(--warning)', shape: 'arc', label: 'REPORTED DISINFO CAMPAIGN' },
+  { color: 'var(--info)', shape: 'arc', label: 'OBSERVED BOT TRAFFIC' },
 ] as const;
 
 export function IntelMapLegend() {
@@ -37,6 +39,11 @@ export function IntelMapLegend() {
         >
           {shape === 'rect' ? (
             <div style={{ width: 12, height: 3, background: color, flexShrink: 0 }} />
+          ) : shape === 'arc' ? (
+            <svg width="12" height="6" viewBox="0 0 12 6" style={{ flexShrink: 0 }}>
+              <path d="M0,5 Q6,-2 12,5" stroke={color} strokeWidth="1.5" fill="none" />
+              <path d="M12,5 L10,4 M12,5 L10,6" stroke={color} strokeWidth="1.5" />
+            </svg>
           ) : shape === 'zone' ? (
             <div style={{ width: 10, height: 8, background: color + '44', border: `1px solid ${color}`, flexShrink: 0 }} />
           ) : shape === 'airplane' ? (

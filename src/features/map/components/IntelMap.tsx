@@ -22,6 +22,8 @@ import { getMapTooltip } from './intel-map-tooltip';
 import { IntelMapLegend } from './IntelMapLegend';
 import { Map3DControls } from './Map3DControls';
 
+import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
+
 import { getCoordinatesForLocation } from '@/shared/lib/location-coordinates';
 import { clearSelection } from '@/shared/state/event-selection-slice';
 import type { RootState } from '@/shared/state';
@@ -46,16 +48,18 @@ const BUTTON_CONFIG: Array<{
   { key: 'flights',  label: 'FLIGHTS',  active: { bg: 'var(--purple-dim)', border: 'var(--purple)', color: 'var(--purple)' } },
   { key: 'zones',    label: 'ZONES',    active: { bg: 'var(--gold-dim)', border: 'var(--gold)', color: 'var(--gold)' } },
   { key: 'heat',     label: 'HEAT',     active: { bg: 'var(--cyber-dim)', border: 'var(--cyber)', color: 'var(--cyber)' } },
+  { key: 'disinfo',  label: 'DISINFO',  active: { bg: 'var(--purple-dim)', border: 'var(--purple)', color: 'var(--purple)' } },
 ];
 
 const DEFAULT_VISIBILITY: LayerVisibility = {
-  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true,
+  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true, disinfo: true,
 };
 
 export function IntelMap() {
   const { data: mapData } = useMapData();
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const [visibility, setVisibility] = useState<LayerVisibility>(DEFAULT_VISIBILITY);
+  const { data: disinfoData } = useLiveDisinformation('MA', visibility.disinfo);
   
   // MapLibre map instance for 3D controls
   const mapRef = useRef<MapRef>(null);
@@ -188,7 +192,8 @@ export function IntelMap() {
     return flights.find(f => f.id === selectedFlightId) || null;
   }, [selectedFlightId, flights]);
   
-  const layers = useMapLayers(visibility, mapData, flights, time, selectedFlightId, flightTrails);
+  const layers = useMapLayers(visibility, mapData, flights, time, selectedFlightId, flightTrails,
+    disinfoData ? { edges: disinfoData.edges, nodes: disinfoData.nodes } : null);
   const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, object: any, html: string } | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

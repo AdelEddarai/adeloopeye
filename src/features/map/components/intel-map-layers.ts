@@ -17,6 +17,8 @@ import type {
   ThreatZone,
 } from '@/data/map-data';
 
+import type { DisinfoEdge, DisinfoNode } from '@/shared/hooks/use-live-disinformation';
+
 export type LayerVisibility = {
   strikes: boolean;
   missiles: boolean;
@@ -25,7 +27,10 @@ export type LayerVisibility = {
   flights: boolean;
   zones: boolean;
   heat: boolean;
+  disinfo: boolean;
 };
+
+export type DisinfoPayload = { edges: DisinfoEdge[]; nodes: DisinfoNode[] };
 
 export type TooltipObject = StrikeArc | MissileTrack | Target | Asset | ThreatZone | HeatPoint;
 
@@ -88,7 +93,8 @@ export function useMapLayers(
   flights: Asset[] = [], 
   time: number = 0,
   selectedFlightId: string | null = null,
-  flightTrails?: Map<string, [number, number][]>
+  flightTrails?: Map<string, [number, number][]>,
+  disinfo?: DisinfoPayload | null
 ) {
   return useMemo(() => {
     
@@ -396,8 +402,58 @@ export function useMapLayers(
         }
       }),
 
+    // Disinformation / bot network arcs (reported campaigns + observed bot sources)
+    visibility.disinfo && disinfo && disinfo.edges.length > 0 &&
+      new ArcLayer<DisinfoEdge>({
+        id: 'disinfo-arcs',
+        data: disinfo.edges,
+        getSourcePosition: (d: DisinfoEdge): [number, number] => {
+          const n = disinfo.nodes.find(x => x.code === d.source);
+          return n ? [n.lon, n.lat] : [0, 0];
+        },
+        getTargetPosition: (d: DisinfoEdge): [number, number] => {
+          const n = disinfo.nodes.find(x => x.code === d.target);
+          return n ? [n.lon, n.lat] : [0, 0];
+        },
+        getSourceColor: (d: DisinfoEdge): [number, number, number, number] =>
+          d.kind === 'CAMPAIGN' ? [245, 158, 11, 220] : [56, 189, 248, 200],
+        getTargetColor: (): [number, number, number, number] => [255, 255, 255, 180],
+        getWidth: (d: DisinfoEdge): number => Math.min(1.5 + d.weight, 6),
+        getHeight: 0.14,
+        widthUnits: 'pixels',
+        greatCircle: true,
+        pickable: true,
+        autoHighlight: true,
+        updateTriggers: {
+          getSourceColor: [],
+          getTargetColor: [],
+        },
+      }),
+
+    // Disinformation / bot network node volume
+    visibility.disinfo && disinfo && disinfo.nodes.length > 0 &&
+      new ScatterplotLayer<DisinfoNode>({
+        id: 'disinfo-nodes',
+        data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
+        getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
+        getRadius: (d: DisinfoNode): number =>
+          20000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000),
+        getFillColor: (d: DisinfoNode): [number, number, number, number] =>
+          d.campaignVolume >= d.botVolume ? [245, 158, 11, 60] : [56, 189, 248, 60],
+        stroked: true,
+        getLineColor: (d: DisinfoNode): [number, number, number, number] =>
+          d.campaignVolume >= d.botVolume ? [245, 158, 11, 180] : [56, 189, 248, 160],
+        lineWidthMinPixels: 1,
+        pickable: true,
+        autoHighlight: true,
+        updateTriggers: {
+          getFillColor: [],
+          getLineColor: [],
+        },
+      }),
+
     ];
-    
+
     const filteredLayers = layers.filter(Boolean);
     
     console.log('[useMapLayers] Created layers:', {
@@ -408,5 +464,5 @@ export function useMapLayers(
     });
     
     return filteredLayers as any;
-  }, [visibility, mapData, flights, time, selectedFlightId, flightTrails]);
+  }, [visibility, mapData, flights, time, selectedFlightId, flightTrails, disinfo]);
 }

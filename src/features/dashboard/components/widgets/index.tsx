@@ -9,6 +9,7 @@ const BriefWidget = dynamic(() => import('./BriefWidget').then(m => m.BriefWidge
 const CommandersWidget = dynamic(() => import('./CommandersWidget').then(m => m.CommandersWidget));
 const CommodityPricesWidget = dynamic(() => import('./CommodityPricesWidget').then(m => m.CommodityPricesWidget));
 const CyberThreatsWidget = dynamic(() => import('./CyberThreatsWidget').then(m => m.CyberThreatsWidget));
+const DisinformationWidget = dynamic(() => import('./DisinformationWidget').then(m => m.DisinformationWidget));
 const IntelAnalyticsWidget = dynamic(() => import('./IntelAnalyticsWidget').then(m => m.IntelAnalyticsWidget));
 const LatestEventsWidget = dynamic(() => import('./LatestEventsWidget').then(m => m.LatestEventsWidget));
 const LiveCryptoWidget = dynamic(() => import('./LiveCryptoWidget').then(m => m.LiveCryptoWidget));
@@ -44,5 +45,6 @@ export function widgetComponents(): Record<WidgetKey, () => React.ReactNode> {
     moroccokpi:  () => <MoroccoKPIDashboard />,
     moroccomap:  () => <MoroccoMapWidget />,
     intelanalytics: () => <IntelAnalyticsWidget />,
+    disinformation: () => <DisinformationWidget />,
   };
 }

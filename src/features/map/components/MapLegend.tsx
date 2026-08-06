@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 
-type LegendItem = { shape: 'rect' | 'circle' | 'zone'; color: string; label: string };
+type LegendItem = { shape: 'rect' | 'circle' | 'zone' | 'arc'; color: string; label: string };
 
 const ITEMS: LegendItem[] = [
   { shape: 'rect',   color: 'var(--blue)',    label: 'US STRIKE TRACK'    },
@@ -20,6 +20,8 @@ const ITEMS: LegendItem[] = [
   { shape: 'circle', color: 'var(--cyber)',   label: 'NATO ASSET'         },
   { shape: 'zone',   color: 'var(--danger)',  label: 'CLOSURE ZONE'       },
   { shape: 'zone',   color: 'var(--warning)', label: 'PATROL / NFZ'       },
+  { shape: 'arc',    color: 'var(--warning)', label: 'REPORTED DISINFO'   },
+  { shape: 'arc',    color: 'var(--info)',    label: 'OBSERVED BOT TRAFFIC' },
 ];
 
 type Props = { 
@@ -74,6 +76,12 @@ export function MapLegend({
               {shape === 'rect'   && <div style={{ width: 12, height: 3,  background: color, flexShrink: 0 }} />}
               {shape === 'circle' && <div style={{ width: 8,  height: 8,  borderRadius: '50%', background: color, flexShrink: 0 }} />}
               {shape === 'zone'   && <div style={{ width: 10, height: 8,  background: `color-mix(in srgb, ${color} 30%, transparent)`, border: `1px solid ${color}`, flexShrink: 0 }} />}
+              {shape === 'arc'    && (
+                <svg width="12" height="6" viewBox="0 0 12 6" style={{ flexShrink: 0 }}>
+                  <path d="M0,5 Q6,-2 12,5" stroke={color} strokeWidth="1.5" fill="none" />
+                  <path d="M12,5 L10,4 M12,5 L10,6" stroke={color} strokeWidth="1.5" />
+                </svg>
+              )}
               {label}
             </div>
           ))}

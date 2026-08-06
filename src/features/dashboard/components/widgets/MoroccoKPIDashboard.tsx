@@ -36,6 +36,7 @@ import {
   IntuitiveSankey,
   NewsNetwork,
   EventDistribution,
+  DisinfoMiniPanel,
 } from './morocco-kpi';
 
 type TimeRange = '24h' | '7d' | '30d';
@@ -391,6 +392,7 @@ export function MoroccoKPIDashboard() {
           <TabsContent value="overview" className="space-y-2 mt-2">
             <EventsTimeline data={historicalData} />
             <IncidentCategories data={historicalData} />
+            <DisinfoMiniPanel />
           </TabsContent>
 
           <TabsContent value="breakdown" className="space-y-2 mt-2">

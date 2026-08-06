@@ -5,7 +5,7 @@ export type WidgetKey =
   | 'commanders' | 'predictions' | 'brief'
   | 'livenews' | 'liveflights' | 'livethreats' | 'livecrypto' | 'cyberthreats'
   | 'commodities' | 'aitech' | 'morocco' | 'moroccokpi' | 'intelanalytics'
-  | 'markets' | 'moroccomap';
+  | 'markets' | 'moroccomap' | 'disinformation';
 
 export type Column = {
   id: string;
@@ -17,7 +17,7 @@ export const ALL_WIDGET_KEYS: WidgetKey[] = [
   'commanders', 'predictions', 'brief',
   'livenews', 'liveflights', 'livethreats', 'livecrypto', 'cyberthreats',
   'commodities', 'aitech', 'morocco', 'moroccokpi', 'intelanalytics',
-  'markets', 'moroccomap'
+  'markets', 'moroccomap', 'disinformation'
 ];
 
 const HIDDEN_FROM_WIDGET_SELECT: WidgetKey[] = ['commanders', 'commodities'];
@@ -46,6 +46,7 @@ export const WIDGET_LABELS: Record<WidgetKey, string> = {
   moroccokpi:  '🇲🇦 Morocco KPI Dashboard',
   intelanalytics: 'Intelligence Analytics',
   moroccomap:  '🇲🇦 Morocco 3D Map',
+  disinformation: 'Disinformation Radar',
 };
 
 // Presets

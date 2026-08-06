@@ -614,6 +614,35 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     if (id === 'assets' || id === 'asset-labels') return wrap(assetTooltip(object as Asset));
     if (id === 'zones') return wrap(zoneTooltip(object as ThreatZone));
     if (id === 'cyber-threats') return wrap(cyberThreatTooltip(object as CyberThreat));
+    if (id === 'disinfo-arcs') {
+      const d = object as any;
+      const isCampaign = d.kind === 'CAMPAIGN';
+      const color = isCampaign ? 'var(--warning)' : 'var(--info)';
+      const kindLabel = isCampaign ? 'REPORTED DISINFO CAMPAIGN' : `OBSERVED BOT TRAFFIC${d.subKind ? ` · ${d.subKind}` : ''}`;
+      const refs = (d.sources || [])
+        .map(
+          (s: any) =>
+            `<div style="margin-top:4px;padding-top:4px;border-top:1px solid var(--bd);"><a href="${s.url}" target="_blank" style="color:var(--blue-l);text-decoration:none;">${s.title}</a><span style="color:var(--t4);"> · ${s.domain}</span></div>`
+        )
+        .join('');
+      return wrap(
+        `<div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.label || `${d.source} → ${d.target}`}</div>
+         <div style="color:${color};font-size:10px;margin-bottom:2px">KIND: ${kindLabel}</div>
+         <div style="color:var(--t3);font-size:10px;margin-bottom:2px">WEIGHT: ${d.weight}</div>
+         ${refs}`
+      );
+    }
+    if (id === 'disinfo-nodes') {
+      const d = object as any;
+      const dominant = (d.campaignVolume || 0) >= (d.botVolume || 0) ? 'CAMPAIGN REFS' : 'BOT VOLUME';
+      const color = dominant === 'CAMPAIGN REFS' ? 'var(--warning)' : 'var(--info)';
+      return wrap(
+        `<div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.name}</div>
+         <div style="color:var(--warning);font-size:10px;margin-bottom:2px">CAMPAIGN REFS: ${d.campaignVolume || 0}</div>
+         <div style="color:var(--info);font-size:10px;margin-bottom:2px">BOT VOLUME: ${d.botVolume || 0}</div>
+         <div style="color:${color};font-size:10px">DOMINANT: ${dominant}</div>`
+      );
+    }
     if (id === 'geopolitical-relationships' || id === 'relationship-country-labels') return wrap(conflictRelationshipTooltip(object));
     if (id === 'cities' || id === 'city-labels') return wrap(cityTooltip(object));
     if (id === 'maritime-lanes' || id === 'maritime-lanes-glow') return wrap(maritimeLaneTooltip(object as MaritimeLane));

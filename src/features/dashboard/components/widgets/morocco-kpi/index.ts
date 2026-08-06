@@ -7,3 +7,4 @@ export { NewsNetwork } from './NewsNetwork';
 export { InfrastructureChart } from './InfrastructureChart';
 export { CriticalTrend } from './CriticalTrend';
 export { EventDistribution } from './EventDistribution';
+export { DisinfoMiniPanel } from './DisinfoMiniPanel';

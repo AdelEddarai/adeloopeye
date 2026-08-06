@@ -13,6 +13,7 @@ export type OverlayVisibility = {
   zones:    boolean;
   events:   boolean;
   cyberThreats: boolean;
+  disinfo:  boolean;
 };
 
 type Props = {
@@ -28,6 +29,7 @@ const LABELS: { key: keyof OverlayVisibility; label: string }[] = [
   { key: 'zones',    label: 'ZONES'    },
   { key: 'events',   label: 'EVENTS'   },
   { key: 'cyberThreats', label: 'CYBER THREATS' },
+  { key: 'disinfo',  label: 'DISINFO ARCS' },
 ];
 
 export function MapVisibilityMenu({ visibility, onToggle, direction = 'up' }: Props) {

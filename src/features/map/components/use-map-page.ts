@@ -13,6 +13,7 @@ import { useMapFilters } from '@/features/map/hooks/use-map-filters';
 import { useMapLayers } from '@/features/map/hooks/use-map-layers';
 import { createBuildTooltip } from '@/features/map/lib/map-tooltip';
 import { useMapStories } from '@/features/map/queries';
+import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
 import { useLiveFlights } from '@/shared/hooks/use-live-flights';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
 import {
@@ -62,8 +63,8 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
 
   const [overlayVisibility, setOverlayVisibility] = useState<OverlayVisibility>(() => (
     typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
-      ? { timeline: true, filters: false, legend: false, zones: true, events: true, cyberThreats: true }
-      : { timeline: true, filters: true, legend: true, zones: true, events: true, cyberThreats: true }
+      ? { timeline: true, filters: false, legend: false, zones: true, events: true, cyberThreats: true, disinfo: true }
+      : { timeline: true, filters: true, legend: true, zones: true, events: true, cyberThreats: true, disinfo: true }
   ));
 
   // Removed duplicate sync for flights, we use dataLayers.flights directly now
@@ -155,6 +156,9 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   // Fetch Morocco intelligence data - only when enabled
   const { data: moroccoData, isLoading: moroccoLoading, error: moroccoError } = useMoroccoIntelligence(showMoroccoLayer);
   const { data: stories = [], isLoading: storiesLoading } = useMapStories(undefined, enableOtherAPIs);
+
+  // Disinformation / bot network radar (Morocco focus) - only when layer enabled
+  const { data: disinfoData } = useLiveDisinformation('MA', overlayVisibility.disinfo);
 
   // Dynamic Live Flights fetching based on Viewport
   // If zoomed out (< 4), fetch globally (15 cities). If zoomed in, fetch local bbox.
@@ -263,6 +267,8 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     showMoroccoLayer,
     selectedEventId,
     globalFlights,
+    showDisinfo: overlayVisibility.disinfo,
+    disinfo: disinfoData ? { edges: disinfoData.edges, nodes: disinfoData.nodes } : null,
   });
 
   const handleMapClick = useCallback(({ object, layer }: PickingInfo): SelectedItem | null => {

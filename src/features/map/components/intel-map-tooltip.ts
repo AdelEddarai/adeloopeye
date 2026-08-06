@@ -67,6 +67,33 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:4px">${d.name}</div>
       <div style="color:${zoneColor};font-size:10px">TYPE: ${d.type}</div>
     `;
+  } else if (layerId === 'disinfo-arcs') {
+    const d = object as any;
+    const isCampaign = d.kind === 'CAMPAIGN';
+    const color = isCampaign ? 'var(--warning)' : 'var(--info)';
+    const kindLabel = isCampaign ? 'REPORTED DISINFO CAMPAIGN' : `OBSERVED BOT TRAFFIC${d.subKind ? ` · ${d.subKind}` : ''}`;
+    const refs = (d.sources || [])
+      .map(
+        (s: any) =>
+          `<div style="margin-top:4px;padding-top:4px;border-top:1px solid var(--bd);"><a href="${s.url}" target="_blank" style="color:var(--blue-l);text-decoration:none;">${s.title}</a><span style="color:var(--t4);"> · ${s.domain}</span></div>`
+      )
+      .join('');
+    html = `
+      <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.label || `${d.source} → ${d.target}`}</div>
+      <div style="color:${color};font-size:10px;margin-bottom:2px">KIND: ${kindLabel}</div>
+      <div style="color:var(--t3);font-size:10px;margin-bottom:2px">WEIGHT: ${d.weight}</div>
+      ${refs}
+    `;
+  } else if (layerId === 'disinfo-nodes') {
+    const d = object as any;
+    const dominant = (d.campaignVolume || 0) >= (d.botVolume || 0) ? 'CAMPAIGN REFS' : 'BOT VOLUME';
+    const color = dominant === 'CAMPAIGN REFS' ? 'var(--warning)' : 'var(--info)';
+    html = `
+      <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.name}</div>
+      <div style="color:var(--warning);font-size:10px;margin-bottom:2px">CAMPAIGN REFS: ${d.campaignVolume || 0}</div>
+      <div style="color:var(--info);font-size:10px;margin-bottom:2px">BOT VOLUME: ${d.botVolume || 0}</div>
+      <div style="color:${color};font-size:10px">DOMINANT: ${dominant}</div>
+    `;
   } else if (layerId.includes('morocco') || (object as any).severity || (object as any).location) {
     const d = object as any;
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : d.severity === 'MEDIUM' ? 'var(--blue-l)' : 'var(--teal)';

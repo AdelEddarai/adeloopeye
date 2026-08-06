@@ -9,6 +9,8 @@ import { ArcLayer, IconLayer, PathLayer, PolygonLayer, ScatterplotLayer, TextLay
 import type { SelectedItem } from '@/features/map/components/types';
 import { selectVisibleLabels } from '@/features/map/lib/label-visibility';
 
+import type { DisinfoEdge, DisinfoNode } from '@/shared/hooks/use-live-disinformation';
+
 import type { Asset, CyberThreat, HeatPoint, MaritimeLane, MaritimeVessel, MissileTrack, NewsPulse, StrikeArc, Target, ThreatZone } from '@/data/map-data';
 import type { ActorMeta } from '@/data/map-tokens';
 import { NAVAL_RGB, STATUS_META } from '@/data/map-tokens';
@@ -59,6 +61,8 @@ type Props = {
   showMoroccoLayer?: boolean;
   selectedEventId?: string | null;
   globalFlights?: OpenSkyFlight[];
+  showDisinfo?: boolean;
+  disinfo?: { edges: DisinfoEdge[]; nodes: DisinfoNode[] } | null;
 };
 
 type RGBA = [number, number, number, number];
@@ -140,6 +144,8 @@ export function useMapLayers({
   showMoroccoLayer = false,
   selectedEventId = null,
   globalFlights = [],
+  showDisinfo = false,
+  disinfo = null,
 }: Props): Layer[] {
    const cyberThreats = (filtered as any).cyberThreats || [];
    const reduxNewsPulses = useAppSelector(s => s.newsPulses.pulses);
@@ -1006,6 +1012,54 @@ export function useMapLayers({
     // ═══════════════════════════════════════════════════════════
     // Morocco layers are created outside useMemo and passed in
 
+    // Disinformation / bot network arcs (reported campaigns + observed bot sources)
+    const disinfoLayer = showDisinfo && disinfo && disinfo.edges.length > 0 && new ArcLayer<DisinfoEdge>({
+      id: 'disinfo-arcs',
+      data: disinfo.edges,
+      getSourcePosition: (d: DisinfoEdge): [number, number] => {
+        const n = disinfo.nodes.find(x => x.code === d.source);
+        return n ? [n.lon, n.lat] : [0, 0];
+      },
+      getTargetPosition: (d: DisinfoEdge): [number, number] => {
+        const n = disinfo.nodes.find(x => x.code === d.target);
+        return n ? [n.lon, n.lat] : [0, 0];
+      },
+      getSourceColor: (d: DisinfoEdge): RGBA =>
+        d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 240 : 220] : [56, 189, 248, isSatellite ? 230 : 200],
+      getTargetColor: (): RGBA => [255, 255, 255, isSatellite ? 200 : 160],
+      getWidth: (d: DisinfoEdge): number => Math.min(1.5 + d.weight, 6),
+      getHeight: 0.14,
+      widthUnits: 'pixels',
+      greatCircle: true,
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: {
+        getSourceColor: [isSatellite],
+        getTargetColor: [isSatellite],
+      },
+    });
+
+    // Disinformation / bot network node volume
+    const disinfoNodeLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
+      id: 'disinfo-nodes',
+      data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
+      getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
+      getRadius: (d: DisinfoNode): number =>
+        20000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000),
+      getFillColor: (d: DisinfoNode): RGBA =>
+        d.campaignVolume >= d.botVolume ? [245, 158, 11, 60] : [56, 189, 248, 60],
+      stroked: true,
+      getLineColor: (d: DisinfoNode): RGBA =>
+        d.campaignVolume >= d.botVolume ? [245, 158, 11, 180] : [56, 189, 248, 160],
+      lineWidthMinPixels: 1,
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: {
+        getFillColor: [isSatellite],
+        getLineColor: [isSatellite],
+      },
+    });
+
     const layers = [
       heatLayer,
       zoneLayer,
@@ -1029,11 +1083,13 @@ export function useMapLayers({
       maritimeLaneCore,
       maritimeFlowLayer,
       maritimeVesselLayer,
+      disinfoLayer,
+      disinfoNodeLayer,
       ...(showMoroccoLayer ? moroccoLayers : []),
     ].filter(Boolean);
 
     return layers as Layer[];
-   }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights, allNewsPulses]);
+   }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights, allNewsPulses, showDisinfo, disinfo]);
 }
 
 // Re-export so tooltip handler can share STATUS_META without another import

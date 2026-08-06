@@ -35,6 +35,7 @@ const NAV = [
   { label: 'EVENTS',      href: '/dashboard/feed'         },
   { label: 'ACTORS',      href: '/dashboard/actors'       },
   { label: 'SIGNALS',     href: '/dashboard/signals'      },
+  { label: 'DISINFO',     href: '/dashboard/disinfo'      },
   { label: 'BRIEF',       href: '/dashboard/brief'        },
   { label: 'MAP',         href: '/dashboard/map'          },
   { label: 'DATA',        href: '/dashboard/data'          },
