@@ -48,17 +48,20 @@ const BUTTON_CONFIG: Array<{
   { key: 'flights',  label: 'FLIGHTS',  active: { bg: 'var(--purple-dim)', border: 'var(--purple)', color: 'var(--purple)' } },
   { key: 'zones',    label: 'ZONES',    active: { bg: 'var(--gold-dim)', border: 'var(--gold)', color: 'var(--gold)' } },
   { key: 'heat',     label: 'HEAT',     active: { bg: 'var(--cyber-dim)', border: 'var(--cyber)', color: 'var(--cyber)' } },
+  { key: 'relationships', label: 'RELATIONS', active: { bg: 'var(--gold-dim)', border: 'var(--gold)', color: 'var(--gold)' } },
   { key: 'disinfo',  label: 'DISINFO',  active: { bg: 'var(--purple-dim)', border: 'var(--purple)', color: 'var(--purple)' } },
 ];
 
 const DEFAULT_VISIBILITY: LayerVisibility = {
-  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true, disinfo: true,
+  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true, disinfo: true, relationships: true,
 };
 
 export function IntelMap() {
   const { data: mapData } = useMapData();
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const [visibility, setVisibility] = useState<LayerVisibility>(DEFAULT_VISIBILITY);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const activeLayerCount = BUTTON_CONFIG.filter(c => visibility[c.key]).length;
   const { data: disinfoData } = useLiveDisinformation('MA', visibility.disinfo);
   
   // MapLibre map instance for 3D controls
@@ -327,7 +330,7 @@ export function IntelMap() {
         )}
 
         {/* Toggle buttons */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center', position: 'relative' }}>
           {/* Clear Selection Button */}
           {(eventSelection.selectedEventId || eventSelection.selectedLocation) && (
             <Button
@@ -344,27 +347,85 @@ export function IntelMap() {
               CLEAR
             </Button>
           )}
-          
-          {BUTTON_CONFIG.map(({ key, label, active }) => {
-            const on = visibility[key];
-            
-            return (
-              <Button
-                key={key}
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleLayer(key)}
-                className="h-auto px-1.5 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono"
+
+          {/* Collapsible LAYERS dropdown */}
+          <div style={{ position: 'relative' }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLayersOpen(o => !o)}
+              className="h-auto px-2 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono"
+              style={{
+                border: `1px solid ${layersOpen ? 'var(--blue)' : 'var(--bd)'}`,
+                background: layersOpen ? 'var(--blue-dim)' : 'var(--bg-1)',
+                color: layersOpen ? 'var(--blue-l)' : 'var(--t2)',
+              }}
+            >
+              LAYERS {layersOpen ? '▴' : '▾'}
+              <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--t4)' }}>
+                {activeLayerCount}/{BUTTON_CONFIG.length}
+              </span>
+            </Button>
+
+            {layersOpen && (
+              <div
                 style={{
-                  border: `1px solid ${on ? active.border : 'var(--bd)'}`,
-                  background: on ? active.bg : 'var(--bg-1)',
-                  color: on ? active.color : 'var(--t4)',
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  right: 0,
+                  minWidth: 200,
+                  padding: 6,
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--bd)',
+                  borderRadius: 3,
+                  zIndex: 120,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.55)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
                 }}
               >
-                {label}
-              </Button>
-            );
-          })}
+                {BUTTON_CONFIG.map(({ key, label, active }) => {
+                  const on = visibility[key];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => toggleLayer(key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        textAlign: 'left',
+                        padding: '5px 8px',
+                        background: on ? active.bg : 'transparent',
+                        border: `1px solid ${on ? active.border : 'var(--bd)'}`,
+                        borderRadius: 2,
+                        color: on ? active.color : 'var(--t3)',
+                        fontFamily: 'monospace',
+                        fontSize: 'var(--text-label)',
+                        fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        cursor: 'pointer',
+                        transition: 'background 0.12s ease',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          background: on ? active.border : 'var(--bd-s)',
+                          boxShadow: on ? `0 0 6px ${active.border}` : 'none',
+                          flexShrink: 0,
+                        }}
+                      />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -400,11 +461,12 @@ export function IntelMap() {
           <div
             style={{
               position: 'absolute',
-              left: hoverInfo.x,
-              top: hoverInfo.y,
+              left: Math.min(hoverInfo.x, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 320),
+              top: Math.min(hoverInfo.y, (typeof window !== 'undefined' ? window.innerHeight : 800) - 48),
               zIndex: 100,
               pointerEvents: 'auto',
               transform: 'translate(12px, 12px)',
+              maxWidth: 300,
             }}
             onMouseEnter={() => {
               if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -521,7 +583,7 @@ export function IntelMap() {
 
         {/* Coords */}
         <div style={{ position: 'absolute', bottom: 52, right: 12, background: 'rgba(28,33,39,0.85)', border: '1px solid var(--bd)', padding: '4px 8px', fontSize: 'var(--text-caption)', fontFamily: 'monospace', color: 'var(--t4)', pointerEvents: 'none' }}>
-          {viewState.latitude.toFixed(2)}°N {viewState.longitude.toFixed(2)}°E
+          {viewState.latitude.toFixed(2)}°N {viewState.longitude.toFixed(2)}°E · ZOOM {viewState.zoom?.toFixed(1) ?? '—'} · PITCH {viewState.pitch?.toFixed(0) ?? '0'}°
         </div>
 
         <OpenMapButton />

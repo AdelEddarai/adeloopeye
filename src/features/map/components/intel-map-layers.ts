@@ -28,11 +28,75 @@ export type LayerVisibility = {
   zones: boolean;
   heat: boolean;
   disinfo: boolean;
+  relationships: boolean;
 };
 
 export type DisinfoPayload = { edges: DisinfoEdge[]; nodes: DisinfoNode[] };
 
 export type TooltipObject = StrikeArc | MissileTrack | Target | Asset | ThreatZone | HeatPoint;
+
+const CONFLICT_TYPES = [
+  'MILITARY_CONFLICT',
+  'WAR_ALERT',
+  'MILITARY_DEPLOYMENT',
+  'BORDER_CLOSURE',
+] as const;
+
+const FLAT_TYPES = [
+  'TRADE_ROUTE',
+  'ECONOMIC_PARTNERSHIP',
+  'ENERGY_DEPENDENCY',
+  'MIGRATION_FLOW',
+  'SUPPLY_CHAIN',
+];
+
+const REL_LABELS: Record<string, string> = {
+  MILITARY_CONFLICT: '⚔ CONFLICT',
+  WAR_ALERT: '⚠ WAR ALERT',
+  DIPLOMATIC_TENSION: 'TENSION',
+  MILITARY_DEPLOYMENT: 'DEPLOY',
+  BORDER_CLOSURE: 'BORDER',
+  LOGISTICS_CRISIS: 'LOGISTICS',
+  LOGISTICS_PLAN: 'LOGISTICS',
+  CEASEFIRE: 'CEASEFIRE',
+  DIPLOMATIC_AGREEMENT: 'AGREEMENT',
+  TRADE_ROUTE: 'TRADE',
+  ECONOMIC_PARTNERSHIP: 'ECON',
+  ALLIANCE: 'ALLIANCE',
+  SUPPLY_CHAIN: 'SUPPLY',
+  ENERGY_DEPENDENCY: 'ENERGY',
+  MIGRATION_FLOW: 'MIGRATION',
+};
+
+function getRelationshipColor(type: string, isSource: boolean): [number, number, number, number] {
+  const alpha = isSource ? 200 : 150;
+  switch (type) {
+    case 'MILITARY_CONFLICT':  return isSource ? [255, 60, 60, alpha] : [255, 120, 120, 130];
+    case 'WAR_ALERT':          return isSource ? [255, 40, 40, alpha] : [255, 80, 80, 130];
+    case 'DIPLOMATIC_TENSION': return isSource ? [255, 180, 0, alpha] : [255, 200, 80, 130];
+    case 'MILITARY_DEPLOYMENT':return isSource ? [255, 90, 90, alpha] : [255, 150, 150, 130];
+    case 'BORDER_CLOSURE':     return isSource ? [180, 50, 50, alpha] : [220, 100, 100, 130];
+    case 'TRADE_ROUTE':        return isSource ? [80, 160, 220, alpha] : [120, 180, 240, 130];
+    case 'ALLIANCE':           return isSource ? [80, 200, 120, alpha] : [120, 220, 160, 130];
+    case 'SUPPLY_CHAIN':       return isSource ? [160, 120, 200, alpha] : [180, 140, 220, 130];
+    case 'ENERGY_DEPENDENCY':  return isSource ? [220, 120, 40, alpha] : [240, 160, 80, 130];
+    case 'MIGRATION_FLOW':     return isSource ? [120, 120, 200, alpha] : [160, 160, 220, 130];
+    case 'ECONOMIC_PARTNERSHIP': return isSource ? [40, 160, 120, alpha] : [80, 180, 140, 130];
+    case 'LOGISTICS_CRISIS':   return isSource ? [255, 100, 0, alpha] : [255, 150, 50, 130];
+    case 'LOGISTICS_PLAN':     return isSource ? [50, 220, 180, alpha] : [100, 240, 210, 130];
+    case 'CEASEFIRE':          return isSource ? [80, 220, 80, alpha] : [140, 240, 140, 130];
+    case 'DIPLOMATIC_AGREEMENT': return isSource ? [140, 220, 120, alpha] : [180, 240, 160, 130];
+    default:                   return isSource ? [120, 120, 120, alpha] : [160, 160, 160, 130];
+  }
+}
+
+function isConflictType(type: string): boolean {
+  return (CONFLICT_TYPES as readonly string[]).includes(type);
+}
+
+function isFlatType(type: string): boolean {
+  return FLAT_TYPES.includes(type);
+}
 
 function textToken(name: string, fallback: number): number {
   if (typeof document === 'undefined') return fallback;
@@ -451,6 +515,97 @@ export function useMapLayers(
           getLineColor: [],
         },
       }),
+
+    // Geopolitical relationship / conflict lines (source→target arcs)
+    ...(() => {
+      const rels = (mapData?.conflictRelationships ?? []) as any[];
+      if (!visibility.relationships || rels.length === 0) return [];
+
+      const isConflict = (d: any) => isConflictType(d.type);
+
+      const main = new ArcLayer<any>({
+        id: 'geopolitical-relationships',
+        data: rels,
+        getSourcePosition: (d: any): [number, number] => d.sourcePosition,
+        getTargetPosition: (d: any): [number, number] => d.targetPosition,
+        getSourceColor: (d: any): [number, number, number, number] => {
+          const c = getRelationshipColor(d.type, true);
+          if (isConflict(d)) {
+            const pulse = Math.sin(time * 0.4) * 0.25 + 0.75;
+            return [c[0], c[1], c[2], Math.floor(c[3] * pulse)];
+          }
+          return c;
+        },
+        getTargetColor: (d: any): [number, number, number, number] =>
+          getRelationshipColor(d.type, false),
+        getWidth: (d: any): number => {
+          const base = isFlatType(d.type) ? 1.5 : isConflict(d.type) ? 2.5 : 2;
+          return Math.max(1, Math.min(4, base + (d.intensity || 0) * 0.12));
+        },
+        getHeight: (d: any): number =>
+          isFlatType(d.type) ? 0 : isConflict(d.type) ? 0.15 : 0.05,
+        widthUnits: 'pixels',
+        greatCircle: true,
+        pickable: true,
+        autoHighlight: true,
+        updateTriggers: {
+          getSourceColor: [time],
+          getTargetColor: [],
+        },
+      });
+
+      const conflictRels = rels.filter(isConflict);
+      const glow = conflictRels.length > 0 &&
+        new ArcLayer<any>({
+          id: 'relationship-glow',
+          data: conflictRels,
+          getSourcePosition: (d: any): [number, number] => d.sourcePosition,
+          getTargetPosition: (d: any): [number, number] => d.targetPosition,
+          getSourceColor: (d: any): [number, number, number, number] => {
+            const c = getRelationshipColor(d.type, true);
+            return [c[0], c[1], c[2], 35];
+          },
+          getTargetColor: (d: any): [number, number, number, number] => {
+            const c = getRelationshipColor(d.type, false);
+            return [c[0], c[1], c[2], 25];
+          },
+          getWidth: (d: any): number =>
+            d.type === 'MILITARY_CONFLICT' || d.type === 'WAR_ALERT' ? 7 : 5,
+          getHeight: 0.15,
+          widthUnits: 'pixels',
+          greatCircle: true,
+          pickable: false,
+        });
+
+      const midpointLabels = rels.map((d: any) => ({
+        position: [
+          (d.sourcePosition[0] + d.targetPosition[0]) / 2,
+          (d.sourcePosition[1] + d.targetPosition[1]) / 2,
+        ] as [number, number],
+        text: REL_LABELS[d.type] ?? d.type,
+        color: getRelationshipColor(d.type, true),
+      }));
+
+      const labels = new TextLayer<any>({
+        id: 'relationship-type-labels',
+        data: midpointLabels,
+        getPosition: (d: any): [number, number] => d.position,
+        getText: (d: any): string => d.text,
+        getSize: 9,
+        getColor: (d: any): [number, number, number, number] =>
+          [d.color[0], d.color[1], d.color[2], 210],
+        getPixelOffset: [0, -8],
+        fontFamily: 'SFMono-Regular, Menlo, monospace',
+        fontWeight: 'bold',
+        background: true,
+        getBackgroundColor: (): [number, number, number, number] => [10, 10, 14, 180],
+        backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+        billboard: true,
+        pickable: false,
+      });
+
+      return [glow, main, labels];
+    })(),
 
     ];
 

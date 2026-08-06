@@ -10,6 +10,27 @@ import type {
 
 import type { TooltipObject } from './intel-map-layers';
 
+function getRelationshipColor(type: string): [number, number, number, number] {
+  switch (type) {
+    case 'MILITARY_CONFLICT':  return [255, 60, 60, 255];
+    case 'WAR_ALERT':          return [255, 40, 40, 255];
+    case 'DIPLOMATIC_TENSION': return [255, 180, 0, 255];
+    case 'MILITARY_DEPLOYMENT':return [255, 90, 90, 255];
+    case 'BORDER_CLOSURE':     return [180, 50, 50, 255];
+    case 'TRADE_ROUTE':        return [80, 160, 220, 255];
+    case 'ALLIANCE':           return [80, 200, 120, 255];
+    case 'SUPPLY_CHAIN':       return [160, 120, 200, 255];
+    case 'ENERGY_DEPENDENCY':  return [220, 120, 40, 255];
+    case 'MIGRATION_FLOW':     return [120, 120, 200, 255];
+    case 'ECONOMIC_PARTNERSHIP': return [40, 160, 120, 255];
+    case 'LOGISTICS_CRISIS':   return [255, 100, 0, 255];
+    case 'LOGISTICS_PLAN':     return [50, 220, 180, 255];
+    case 'CEASEFIRE':          return [80, 220, 80, 255];
+    case 'DIPLOMATIC_AGREEMENT': return [140, 220, 120, 255];
+    default:                   return [120, 120, 120, 255];
+  }
+}
+
 export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
   if (!object) return null;
   const layerId = layer?.id ?? '';
@@ -66,6 +87,20 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
     html = `
       <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:4px">${d.name}</div>
       <div style="color:${zoneColor};font-size:10px">TYPE: ${d.type}</div>
+    `;
+  } else if (layerId === 'geopolitical-relationships') {
+    const d = object as any;
+    const color = getRelationshipColor(d.type);
+    const rgb = `${color[0]},${color[1]},${color[2]}`;
+    const refs = (d.articles || []).slice(0, 3)
+      .map((u: string) => `<a href="${u}" target="_blank" rel="noopener noreferrer" style="color:var(--blue-l);text-decoration:none;">source</a>`)
+      .join(' · ');
+    html = `
+      <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.sourceCountry} → ${d.targetCountry}</div>
+      <div style="color:rgb(${rgb});font-size:10px;margin-bottom:2px">TYPE: ${d.type.replace(/_/g, ' ')}</div>
+      <div style="color:var(--t3);font-size:10px;margin-bottom:2px">INTENSITY: ${'█'.repeat(Math.max(1, Math.min(10, d.intensity || 0)))} ${d.intensity || 0}/10</div>
+      ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.4;margin-top:4px">${d.description}</div>` : ''}
+      ${refs ? `<div style="margin-top:6px;font-size:10px;">${refs}</div>` : ''}
     `;
   } else if (layerId === 'disinfo-arcs') {
     const d = object as any;

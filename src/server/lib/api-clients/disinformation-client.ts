@@ -67,8 +67,7 @@ export type DisinformationResponse = {
 type CountryInfo = { code: string; name: string; lat: number; lon: number; matches: string[] };
 
 const COUNTRIES: CountryInfo[] = [
-  { code: 'MA', name: 'Morocco', lat: 31.79, lon: -7.09, matches: ['morocco', 'moroccan'] },
-  { code: 'EH', name: 'Western Sahara', lat: 24.22, lon: -12.94, matches: ['western sahara', 'sahrawi', 'saharawi'] },
+  { code: 'MA', name: 'Morocco', lat: 31.79, lon: -7.09, matches: ['morocco', 'moroccan', 'western sahara', 'sahrawi', 'saharawi', 'laayoune'] },
   { code: 'DZ', name: 'Algeria', lat: 28.03, lon: 1.66, matches: ['algeria', 'algerian'] },
   { code: 'ES', name: 'Spain', lat: 40.46, lon: -3.75, matches: ['spain', 'spanish'] },
   { code: 'FR', name: 'France', lat: 46.23, lon: 2.21, matches: ['france', 'french'] },
@@ -182,6 +181,13 @@ const COUNTRIES: CountryInfo[] = [
 const COUNTRY_BY_CODE = new Map(COUNTRIES.map(c => [c.code, c]));
 const COUNTRY_BY_NAME = new Map(COUNTRIES.map(c => [c.name.toLowerCase(), c]));
 
+// Western Sahara is Moroccan territory in this product: fold its code into Morocco.
+const CODE_ALIASES: Record<string, string> = { EH: 'MA' };
+
+function normalizeCode(code: string): string {
+  return CODE_ALIASES[code] ?? code;
+}
+
 function countryByCode(code: string): CountryInfo {
   return COUNTRY_BY_CODE.get(code) ?? COUNTRY_BY_CODE.get('MA')!;
 }
@@ -191,6 +197,23 @@ export function countryFromCode(code: string) {
 }
 
 const GDELT_URL = 'https://api.gdeltproject.org/api/v2/doc/doc';
+
+const GDELT_QUERIES = {
+  // Maghreb/Morocco-centric disinformation & influence operations
+  maghreb:
+    '(morocco OR algeria OR sahrawi OR "western sahara" OR maghreb) ' +
+    '(disinformation OR propaganda OR "influence operation" OR "bot network" OR ' +
+    '"fake accounts" OR disinfo OR manipulation OR "information war")',
+  // Worldwide disinformation / coordinated inauthentic behavior
+  disinfo:
+    '(disinformation OR "influence operation" OR "bot network" OR "coordinated inauthentic" OR ' +
+    '"fake accounts" OR disinfo OR propaganda OR "information war")',
+  // Worldwide cyber attacks, espionage and state-backed hacking
+  cyber:
+    '(cyber attack OR cyberattack OR cyberwar OR "cyber warfare" OR "cyber espionage" OR ' +
+    'hacking OR hacker OR ransomware OR malware OR "data breach" OR DDoS OR ' +
+    '"denial-of-service" OR "zero-day" OR "state-sponsored" OR "state-backed" OR botnet)',
+};
 
 function parseGDELTDate(seendate: string): string {
   const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/.exec(seendate || '');
@@ -304,6 +327,53 @@ function campaignEdges(
   return { edges: [...bySource.values()], articles: focused };
 }
 
+/**
+ * World mode (focus = 'WLD'): build an arc for every pair of countries mentioned
+ * together in a single article — a global "who is entangled with whom" network.
+ * Direction is alphabetical, weight = article count for that pair.
+ */
+function campaignEdgesWorld(
+  articles: DisinfoArticle[]
+): { edges: DisinfoEdge[] } {
+  const byPair = new Map<string, DisinfoEdge>();
+
+  for (const a of articles) {
+    const codes = a.countries
+      .filter((c, i, arr) => arr.indexOf(c) === i)
+      .sort();
+    if (codes.length < 2) continue;
+
+    for (let i = 0; i < codes.length; i++) {
+      for (let j = i + 1; j < codes.length; j++) {
+        const [s, t] = [codes[i], codes[j]];
+        const key = `${s}-${t}`;
+        if (!byPair.has(key)) {
+          byPair.set(key, {
+            id: `campaign-${key}`,
+            source: s,
+            target: t,
+            weight: 0,
+            kind: 'CAMPAIGN',
+            subKind: 'INFLUENCE_OP',
+            sources: [],
+            lastSeen: a.date,
+          });
+        }
+        const e = byPair.get(key)!;
+        e.weight += 1;
+        if (e.sources.length < 3) e.sources.push({ title: a.title, url: a.url, domain: a.domain });
+        if (a.date > e.lastSeen) e.lastSeen = a.date;
+      }
+    }
+  }
+
+  return {
+    edges: [...byPair.values()]
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 45),
+  };
+}
+
 const BOT_FEED_URLS = {
   botscout: 'https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/botscout_30d.ipset',
   ipsum: 'https://raw.githubusercontent.com/stamparm/ipsum/master/levels/3.txt',
@@ -374,6 +444,7 @@ async function geolocateIP(ip: string): Promise<{ code: string; name: string; la
         continue;
       }
       if (!code || Number.isNaN(lat) || Number.isNaN(lon)) continue;
+      code = normalizeCode(code);
       const known = COUNTRY_BY_CODE.get(code);
       const info = {
         code,
@@ -422,16 +493,29 @@ async function greyNoiseClassification(ip: string): Promise<string | null> {
   }
 }
 
-async function buildBotTrafficEdges(
-  ips: Array<{ ip: string; feed: string }>,
-  focusCode: string
-): Promise<{ edges: DisinfoEdge[]; sources: number }> {
-  const located = (await mapWithConcurrency(ips, 5, async item => {
+type LocatedBot = { ip: string; feed: string; code: string; classification: string | null };
+
+type BotResult = {
+  edges: DisinfoEdge[];
+  sources: number;
+  botCountries: number;
+  byCountry: Map<string, { weight: number; c2: number; classified: string }>;
+};
+
+async function locateBotIPs(ips: Array<{ ip: string; feed: string }>): Promise<LocatedBot[]> {
+  return (await mapWithConcurrency(ips, 5, async item => {
     const info = await geolocateIP(item.ip);
     if (!info) return null;
     const classification = await greyNoiseClassification(item.ip);
     return { ...item, ...info, classification };
-  })).filter(Boolean) as Array<{ ip: string; feed: string; code: string; classification: string | null }>;
+  })).filter(Boolean) as LocatedBot[];
+}
+
+async function buildBotTrafficEdges(
+  ips: Array<{ ip: string; feed: string }>,
+  focusCode: string
+): Promise<BotResult> {
+  const located = await locateBotIPs(ips);
 
   const byCountry = new Map<string, { weight: number; c2: number; classified: string }>();
   for (const l of located) {
@@ -442,25 +526,37 @@ async function buildBotTrafficEdges(
     byCountry.set(l.code, cur);
   }
 
-  const now = new Date().toISOString();
-  const edges: DisinfoEdge[] = [...byCountry.entries()].map(([code, v]) => {
-    const subKind: DisinfoEdge['subKind'] = v.c2 >= Math.ceil(v.weight / 2) ? 'C2' : 'BOTNET';
-    return {
-      id: `bot-${code}-${focusCode}`,
-      source: code,
-      target: focusCode,
-      weight: v.weight,
-      kind: 'BOT_TRAFFIC',
-      subKind: v.classified === 'MALICIOUS' ? 'SCANNING' : subKind,
-      sources: [],
-      lastSeen: now,
-    };
-  });
+  // World mode: no single radar target — just report which countries host the bots.
+  if (focusCode === 'WLD') {
+    return { edges: [], sources: located.length, botCountries: byCountry.size, byCountry };
+  }
 
-  return { edges, sources: located.length };
+  const now = new Date().toISOString();
+  const edges: DisinfoEdge[] = [...byCountry.entries()]
+    .map(([code, v]): DisinfoEdge => {
+      const subKind: DisinfoEdge['subKind'] = v.c2 >= Math.ceil(v.weight / 2) ? 'C2' : 'BOTNET';
+      return {
+        id: `bot-${code}-${focusCode}`,
+        source: code,
+        target: focusCode,
+        weight: v.weight,
+        kind: 'BOT_TRAFFIC',
+        subKind: v.classified === 'MALICIOUS' ? 'SCANNING' : subKind,
+        sources: [],
+        lastSeen: now,
+      };
+    })
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 8); // keep the most significant bot-source countries
+
+  return { edges, sources: located.length, botCountries: byCountry.size, byCountry };
 }
 
-function buildNodes(edges: DisinfoEdge[], articles: DisinfoArticle[]): DisinfoNode[] {
+function buildNodes(
+  edges: DisinfoEdge[],
+  articles: DisinfoArticle[],
+  botByCountry?: Map<string, { weight: number; c2: number; classified: string }>
+): DisinfoNode[] {
   const map = new Map<string, DisinfoNode>();
   const ensure = (code: string) => {
     if (!map.has(code)) {
@@ -480,6 +576,14 @@ function buildNodes(edges: DisinfoEdge[], articles: DisinfoArticle[]): DisinfoNo
     }
   }
 
+  if (botByCountry) {
+    for (const [code, v] of botByCountry) {
+      const n = ensure(code);
+      if (!n) continue;
+      n.botVolume += v.weight;
+    }
+  }
+
   for (const a of articles) {
     for (const code of a.countries) {
       const n = ensure(code);
@@ -496,35 +600,41 @@ function buildNodes(edges: DisinfoEdge[], articles: DisinfoArticle[]): DisinfoNo
 export async function fetchDisinformationIntel(
   focusCode: string = 'MA'
 ): Promise<DisinformationResponse> {
-  const deadline = Date.now() + 25000;
-  const focus = COUNTRY_BY_CODE.get(focusCode) ?? COUNTRY_BY_CODE.get('MA')!;
+  const isWorld = focusCode === 'WLD';
+  const focus = isWorld
+    ? { code: 'WLD', name: 'World', lat: 0, lon: 0 }
+    : COUNTRY_BY_CODE.get(focusCode) ?? COUNTRY_BY_CODE.get('MA')!;
 
-  const [moroccoArticles, generalArticles] = await Promise.allSettled([
-    queryGDELTDisinfo(
-      'morocco (disinformation OR propaganda OR "influence operation" OR "bot network" OR ' +
-        '"fake accounts" OR disinfo OR manipulation OR "information war" OR propaganda)'
-    ),
-    queryGDELTDisinfo(
-      '(disinformation OR "influence operation" OR "bot network" OR "coordinated inauthentic" OR ' +
-        '"fake accounts" OR disinfo OR propaganda)'
-    ),
+  const [q1, q2] = await Promise.allSettled([
+    isWorld
+      ? queryGDELTDisinfo(GDELT_QUERIES.cyber, { timespan: '7d', maxRecords: 75 })
+      : queryGDELTDisinfo(GDELT_QUERIES.maghreb, { timespan: '7d', maxRecords: 50 }),
+    queryGDELTDisinfo(GDELT_QUERIES.disinfo, { timespan: isWorld ? '7d' : '14d', maxRecords: isWorld ? 75 : 50 }),
   ]);
 
-  const morocco = moroccoArticles.status === 'fulfilled' ? moroccoArticles.value : [];
-  const general = generalArticles.status === 'fulfilled' ? generalArticles.value : [];
+  const r1 = q1.status === 'fulfilled' ? q1.value : [];
+  const r2 = q2.status === 'fulfilled' ? q2.value : [];
 
-  const combined = withCountries([...morocco, ...general]);
-  const { edges: campaign, articles: focusedArticles } = campaignEdges(combined, focusCode);
+  const combined = withCountries([...r1, ...r2]);
 
-  const remaining = Math.max(0, 8000 - Math.round((deadline - Date.now())));
   const botIPs = await fetchBotIPs(10);
-  const bot = await buildBotTrafficEdges(
-    botIPs.slice(0, 30),
-    focusCode
-  );
+  const bot = await buildBotTrafficEdges(botIPs.slice(0, 30), focusCode);
 
-  const edges = [...campaign, ...bot.edges];
-  const nodes = buildNodes(edges, combined);
+  let edges: DisinfoEdge[];
+  let nodes: DisinfoNode[];
+  let campaignCount: number;
+
+  if (isWorld) {
+    const { edges: campaign } = campaignEdgesWorld(combined);
+    edges = [...campaign];
+    campaignCount = campaign.length;
+    nodes = buildNodes(edges, combined, bot.byCountry);
+  } else {
+    const { edges: campaign } = campaignEdges(combined, focusCode);
+    edges = [...campaign, ...bot.edges];
+    campaignCount = campaign.length;
+    nodes = buildNodes(edges, combined);
+  }
 
   const articles = combined
     .slice()
@@ -536,9 +646,9 @@ export async function fetchDisinformationIntel(
     nodes,
     articles,
     stats: {
-      campaigns: campaign.length,
+      campaigns: campaignCount,
       botSources: bot.sources,
-      botCountries: bot.edges.length,
+      botCountries: bot.botCountries,
       articleCount: articles.length,
     },
     sources: [

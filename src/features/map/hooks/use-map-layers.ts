@@ -625,9 +625,9 @@ export function useMapLayers({
         if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
           // Subtle pulsing width for active/threatened conflicts only
           const pulse = Math.sin(pulseTime * 1.5) * 0.3 + 1;
-          return 3.0 * pulse; // Thickest for conflicts
+          return Math.max(3, Math.min(6, 3.0 * pulse + (d.intensity || 0) * 0.2)); // Thickest for conflicts
         }
-        return 2.0; // Default
+        return Math.max(1.5, 2.0 + (d.intensity || 0) * 0.15); // Default
       },
       getHeight: (d: any): number => {
         // COMPLETELY FLAT for trade and shipping - NO 3D arc
@@ -666,17 +666,17 @@ export function useMapLayers({
       getTargetPosition: (d: any): [number, number] => d.targetPosition,
       getSourceColor: (d: any): RGBA => {
         const [r, g, b] = getRelationshipColor(d.type, true);
-        return [r, g, b, 30]; // Much more subtle glow
+        return [r, g, b, 45]; // Soft halo under conflict arcs
       },
       getTargetColor: (d: any): RGBA => {
         const [r, g, b] = getRelationshipColor(d.type, false);
-        return [r, g, b, 20]; // Very subtle
+        return [r, g, b, 32];
       },
       getWidth: (d: any): number => {
         if (['MILITARY_CONFLICT', 'WAR_ALERT'].includes(d.type)) {
-          return 6; // Wider glow for conflicts
+          return 7; // Wider glow for conflicts
         }
-        return 4; // Subtle glow for others
+        return 5; // Subtle glow for others
       },
       getHeight: (d: any): number => {
         // Match main layer heights
@@ -726,6 +726,48 @@ export function useMapLayers({
       backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
       billboard: true,
       pickable: true,
+    });
+
+    // Midpoint relationship-type badges on each arc
+    const REL_BADGES: Record<string, string> = {
+      MILITARY_CONFLICT: '⚔ CONFLICT',
+      WAR_ALERT: '⚠ WAR ALERT',
+      DIPLOMATIC_TENSION: 'TENSION',
+      MILITARY_DEPLOYMENT: 'DEPLOY',
+      BORDER_CLOSURE: 'BORDER',
+      LOGISTICS_CRISIS: 'LOGISTICS',
+      LOGISTICS_PLAN: 'LOGISTICS',
+      CEASEFIRE: 'CEASEFIRE',
+      DIPLOMATIC_AGREEMENT: 'AGREEMENT',
+      TRADE_ROUTE: 'TRADE',
+      ECONOMIC_PARTNERSHIP: 'ECON',
+      ALLIANCE: 'ALLIANCE',
+      SUPPLY_CHAIN: 'SUPPLY',
+      ENERGY_DEPENDENCY: 'ENERGY',
+      MIGRATION_FLOW: 'MIGRATION',
+    };
+    const relationshipMidLabels = relationships.length > 0 && new TextLayer<any>({
+      id: 'relationship-mid-labels',
+      data: relationships.map((r: any) => ({
+        position: [
+          (r.sourcePosition[0] + r.targetPosition[0]) / 2,
+          (r.sourcePosition[1] + r.targetPosition[1]) / 2,
+        ],
+        text: REL_BADGES[r.type] ?? r.type.replace(/_/g, ' '),
+        color: getRelationshipColor(r.type, true),
+      })),
+      getPosition: (d: any): [number, number] => d.position,
+      getText: (d: any): string => d.text,
+      getSize: 9,
+      getColor: (d: any): RGBA => [d.color[0], d.color[1], d.color[2], 220],
+      getPixelOffset: [0, 18],
+      fontFamily: 'monospace',
+      fontWeight: 'bold',
+      background: true,
+      getBackgroundColor: [8, 8, 12, 190],
+      backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+      billboard: true,
+      pickable: false,
     });
 
     // Logistics crises - pulsing danger markers at disrupted hubs
@@ -1072,6 +1114,7 @@ export function useMapLayers({
       relationshipGlowLayer,
       relationshipLayer,
       relationshipLabels,
+      relationshipMidLabels,
        logisticsCrisisLayer,
        investmentFlowLayer,
        newsPulseLayer,

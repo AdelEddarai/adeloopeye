@@ -16,6 +16,7 @@ import { useIsMobile } from '@/shared/hooks/use-is-mobile';
 import { usePanelLayout } from '@/shared/hooks/use-panel-layout';
 
 const FOCUS_OPTIONS: Array<{ code: string; name: string }> = [
+  { code: 'WLD', name: 'World' },
   { code: 'MA', name: 'Morocco' },
   { code: 'DZ', name: 'Algeria' },
   { code: 'ES', name: 'Spain' },
@@ -38,7 +39,7 @@ const FOCUS_OPTIONS: Array<{ code: string; name: string }> = [
 
 export function DisinformationContent() {
   const isMobile = useIsMobile(1024);
-  const [focus, setFocus] = useState('MA');
+  const [focus, setFocus] = useState('WLD');
   const { data, isLoading, isError, error, refetch, lastUpdate } = useLiveDisinformation(focus);
   const { defaultLayout, onLayoutChanged } = usePanelLayout({ id: 'disinfo' });
 
@@ -55,7 +56,7 @@ export function DisinformationContent() {
     <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
       {/* Header */}
       <div className="panel-header shrink-0">
-        <span className="section-title">Disinformation &amp; Bot Network Intel</span>
+        <span className="section-title">Cyber &amp; Disinformation Intel</span>
         <span className="label ml-auto text-[var(--t4)]">FREE OSINT · GDELT + BOT FEEDS</span>
       </div>
 

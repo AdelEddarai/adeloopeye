@@ -602,7 +602,9 @@ export function analyzeMoroccoIntelligence(articles: NewsArticle[]): {
         } else {
           // Distributed fallback across major administrative hubs
           const hubs = ['Rabat', 'Casablanca', 'Tangier', 'Marrakech', 'Fes', 'Agadir', 'Oujda', 'Laayoune'];
-          const hubIdx = Math.abs(stableId(article.title || article.url || 'morocco')) % hubs.length;
+          const seedStr = stableId(article.title || article.url || 'morocco');
+          const seed = Array.from(seedStr).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+          const hubIdx = Math.abs(seed) % hubs.length;
           finalLocation = hubs[hubIdx];
         }
       }

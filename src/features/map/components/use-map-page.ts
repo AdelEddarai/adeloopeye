@@ -134,7 +134,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
       routes: true,
       weather: false,
       fires: true,
-      infrastructure: true,
+      infrastructure: false,
       connections: true,
     }));
   }, [dispatch, scope.morocco, viewState]);
@@ -145,7 +145,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     routes: true,
     weather: false,
     fires: true,
-    infrastructure: true,
+    infrastructure: false,
     connections: true,
   });
 

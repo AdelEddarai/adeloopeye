@@ -132,16 +132,18 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
       geo: {
         map: 'world',
         roam: true,
-        zoom: 1.1,
+        zoom: 1.0,
         scaleLimit: { min: 1, max: 20 },
         itemStyle: { areaColor: '#131316', borderColor: '#2a2a31', borderWidth: 0.5 },
         emphasis: { label: { show: false }, itemStyle: { areaColor: '#1c1c22' } },
-        regions: [
-          {
-            name: focus.name,
-            itemStyle: { areaColor: '#341216', borderColor: FOCUS_COLOR, borderWidth: 1.5 },
-          },
-        ],
+        regions: focus.code === 'WLD'
+          ? []
+          : [
+              {
+                name: focus.name,
+                itemStyle: { areaColor: '#341216', borderColor: FOCUS_COLOR, borderWidth: 1.5 },
+              },
+            ],
       },
       series: [
         {
@@ -180,12 +182,12 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
           name: 'FOCUS',
           coordinateSystem: 'geo',
           zlevel: 4,
-          data: [focusNode],
+          data: focus.code === 'WLD' ? [] : [focusNode],
           symbol: 'pin',
           symbolSize: 44,
           itemStyle: { color: FOCUS_COLOR },
           label: {
-            show: true,
+            show: focus.code !== 'WLD',
             formatter: focus.name,
             position: 'top',
             color: FOCUS_COLOR,
@@ -220,6 +222,25 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
   return (
     <div className="absolute inset-0">
       <ReactECharts option={option} style={{ height: '100%', width: '100%' }} notMerge />
+      {focus.code === 'WLD' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            background: 'rgba(12,12,16,0.9)',
+            border: '1px solid #3f3f46',
+            borderRadius: 2,
+            padding: '4px 8px',
+            fontFamily: 'monospace',
+            fontSize: 10,
+            color: '#a1a1aa',
+            pointerEvents: 'none',
+          }}
+        >
+          WORLD CYBER / DISINFO NETWORK — country pairs co-mentioned in source reporting
+        </div>
+      )}
     </div>
   );
 }

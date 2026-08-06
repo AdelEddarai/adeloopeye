@@ -22,6 +22,9 @@ const ITEMS: LegendItem[] = [
   { shape: 'zone',   color: 'var(--warning)', label: 'PATROL / NFZ'       },
   { shape: 'arc',    color: 'var(--warning)', label: 'REPORTED DISINFO'   },
   { shape: 'arc',    color: 'var(--info)',    label: 'OBSERVED BOT TRAFFIC' },
+  { shape: 'arc',    color: 'var(--danger)',  label: 'MILITARY CONFLICT'   },
+  { shape: 'arc',    color: 'var(--gold)',    label: 'TENSION / DEPLOY'    },
+  { shape: 'arc',    color: 'var(--teal)',    label: 'TRADE / ALLIANCE'    },
 ];
 
 type Props = { 

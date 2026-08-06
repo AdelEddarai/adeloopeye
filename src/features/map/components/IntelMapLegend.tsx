@@ -14,6 +14,9 @@ const LEGEND_ITEMS = [
   { color: 'var(--warning)', shape: 'zone', label: 'PATROL ZONE' },
   { color: 'var(--warning)', shape: 'arc', label: 'REPORTED DISINFO CAMPAIGN' },
   { color: 'var(--info)', shape: 'arc', label: 'OBSERVED BOT TRAFFIC' },
+  { color: 'var(--danger)', shape: 'arc', label: 'MILITARY CONFLICT / WAR ALERT' },
+  { color: 'var(--gold)', shape: 'arc', label: 'TENSION / DEPLOY / LOGISTICS' },
+  { color: 'var(--teal)', shape: 'arc', label: 'TRADE / ALLIANCE / AGREEMENT' },
 ] as const;
 
 export function IntelMapLegend() {
