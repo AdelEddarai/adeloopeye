@@ -120,10 +120,10 @@ export function BriefWidget() {
         </div>
       </div>
 
-      {/* link to full brief */}
+      {/* link to conflicts data */}
       <div className="px-4 py-2.5">
-        <Link href={`/dashboard/brief?day=${day}`} className="no-underline flex items-center gap-1">
-          <span className="text-[length:var(--text-caption)] text-[var(--blue-l)] font-semibold">Read Full Brief →</span>
+        <Link href="/dashboard/data" className="no-underline flex items-center gap-1">
+          <span className="text-[length:var(--text-caption)] text-[var(--blue-l)] font-semibold">Conflicts &amp; Data →</span>
         </Link>
       </div>
     </div>

@@ -43,12 +43,9 @@ import { toast } from 'sonner';
 
 const WIDGET_LINKS: Partial<Record<WidgetKey, { href: string; label: string; preserveDay?: boolean }>> = {
   latest: { href: '/dashboard/feed', label: 'View All', preserveDay: true },
-  actors: { href: '/dashboard/actors', label: 'Dossiers', preserveDay: true },
-  signals: { href: '/dashboard/signals', label: 'All Signals' },
   map: { href: '/dashboard/map', label: 'Full Map' },
   predictions: { href: '/dashboard/predictions', label: 'All Markets' },
   markets: { href: '/dashboard/markets', label: 'Markets Desk' },
-  brief: { href: '/dashboard/brief', label: 'Full Brief', preserveDay: true },
 };
 
 export function WorkspaceDashboard() {

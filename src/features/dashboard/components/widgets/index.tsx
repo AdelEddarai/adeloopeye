@@ -23,6 +23,7 @@ const MoroccoKPIDashboard = dynamic(() => import('./MoroccoKPIDashboard').then(m
 const MoroccoMapWidget = dynamic(() => import('./MoroccoMapWidget').then(m => m.MoroccoMapWidget));
 const PredictionsWidget = dynamic(() => import('./PredictionsWidget').then(m => m.PredictionsWidget));
 const SignalsWidget = dynamic(() => import('./SignalsWidget').then(m => m.SignalsWidget));
+const ConflictNewsWidget = dynamic(() => import('./ConflictNewsWidget').then(m => m.ConflictNewsWidget));
 
 export function widgetComponents(): Record<WidgetKey, () => React.ReactNode> {
   return {
@@ -46,5 +47,6 @@ export function widgetComponents(): Record<WidgetKey, () => React.ReactNode> {
     moroccomap:  () => <MoroccoMapWidget />,
     intelanalytics: () => <IntelAnalyticsWidget />,
     disinformation: () => <DisinformationWidget />,
+    conflictnews: () => <ConflictNewsWidget />,
   };
 }

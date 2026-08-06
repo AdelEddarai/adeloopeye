@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
 
   const origin = req.nextUrl.origin;
   const feedPath = `/api/v1/rss/briefs?conflictId=${encodeURIComponent(conflict.id)}&limit=${limit}`;
-  const siteBriefBase = `${origin}/dashboard/brief`;
+  const siteBriefBase = `${origin}/dashboard/data`;
 
   const items = snapshots
     .map(snapshot => {

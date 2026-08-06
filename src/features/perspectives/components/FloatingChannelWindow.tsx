@@ -14,7 +14,7 @@ import { useIsMobile } from '@/shared/hooks/use-is-mobile';
 
 import { getLiveUrl } from '@/data/perspective-channels';
 
-const ALLOWED_PREFIXES = ['/dashboard', '/dashboard/brief', '/dashboard/data'];
+const ALLOWED_PREFIXES = ['/dashboard', '/dashboard/data'];
 
 export function FloatingChannelWindow() {
   const pathname = usePathname();

@@ -54,7 +54,12 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
         from: e.source,
         to: e.target,
         weight: e.weight,
+        subKind: e.subKind ?? 'CO_MENTION',
         sources: e.sources,
+        lineStyle:
+          e.subKind === 'ATTRIBUTED_ATTACK'
+            ? { width: 2, opacity: 0.95 }
+            : { width: 1, opacity: 0.4, type: 'dashed' },
       }));
 
     const botEdges = edges
@@ -87,7 +92,12 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
           if (p.seriesType === 'lines') {
             const d = p.data;
             const color = p.seriesName === 'CAMPAIGN' ? CAMPAIGN_COLOR : BOT_COLOR;
-            const kind = p.seriesName === 'CAMPAIGN' ? 'REPORTED CAMPAIGN' : 'OBSERVED BOT TRAFFIC';
+            const kind =
+              p.seriesName === 'CAMPAIGN'
+                ? d.subKind === 'ATTRIBUTED_ATTACK'
+                  ? 'REPORTED ATTACK — attribution in reporting'
+                  : 'REPORTED CAMPAIGN — co-mention'
+                : 'OBSERVED BOT TRAFFIC';
             const src = nodes.find(n => n.code === d.from);
             const tgt = nodes.find(n => n.code === d.to);
             const refs = (d.sources || [])
@@ -136,14 +146,26 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
         scaleLimit: { min: 1, max: 20 },
         itemStyle: { areaColor: '#131316', borderColor: '#2a2a31', borderWidth: 0.5 },
         emphasis: { label: { show: false }, itemStyle: { areaColor: '#1c1c22' } },
-        regions: focus.code === 'WLD'
-          ? []
-          : [
-              {
-                name: focus.name,
-                itemStyle: { areaColor: '#341216', borderColor: FOCUS_COLOR, borderWidth: 1.5 },
-              },
-            ],
+        // Western Sahara is part of Morocco: the merged feature is a MultiPolygon and
+        // echarts would stroke both polygons, drawing a seam along the shared edge.
+        // Rendering Morocco borderless removes that internal line; neighbours (Algeria,
+        // Mauritania, Spain) still stroke the outer borders from their own side.
+        regions:
+          focus.code === 'WLD'
+            ? [{ name: 'Morocco', itemStyle: { borderColor: 'transparent', borderWidth: 0 } }]
+            : [
+                {
+                  name: focus.name,
+                  itemStyle: {
+                    areaColor: '#341216',
+                    borderColor: focus.name === 'Morocco' ? 'transparent' : FOCUS_COLOR,
+                    borderWidth: focus.name === 'Morocco' ? 0 : 1.5,
+                  },
+                },
+                ...(focus.name !== 'Morocco'
+                  ? [{ name: 'Morocco', itemStyle: { borderColor: 'transparent', borderWidth: 0 } }]
+                  : []),
+              ],
       },
       series: [
         {
@@ -238,7 +260,34 @@ export function DisinformationMap({ edges, nodes, focus }: Props) {
             pointerEvents: 'none',
           }}
         >
-          WORLD CYBER / DISINFO NETWORK — country pairs co-mentioned in source reporting
+          WORLD CYBER / DISINFO NETWORK — solid arcs = reported attack direction · dashed arcs = countries co-mentioned in reporting
+        </div>
+      )}
+      {focus.code !== 'WLD' && edges.some(e => e.kind === 'CAMPAIGN') && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            background: 'rgba(12,12,16,0.9)',
+            border: '1px solid #3f3f46',
+            borderRadius: 2,
+            padding: '4px 8px',
+            fontFamily: 'monospace',
+            fontSize: 10,
+            color: '#a1a1aa',
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span style={{ color: CAMPAIGN_COLOR, textDecoration: 'none', letterSpacing: 1 }}>
+            ─── REPORTED ATTACK
+          </span>
+          <span style={{ color: CAMPAIGN_COLOR, textDecoration: 'none', letterSpacing: 1 }}>
+            ┄┄ CO-MENTION
+          </span>
         </div>
       )}
     </div>

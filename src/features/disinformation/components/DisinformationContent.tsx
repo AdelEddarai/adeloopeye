@@ -48,6 +48,20 @@ export function DisinformationContent() {
     [focus]
   );
 
+  const attributedEdges = useMemo(
+    () => (data?.edges ?? []).filter(e => e.subKind === 'ATTRIBUTED_ATTACK'),
+    [data]
+  );
+
+  const topAttack = useMemo(() => {
+    const sorted = [...attributedEdges].sort((a, b) => b.weight - a.weight);
+    if (sorted.length === 0) return null;
+    const name = (code: string) =>
+      (data?.nodes ?? []).find(n => n.code === code)?.name ?? code;
+    const t = sorted[0];
+    return { source: name(t.source), target: name(t.target), weight: t.weight };
+  }, [attributedEdges, data]);
+
   const handleFocusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFocus(e.target.value);
   };
@@ -85,13 +99,22 @@ export function DisinformationContent() {
           <RefreshCw size={12} />
           REFRESH
         </Button>
-        <div className="mono text-[length:var(--text-caption)] text-[var(--t4)] ml-auto">
-          FOCUS: {focusMeta.name}
-          {lastUpdate && (
-            <>
-              <span className="mx-1">·</span>UPDATED {new Date(lastUpdate).toLocaleTimeString()} UTC
-            </>
+        <div className="mono text-[length:var(--text-caption)] text-[var(--t4)] ml-auto flex items-center gap-3">
+          {topAttack && (
+            <span className="flex items-center gap-1 text-[var(--warning)]">
+              <span className="text-[var(--t4)]">TOP ATTACK:</span>
+              {topAttack.source} → {topAttack.target}
+              <span className="text-[var(--t4)]">x{topAttack.weight}</span>
+            </span>
           )}
+          <span>
+            FOCUS: {focusMeta.name}
+            {lastUpdate && (
+              <>
+                <span className="mx-1">·</span>UPDATED {new Date(lastUpdate).toLocaleTimeString()} UTC
+              </>
+            )}
+          </span>
         </div>
       </div>
 
@@ -193,10 +216,11 @@ export function DisinformationContent() {
               ))}
             </div>
             <p className="mono text-[length:var(--text-micro)] text-[var(--t4)] mt-1.5 leading-snug">
-              ATTRIBUTION LIMIT: orange arcs = disinformation campaigns reported in open-source
-              journalism (GDELT). blue arcs = botnet/C2/scan IPs observed in a source country, mapped
-              to the radar focus. No free feed authoritatively attributes a government to a bot
-              network — treat campaign arcs as reported, not proven.
+              ATTRIBUTION LIMIT: solid orange arcs = reported attack direction from open-source
+              journalism (GDELT) — "X accused of hacking Y". dashed orange arcs = countries merely
+              co-mentioned in reporting. blue arcs = botnet/C2/scan IPs observed in a source country,
+              mapped to the radar focus. No free feed authoritatively attributes a government to a bot
+              network — treat attack arcs as reported, not proven.
             </p>
           </div>
         </>

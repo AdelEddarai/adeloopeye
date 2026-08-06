@@ -107,8 +107,6 @@ export function MobileOverview() {
     const qs = params.toString();
     return qs ? `/dashboard/map?${qs}` : '/dashboard/map';
   };
-  const actorsHref = latestDay ? `/dashboard/actors?day=${latestDay}` : '/dashboard/actors';
-  const briefHref = latestDay ? `/dashboard/brief?day=${latestDay}` : '/dashboard/brief';
   const layoutMode = useAnalyticsLayoutMode();
 
   const trackOverviewNavigation = (destinationPath: string, component: string, widgetKey?: string) => {
@@ -281,9 +279,9 @@ export function MobileOverview() {
       {/* ── Nav links to other pages ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
         {[
-          { href: actorsHref, label: 'ACTORS DIRECTORY', icon: Users, color: 'text-foreground' },
+          { href: '/dashboard/disinfo', label: 'CYBER & DISINFO', icon: Zap, color: 'text-foreground' },
           { href: '/dashboard/predictions', label: 'AI PREDICTIONS', icon: TrendingUp, color: 'text-foreground' },
-          { href: briefHref, label: 'DAILY BRIEF', icon: BookOpen, color: 'text-foreground' },
+          { href: '/dashboard/data', label: 'CONFLICTS & DATA', icon: BookOpen, color: 'text-foreground' },
         ].map(nav => (
           <Link key={nav.href} href={nav.href} className="no-underline block" onClick={() => trackOverviewNavigation(nav.href, 'widget_link', nav.label.toLowerCase())}>
             <div className="flex items-center gap-3 px-4 py-4 border-0 rounded-lg bg-card hover:bg-accent/50 active:bg-accent transition-colors shadow-none">

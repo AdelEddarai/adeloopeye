@@ -5,7 +5,7 @@ export type WidgetKey =
   | 'commanders' | 'predictions' | 'brief'
   | 'livenews' | 'liveflights' | 'livethreats' | 'livecrypto' | 'cyberthreats'
   | 'commodities' | 'aitech' | 'morocco' | 'moroccokpi' | 'intelanalytics'
-  | 'markets' | 'moroccomap' | 'disinformation';
+  | 'markets' | 'moroccomap' | 'disinformation' | 'conflictnews';
 
 export type Column = {
   id: string;
@@ -17,7 +17,7 @@ export const ALL_WIDGET_KEYS: WidgetKey[] = [
   'commanders', 'predictions', 'brief',
   'livenews', 'liveflights', 'livethreats', 'livecrypto', 'cyberthreats',
   'commodities', 'aitech', 'morocco', 'moroccokpi', 'intelanalytics',
-  'markets', 'moroccomap', 'disinformation'
+  'markets', 'moroccomap', 'disinformation', 'conflictnews'
 ];
 
 const HIDDEN_FROM_WIDGET_SELECT: WidgetKey[] = ['commanders', 'commodities'];
@@ -47,6 +47,7 @@ export const WIDGET_LABELS: Record<WidgetKey, string> = {
   intelanalytics: 'Intelligence Analytics',
   moroccomap:  '🇲🇦 Morocco 3D Map',
   disinformation: 'Disinformation Radar',
+  conflictnews: 'Conflict News + Timeline',
 };
 
 // Presets
@@ -65,10 +66,10 @@ type PresetDefinition = {
 export const PRESETS: Record<PresetId, PresetDefinition> = {
   analyst: {
     label: 'DEFAULT',
-    description: 'Intelligence map with Morocco KPI dashboard',
+    description: 'Intelligence map with conflict news and Morocco KPI dashboard',
     columns: [
       { id: 'col-a', widgets: ['map'] },
-      { id: 'col-b', widgets: ['moroccokpi'] },
+      { id: 'col-b', widgets: ['conflictnews', 'moroccokpi'] },
     ],
     columnSizes: { 'col-a': 50, 'col-b': 50 },
   },

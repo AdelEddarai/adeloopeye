@@ -8,7 +8,9 @@
  *
  * Honest attribution model:
  *  - CAMPAIGN edges: direction comes from journalistic reporting (GDELT) that ties a
- *    foreign country to disinformation activity against the focus country.
+ *    foreign country to disinformation/cyber activity against another country. When a
+ *    headline phrases an attribution ("X accused of hacking Y") the arc follows that
+ *    direction; otherwise the pair is a co-mention (two countries in one article).
  *  - BOT_TRAFFIC edges: bot IPs observed in a source country, pointing at the focus
  *    country under monitoring. This shows where bot activity originates, NOT that a
  *    government of that country is behind it.
@@ -35,7 +37,13 @@ export type DisinfoEdge = {
   target: string;
   weight: number;
   kind: 'CAMPAIGN' | 'BOT_TRAFFIC';
-  subKind?: 'INFLUENCE_OP' | 'BOTNET' | 'C2' | 'SCANNING';
+  subKind?:
+    | 'INFLUENCE_OP'
+    | 'ATTRIBUTED_ATTACK'
+    | 'CO_MENTION'
+    | 'BOTNET'
+    | 'C2'
+    | 'SCANNING';
   sources: DisinfoEdgeSource[];
   lastSeen: string;
 };
@@ -270,12 +278,16 @@ async function queryGDELTDisinfo(
   }
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function detectCountries(text: string): string[] {
   const lower = ` ${text.toLowerCase()} `;
   const found = new Set<string>();
   for (const c of COUNTRIES) {
     for (const m of c.matches) {
-      const esc = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const esc = escapeRegExp(m);
       if (new RegExp(`[\\s\\p{P}](?:${esc})[\\s\\p{P}]`, 'iu').test(lower)) {
         found.add(c.code);
         break;
@@ -283,6 +295,128 @@ function detectCountries(text: string): string[] {
     }
   }
   return [...found];
+}
+
+// ── Directional attribution from reporting language ──────────────────────────
+// Titles like "Russia accused of hacking Germany" carry a direction. We template
+// country names into numbered placeholders, then match small phrase patterns to
+// decide who attacks whom. This reflects what reporting claims — not proof.
+
+const NAME_ALT_RE = new RegExp(
+  `(?<![a-z])(?:${COUNTRIES.flatMap(c => c.matches)
+    .map(m => escapeRegExp(m.replace(/\s+/g, ' ').trim()))
+    .sort((a, b) => b.length - a.length)
+    .join('|')})(?![a-z])`,
+  'gi'
+);
+
+const PH = '\x01(\\d+)\x02';
+
+function templateTitle(title: string): { text: string; codes: string[] } {
+  const lower = ` ${title.toLowerCase()} `;
+  const codes: string[] = [];
+  const text = lower.replace(NAME_ALT_RE, m => {
+    const t = m.trim();
+    const cc = COUNTRIES.find(c => c.matches.some(mm => mm.replace(/\s+/g, ' ').trim() === t));
+    if (!cc) return m;
+    codes.push(cc.code);
+    return `\x01${codes.length - 1}\x02`;
+  });
+  return { text, codes };
+}
+
+function at(pattern: string): RegExp {
+  return new RegExp(pattern.replace(/@/g, PH), 'gi');
+}
+
+const ATTACK_PATTERNS: Array<{
+  re: RegExp;
+  dir: (a: number, b: number) => [number, number];
+}> = [
+  {
+    // "[source] accused of / suspected of / orchestrated ... attack on [target]"
+    re: at(
+      `@(?: accused of| suspected of| blamed for| behind| linked to| responsible for| orchestrated| conducted| launched| waged| mounted| carried out| directed| admits| admitted).{0,60}?(?:attack|hack|cyberattack|cyber attack|campaign|operation|disinformation|propaganda|botnet|malware|espionage|influence).{0,50}?(?:on|against|targeting)\\s+@`
+    ),
+    dir: (a, b) => [a, b],
+  },
+  {
+    // "[source] accused of / suspected of hacking [target]"
+    re: at(
+      `@\\s+(?:accused of|suspected of|blamed for|responsible for|admits to|admitted to)\\s+(?:hacking|attacking|targeting|breaching|penetrating)\\s+@`
+    ),
+    dir: (a, b) => [a, b],
+  },
+  {
+    // "attack on [target] attributed / blamed / linked to [source]"
+    re: at(
+      `(?:cyberattack|cyber attack|attack|hack|hacking|campaign|operation|disinformation|propaganda|botnet|malware|espionage|strike)\\s+(?:on|against|targeting)\\s+@.{0,40}?(?:attributed|blamed|linked|traced|tied) to\\s+@`
+    ),
+    dir: (a, b) => [b, a],
+  },
+  {
+    // "[source] hackers / military hacked / attacked / targeted [target]"
+    re: at(`@\\s+(?:hackers?\\s+)?(?:hacked|attacked|targeted|struck|breached|penetrated|hit)\\s+@`),
+    dir: (a, b) => [a, b],
+  },
+  {
+    // "[target] accuses / blames [source] of ..."
+    re: at(`@\\s+(?:accuses|blames|suspects)\\s+@\\s+(?:of|for)\\b`),
+    dir: (a, b) => [b, a],
+  },
+  {
+    // "attack on [target] by [source]"
+    re: at(
+      `@(?:attack|cyberattack|cyber attack|hack|espionage|campaign|operation).{0,40}?(?:on|against|targeting)\\s+@\\s+(?:by|from)\\s+@`
+    ),
+    dir: (a, b) => [b, a],
+  },
+];
+
+function inferAttackDirection(title: string): { source: string; target: string } | null {
+  const { text, codes } = templateTitle(title);
+  if (codes.length < 2) return null;
+  for (const pattern of ATTACK_PATTERNS) {
+    const match = text.match(pattern.re);
+    if (!match) continue;
+    const ids: number[] = [];
+    const phRe = new RegExp(PH, 'g');
+    let ph: RegExpExecArray | null;
+    while ((ph = phRe.exec(match[0])) !== null) ids.push(Number(ph[1]));
+    if (ids.length < 2) continue;
+    const [a, b] = pattern.dir(ids[0], ids[1]);
+    const source = codes[a];
+    const target = codes[b];
+    if (!source || !target || source === target) continue;
+    return { source, target };
+  }
+  return null;
+}
+
+function upsertDisinfoEdge(
+  map: Map<string, DisinfoEdge>,
+  source: string,
+  target: string,
+  subKind: DisinfoEdge['subKind'],
+  a: DisinfoArticle
+): void {
+  const key = `${source}-${target}`;
+  if (!map.has(key)) {
+    map.set(key, {
+      id: `campaign-${key}`,
+      source,
+      target,
+      weight: 0,
+      kind: 'CAMPAIGN',
+      subKind,
+      sources: [],
+      lastSeen: a.date,
+    });
+  }
+  const e = map.get(key)!;
+  e.weight += 1;
+  if (e.sources.length < 3) e.sources.push({ title: a.title, url: a.url, domain: a.domain });
+  if (a.date > e.lastSeen) e.lastSeen = a.date;
 }
 
 function withCountries(articles: DisinfoArticle[]): DisinfoArticle[] {
@@ -300,26 +434,18 @@ function campaignEdges(
   const focused: DisinfoArticle[] = [];
 
   for (const a of articles) {
-    if (a.countries.includes(focusCode)) {
-      focused.push(a);
+    if (!a.countries.includes(focusCode)) continue;
+    focused.push(a);
+
+    const dir = inferAttackDirection(a.title);
+    if (dir && (dir.source === focusCode || dir.target === focusCode)) {
+      // Reporting names a direction that involves the focus country — keep it.
+      upsertDisinfoEdge(bySource, dir.source, dir.target, 'ATTRIBUTED_ATTACK', a);
+    } else {
+      // No explicit direction: an arc from each other country toward the focus.
       for (const code of a.countries) {
         if (code === focusCode) continue;
-        if (!bySource.has(code)) {
-          bySource.set(code, {
-            id: `campaign-${code}-${focusCode}`,
-            source: code,
-            target: focusCode,
-            weight: 0,
-            kind: 'CAMPAIGN',
-            subKind: 'INFLUENCE_OP',
-            sources: [],
-            lastSeen: a.date,
-          });
-        }
-        const e = bySource.get(code)!;
-        e.weight += 1;
-        if (e.sources.length < 3) e.sources.push({ title: a.title, url: a.url, domain: a.domain });
-        if (a.date > e.lastSeen) e.lastSeen = a.date;
+        upsertDisinfoEdge(bySource, code, focusCode, 'CO_MENTION', a);
       }
     }
   }
@@ -328,9 +454,9 @@ function campaignEdges(
 }
 
 /**
- * World mode (focus = 'WLD'): build an arc for every pair of countries mentioned
- * together in a single article — a global "who is entangled with whom" network.
- * Direction is alphabetical, weight = article count for that pair.
+ * World mode (focus = 'WLD'): one directed arc per country pair mentioned in a
+ * single article. When reporting phrases an attribution ("X accused of hacking Y")
+ * the arc follows that direction; otherwise the pair is a plain co-mention.
  */
 function campaignEdgesWorld(
   articles: DisinfoArticle[]
@@ -338,6 +464,12 @@ function campaignEdgesWorld(
   const byPair = new Map<string, DisinfoEdge>();
 
   for (const a of articles) {
+    const dir = inferAttackDirection(a.title);
+    if (dir) {
+      upsertDisinfoEdge(byPair, dir.source, dir.target, 'ATTRIBUTED_ATTACK', a);
+      continue;
+    }
+
     const codes = a.countries
       .filter((c, i, arr) => arr.indexOf(c) === i)
       .sort();
@@ -345,24 +477,7 @@ function campaignEdgesWorld(
 
     for (let i = 0; i < codes.length; i++) {
       for (let j = i + 1; j < codes.length; j++) {
-        const [s, t] = [codes[i], codes[j]];
-        const key = `${s}-${t}`;
-        if (!byPair.has(key)) {
-          byPair.set(key, {
-            id: `campaign-${key}`,
-            source: s,
-            target: t,
-            weight: 0,
-            kind: 'CAMPAIGN',
-            subKind: 'INFLUENCE_OP',
-            sources: [],
-            lastSeen: a.date,
-          });
-        }
-        const e = byPair.get(key)!;
-        e.weight += 1;
-        if (e.sources.length < 3) e.sources.push({ title: a.title, url: a.url, domain: a.domain });
-        if (a.date > e.lastSeen) e.lastSeen = a.date;
+        upsertDisinfoEdge(byPair, codes[i], codes[j], 'CO_MENTION', a);
       }
     }
   }

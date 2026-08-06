@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { AllFeedsView } from '@/features/news/components/AllFeedsView';
 import { ChannelView } from '@/features/news/components/ChannelView';
 import { ConflictBanner } from '@/features/news/components/ConflictBanner';
+import { ConflictIntelPanel } from '@/features/news/components/ConflictIntelPanel';
 import { useRssCollections, useRssFeedItems, useRssFeeds } from '@/features/news/queries';
 import { EmptyState } from '@/shared/components/shared/EmptyState';
 
@@ -178,6 +179,10 @@ export function NewsContent() {
           </div>
         </div>
       </div>
+
+      {viewMode === 'conflict' && (
+        <ConflictIntelPanel />
+      )}
 
       {viewMode === 'conflict' && collection && channel && (
         <>

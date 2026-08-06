@@ -22,10 +22,7 @@ export const BROWSE_STATIC_ROUTES = [
 export const DASHBOARD_ROUTES = [
   '/dashboard',
   '/dashboard/map',
-  '/dashboard/signals',
   '/dashboard/feed',
-  '/dashboard/actors',
-  '/dashboard/brief',
   '/dashboard/predictions',
   '/dashboard/data',
   '/dashboard/data/news',

@@ -1,8 +1,4 @@
 'use client';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-
-import { ArrowRight } from 'lucide-react';
 
 import { SectionDivider } from '@/shared/components/shared/SectionDivider';
 
@@ -35,8 +31,6 @@ type Props = {
 
 export function EventReportContent({ event, compact = false, pageScroll = false }: Props) {
   const sc = SEV_C[event.severity] ?? 'var(--info)';
-  const searchParams = useSearchParams();
-  const day = searchParams.get('day');
 
   return (
     <div className={cn(compact ? (pageScroll ? 'safe-px py-3' : 'px-3 py-3') : 'px-6 py-5')}>
@@ -112,29 +106,24 @@ export function EventReportContent({ event, compact = false, pageScroll = false 
           <div className="flex flex-col gap-1.5">
             {event.actorResponses.map((r, i) => {
               const stC = STANCE_C[r.stance] ?? 'var(--t2)';
-              const actorHref = day
-                ? `/dashboard/actors?day=${day}&actor=${r.actorId}`
-                : `/dashboard/actors?actor=${r.actorId}`;
               return (
-                <Link key={i} href={actorHref} className="no-underline">
-                  <div
-                    className="px-3 py-2 border border-[var(--bd)] cursor-pointer hover:bg-[var(--bg-3)] transition-colors"
-                    style={{ borderLeft: `3px solid ${stC}` }}
-                  >
-                    <div className="flex gap-2 mb-1">
-                      <span className="text-[length:var(--text-body-sm)] font-bold text-[var(--t1)]">{r.actorName}</span>
-                      <span
-                        className="text-[length:var(--text-tiny)] px-[5px] py-px font-bold tracking-[0.05em]"
-                        style={{ background: stC + '18', color: stC }}
-                      >{r.stance}</span>
-                      <span className="label text-[length:var(--text-tiny)] ml-auto text-[var(--t3)]">{r.type}</span>
-                      <ArrowRight size={9} className="text-[var(--t3)]" strokeWidth={1.5} />
-                    </div>
-                    <p className="text-[length:var(--text-body-sm)] text-[var(--t2)] leading-[1.5] italic">
-                      &quot;{r.statement}&quot;
-                    </p>
+                <div
+                  key={i}
+                  className="px-3 py-2 border border-[var(--bd)]"
+                  style={{ borderLeft: `3px solid ${stC}` }}
+                >
+                  <div className="flex gap-2 mb-1">
+                    <span className="text-[length:var(--text-body-sm)] font-bold text-[var(--t1)]">{r.actorName}</span>
+                    <span
+                      className="text-[length:var(--text-tiny)] px-[5px] py-px font-bold tracking-[0.05em]"
+                      style={{ background: stC + '18', color: stC }}
+                    >{r.stance}</span>
+                    <span className="label text-[length:var(--text-tiny)] ml-auto text-[var(--t3)]">{r.type}</span>
                   </div>
-                </Link>
+                  <p className="text-[length:var(--text-body-sm)] text-[var(--t2)] leading-[1.5] italic">
+                    &quot;{r.statement}&quot;
+                  </p>
+                </div>
               );
             })}
           </div>

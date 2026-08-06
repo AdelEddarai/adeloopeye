@@ -15,7 +15,13 @@ export type DisinfoEdge = {
   target: string;
   weight: number;
   kind: 'CAMPAIGN' | 'BOT_TRAFFIC';
-  subKind?: 'INFLUENCE_OP' | 'BOTNET' | 'C2' | 'SCANNING';
+  subKind?:
+    | 'INFLUENCE_OP'
+    | 'ATTRIBUTED_ATTACK'
+    | 'CO_MENTION'
+    | 'BOTNET'
+    | 'C2'
+    | 'SCANNING';
   sources: Array<{ title: string; url: string; domain: string }>;
   lastSeen: string;
 };

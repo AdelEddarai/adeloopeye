@@ -33,10 +33,7 @@ import { SHOW_COOKIE_CONTROLS } from '@/shared/config/privacy';
 const NAV = [
   { label: 'OVERVIEW',    href: '/dashboard'              },
   { label: 'EVENTS',      href: '/dashboard/feed'         },
-  { label: 'ACTORS',      href: '/dashboard/actors'       },
-  { label: 'SIGNALS',     href: '/dashboard/signals'      },
   { label: 'DISINFO',     href: '/dashboard/disinfo'      },
-  { label: 'BRIEF',       href: '/dashboard/brief'        },
   { label: 'MAP',         href: '/dashboard/map'          },
   { label: 'DATA',        href: '/dashboard/data'          },
 ];
