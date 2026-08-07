@@ -294,8 +294,12 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
         </div>
       </div>
 
+      {/* Content */}
+      <div className={isLandscapePhone ? 'p-3 safe-px' : 'flex-1 overflow-y-auto p-4'}>
         {isCategoryLoading ? (
+
           <div className="flex items-center justify-center h-64">
+
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm text-[var(--t3)] mono">
