@@ -24,7 +24,8 @@ export function useEventNotifications(
     ),
     enabled,
     staleTime: 0,
-    refetchInterval: enabled ? 60_000 : false,
+    refetchInterval: enabled ? 15_000 : false,
     refetchIntervalInBackground: enabled,
   });
 }
+

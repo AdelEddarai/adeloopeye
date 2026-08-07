@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp, RefreshCw, TrendingUp, DollarSign, Zap, Shield } from 'lucide-react';
@@ -166,18 +167,25 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
     return () => clearInterval(interval);
   }, [autoRefresh, refreshSeconds, refetch]);
 
-  const results = data?.results || [];
-  const availableResults = results.filter(result => !(result.price === 0 && result.previousClose === 0 && result.chart.length === 0));
-  const unavailableResults = results.filter(result => result.price === 0 && result.previousClose === 0 && result.chart.length === 0);
+  // CRITICAL FIX: Filter results strictly by current active category's tickers.
+  // Prevents stale data from previous tab (e.g. S&P 500) from rendering when switching to Morocco market or another tab.
+  const categoryTickerSet = useMemo(() => new Set(tickers), [tickers]);
+  const categoryResults = useMemo(() => {
+    return (data?.results || []).filter(result => categoryTickerSet.has(result.ticker));
+  }, [data?.results, categoryTickerSet]);
+
+  const isCategoryLoading = isLoading || (isFetching && categoryResults.length === 0);
+  const availableResults = categoryResults.filter(result => !(result.price === 0 && result.previousClose === 0 && result.chart.length === 0));
+  const unavailableResults = categoryResults.filter(result => result.price === 0 && result.previousClose === 0 && result.chart.length === 0);
   const lastUpdate = new Date().toLocaleTimeString();
 
   useEffect(() => {
-    if (results.length === 0) return;
+    if (categoryResults.length === 0) return;
 
     const nextChanges: Record<string, 'up' | 'down'> = {};
     const nextPrices: Record<string, number> = {};
 
-    for (const result of results) {
+    for (const result of categoryResults) {
       const prevPrice = previousPricesRef.current[result.ticker];
       nextPrices[result.ticker] = result.price;
       if (prevPrice == null || prevPrice === result.price) continue;
@@ -189,7 +197,7 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
 
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setChangedTickers({}), 900);
-  }, [results]);
+  }, [categoryResults]);
 
   useEffect(
     () => () => {
@@ -197,6 +205,7 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
     },
     [],
   );
+
 
   return (
     <div
@@ -285,16 +294,17 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className={isLandscapePhone ? 'p-3 safe-px' : 'flex-1 overflow-y-auto p-4'}>
-        {isLoading ? (
+        {isCategoryLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-[var(--t3)] mono">Loading market data...</span>
+              <span className="text-sm text-[var(--t3)] mono">
+                Loading {activeCategory.toUpperCase()} market data...
+              </span>
             </div>
           </div>
         ) : (
+
           <div className="space-y-4">
             {/* Charts Grid - Auto Fit based on Container Width */}
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>

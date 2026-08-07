@@ -7,12 +7,21 @@ export const NOTIFICATION_PREFS_KEY = 'adeloopeye:notifications:v1';
 export type NotificationSeverity = 'CRITICAL' | 'HIGH' | 'STANDARD';
 export type NotificationPermissionState = NotificationPermission | 'unsupported';
 
+export type NotificationWidgetSources = {
+  moroccoNews: boolean;
+  strikes: boolean;
+  disinfo: boolean;
+  cyber: boolean;
+  flights: boolean;
+};
+
 export type NotificationPrefs = {
   version: 1;
   enabled: boolean;
   playSound: boolean;
   permission: NotificationPermissionState;
   minSeverity: NotificationSeverity;
+  widgetSources: NotificationWidgetSources;
   lastSeenCreatedAt?: string;
   lastSeenId?: string;
   recentNotifiedIds: string[];
@@ -24,6 +33,13 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   playSound: true,
   permission: 'default',
   minSeverity: 'STANDARD',
+  widgetSources: {
+    moroccoNews: true,
+    strikes: true,
+    disinfo: true,
+    cyber: true,
+    flights: false,
+  },
   recentNotifiedIds: [],
 };
 
@@ -45,21 +61,32 @@ export function parseNotificationPrefs(raw: string | null): NotificationPrefs {
 
   try {
     const parsed = JSON.parse(raw) as Partial<NotificationPrefs>;
+    const defaultWidgets = DEFAULT_NOTIFICATION_PREFS.widgetSources;
+    const parsedWidgets = parsed.widgetSources || {};
+
     return resolvePermission({
       ...DEFAULT_NOTIFICATION_PREFS,
       enabled: parsed.enabled === true,
       playSound: parsed.playSound !== false,
       minSeverity: isSeverity(parsed.minSeverity) ? parsed.minSeverity : DEFAULT_NOTIFICATION_PREFS.minSeverity,
+      widgetSources: {
+        moroccoNews: parsedWidgets.moroccoNews !== false,
+        strikes: parsedWidgets.strikes !== false,
+        disinfo: parsedWidgets.disinfo !== false,
+        cyber: parsedWidgets.cyber !== false,
+        flights: parsedWidgets.flights === true,
+      },
       lastSeenCreatedAt: typeof parsed.lastSeenCreatedAt === 'string' ? parsed.lastSeenCreatedAt : undefined,
       lastSeenId: typeof parsed.lastSeenId === 'string' ? parsed.lastSeenId : undefined,
       recentNotifiedIds: Array.isArray(parsed.recentNotifiedIds)
-        ? parsed.recentNotifiedIds.filter((value): value is string => typeof value === 'string').slice(-20)
+        ? parsed.recentNotifiedIds.filter((value): value is string => typeof value === 'string').slice(-30)
         : [],
     });
   } catch {
     return resolvePermission(DEFAULT_NOTIFICATION_PREFS);
   }
 }
+
 
 export function writeNotificationPrefs(next: NotificationPrefs) {
   if (typeof window === 'undefined' || !hasPreferencesConsent()) return;

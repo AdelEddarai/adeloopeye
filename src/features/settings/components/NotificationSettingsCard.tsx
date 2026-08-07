@@ -148,6 +148,100 @@ export function NotificationSettingsCard() {
           />
         </div>
 
+        {/* Widget Notification Sources Selection */}
+        <div className="flex flex-col gap-3 rounded-sm border border-[var(--bd)] bg-[var(--bg-2)] p-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--t1)] font-mono">
+              NOTIFICATION BELL WIDGET SOURCES
+            </span>
+            <span className="text-xs text-[var(--t3)]">
+              Choose which widget updates trigger the ring bell chime and notification toasts.
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-2.5 mt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--t1)] flex items-center gap-1.5">
+                🇲🇦 Morocco Live News &amp; Regional Updates (Default)
+              </span>
+              <Switch
+                checked={prefs.widgetSources.moroccoNews}
+                disabled={!canPersistPreferences || !prefs.enabled}
+                onCheckedChange={val =>
+                  patchNotificationPrefs({
+                    widgetSources: { ...prefs.widgetSources, moroccoNews: val },
+                  })
+                }
+                className="data-[state=checked]:bg-[var(--blue)] data-[state=unchecked]:bg-[var(--bg-3)]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--t1)] flex items-center gap-1.5">
+                💥 Kinetic Strikes &amp; Tactical Events
+              </span>
+              <Switch
+                checked={prefs.widgetSources.strikes}
+                disabled={!canPersistPreferences || !prefs.enabled}
+                onCheckedChange={val =>
+                  patchNotificationPrefs({
+                    widgetSources: { ...prefs.widgetSources, strikes: val },
+                  })
+                }
+                className="data-[state=checked]:bg-[var(--blue)] data-[state=unchecked]:bg-[var(--bg-3)]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--t1)] flex items-center gap-1.5">
+                💻 Disinformation &amp; Bot Network Alerts
+              </span>
+              <Switch
+                checked={prefs.widgetSources.disinfo}
+                disabled={!canPersistPreferences || !prefs.enabled}
+                onCheckedChange={val =>
+                  patchNotificationPrefs({
+                    widgetSources: { ...prefs.widgetSources, disinfo: val },
+                  })
+                }
+                className="data-[state=checked]:bg-[var(--blue)] data-[state=unchecked]:bg-[var(--bg-3)]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--t1)] flex items-center gap-1.5">
+                🛡 Cyber Security &amp; Data Breach Alerts
+              </span>
+              <Switch
+                checked={prefs.widgetSources.cyber}
+                disabled={!canPersistPreferences || !prefs.enabled}
+                onCheckedChange={val =>
+                  patchNotificationPrefs({
+                    widgetSources: { ...prefs.widgetSources, cyber: val },
+                  })
+                }
+                className="data-[state=checked]:bg-[var(--blue)] data-[state=unchecked]:bg-[var(--bg-3)]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--t1)] flex items-center gap-1.5">
+                ✈️ ADS-B Air Traffic &amp; Flight Alerts
+              </span>
+              <Switch
+                checked={prefs.widgetSources.flights}
+                disabled={!canPersistPreferences || !prefs.enabled}
+                onCheckedChange={val =>
+                  patchNotificationPrefs({
+                    widgetSources: { ...prefs.widgetSources, flights: val },
+                  })
+                }
+                className="data-[state=checked]:bg-[var(--blue)] data-[state=unchecked]:bg-[var(--bg-3)]"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--t4)]">Permission</span>
@@ -174,6 +268,7 @@ export function NotificationSettingsCard() {
             </Select>
           </div>
         </div>
+
 
         <div className="flex flex-wrap items-center gap-3">
           <Button

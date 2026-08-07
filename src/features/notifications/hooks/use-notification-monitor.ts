@@ -32,6 +32,8 @@ import {
   subscribeToNotificationPrefs,
 } from '../lib/notification-storage';
 
+import { useQuery } from '@tanstack/react-query';
+
 export function useNotificationMonitor() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const prefsSnapshot = useSyncExternalStore(
@@ -41,14 +43,32 @@ export function useNotificationMonitor() {
   );
   const prefs = parseNotificationPrefs(prefsSnapshot);
   const seenIdsRef = useRef<Set<string>>(new Set());
+  const isInitialMoroccoLoadRef = useRef(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const prevEnabledRef = useRef(prefs.enabled);
   const conflictId = publicConflictId;
 
+  // Poll Conflict Events (15s interval)
   const { data: events = [] } = useEventNotifications(conflictId, {
     createdAt: prefs.lastSeenCreatedAt,
     id: prefs.lastSeenId,
   }, prefs.enabled);
+
+  // Poll Morocco Live News API (15s interval)
+  const { data: moroccoData } = useQuery({
+    queryKey: ['live-morocco-notifications'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/live/morocco', {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.ok ? json.data : json;
+    },
+    enabled: prefs.enabled && prefs.widgetSources.moroccoNews,
+    refetchInterval: prefs.enabled && prefs.widgetSources.moroccoNews ? 15_000 : false,
+    refetchIntervalInBackground: true,
+  });
 
   useEffect(() => {
     if (!prefs.enabled) return;
@@ -77,6 +97,7 @@ export function useNotificationMonitor() {
     prevEnabledRef.current = prefs.enabled;
   }, [prefs.enabled]);
 
+  // Process Conflict Events
   useEffect(() => {
     if (!prefs.enabled || events.length === 0) return;
 
@@ -88,7 +109,71 @@ export function useNotificationMonitor() {
 
     void notifyForEvents(events, prefs, registration, seenIdsRef.current, channelRef.current);
   }, [events, prefs, registration]);
+
+  // Process Morocco Live News Updates
+  useEffect(() => {
+    if (!prefs.enabled || !prefs.widgetSources.moroccoNews || !moroccoData) return;
+
+    const newsList = moroccoData.news || [];
+    const alertsList = moroccoData.securityAlerts || [];
+    const combined = [...newsList, ...alertsList];
+
+    if (combined.length === 0) return;
+
+    // Initial load: seed existing items so we don't spam popups for past news
+    if (isInitialMoroccoLoadRef.current) {
+      combined.forEach((item: any) => {
+        const id = item.id || `morocco-${item.title}`;
+        seenIdsRef.current.add(id);
+      });
+      isInitialMoroccoLoadRef.current = false;
+      return;
+    }
+
+    // Subsequent polls: trigger notification bell for NEW news items!
+    for (const item of combined) {
+      const id = item.id || `morocco-${item.title}`;
+      if (seenIdsRef.current.has(id) || prefs.recentNotifiedIds.includes(id)) {
+        continue;
+      }
+
+      const visible = typeof document !== 'undefined' && document.visibilityState === 'visible';
+      const title = `📍 MOROCCO LIVE NEWS: ${item.title}`;
+      const body = item.description || `New intelligence update from ${item.source || item.location || 'Morocco OSINT'}`;
+      const targetUrl = '/dashboard/map';
+
+      if (visible) {
+        toast.info(title, {
+          description: body,
+          action: {
+            label: 'View Map',
+            onClick: () => {
+              window.location.assign(targetUrl);
+            },
+          },
+        });
+      } else {
+        void showSystemNotification({
+          body,
+          eventId: id,
+          registration,
+          title,
+          url: targetUrl,
+        }).catch(() => false);
+      }
+
+      if (prefs.playSound) {
+        playNotificationSound();
+      }
+
+      seenIdsRef.current.add(id);
+      broadcastNotification(channelRef.current, id);
+      const updatedRecent = mergeRecentIds(prefs.recentNotifiedIds, id);
+      patchNotificationPrefs({ recentNotifiedIds: updatedRecent });
+    }
+  }, [moroccoData, prefs, registration]);
 }
+
 
 async function notifyForEvents(
   events: EventNotificationCandidate[],
