@@ -20,12 +20,13 @@ export type NotificationPrefs = {
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   version: 1,
-  enabled: false,
+  enabled: true,
   playSound: true,
   permission: 'default',
-  minSeverity: 'HIGH',
+  minSeverity: 'STANDARD',
   recentNotifiedIds: [],
 };
+
 
 export function readNotificationPrefs(): NotificationPrefs {
   if (typeof window === 'undefined' || !hasPreferencesConsent()) {

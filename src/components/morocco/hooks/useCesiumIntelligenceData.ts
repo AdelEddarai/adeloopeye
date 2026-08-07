@@ -199,17 +199,16 @@ function getDisasterColor(Cesium: any, category: string) {
 
 function getPulseRadius(time?: any) {
     if (time && typeof time.secondsOfDay === 'number') {
-        // Pure, deterministic physics frame based on JulianDate
         const ms = (time.dayNumber * 86400 + time.secondsOfDay) * 1000;
         const smoothOscillator = (Math.sin(ms / 1500) + 1) / 2;
-        // Compact radar pulse: ~1.8km to ~3.6km radius (was 8-12km, too dominating)
-        return 1800 + smoothOscillator * 1800;
+        // Compact tactical city-block pulse: ~250m to ~500m radius (prevents giant city-engulfing circles on zoom)
+        return 250 + smoothOscillator * 250;
     }
-    // Fallback
     const now = Date.now();
     const smoothOscillator = (Math.sin(now / 1500) + 1) / 2;
-    return 1800 + smoothOscillator * 1800;
+    return 250 + smoothOscillator * 250;
 }
+
 
 // Applies a spiral offset to events sharing exact same coordinates
 function offsetOverlappingEvents(events: MoroccoEvent[]) {
@@ -395,8 +394,9 @@ export function useCesiumData({ viewer, moroccoData, globalData, toggles, setHov
         if (!dsRef.current) {
           const ds = new Cesium.CustomDataSource('OSINT');
           ds.clustering.enabled = true;
-          ds.clustering.pixelRange = 45;
-          ds.clustering.minimumClusterSize = 3;
+          ds.clustering.pixelRange = 20;
+          ds.clustering.minimumClusterSize = 4;
+
           
           ds.clustering.clusterEvent.addEventListener((clusteredEntities: any, cluster: any) => {
             // Modern Hex/Circle Cluster Hub

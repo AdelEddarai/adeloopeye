@@ -27,7 +27,8 @@ import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
 import { getCoordinatesForLocation } from '@/shared/lib/location-coordinates';
 import { clearSelection } from '@/shared/state/event-selection-slice';
 import type { RootState } from '@/shared/state';
-import { MAP_STYLE_SAT } from '@/features/map/components/map-styles';
+import { MAP_STYLE_SAT, MAP_STYLE_DARK } from '@/features/map/components/map-styles';
+
 
 import '@/features/map/lib/deckgl-device';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -50,10 +51,12 @@ const BUTTON_CONFIG: Array<{
   { key: 'heat',     label: 'HEAT',     active: { bg: 'var(--cyber-dim)', border: 'var(--cyber)', color: 'var(--cyber)' } },
   { key: 'relationships', label: 'RELATIONS', active: { bg: 'var(--gold-dim)', border: 'var(--gold)', color: 'var(--gold)' } },
   { key: 'disinfo',  label: 'DISINFO',  active: { bg: 'var(--purple-dim)', border: 'var(--purple)', color: 'var(--purple)' } },
+  { key: 'maritime', label: 'MARITIME', active: { bg: 'var(--blue-dim)', border: 'var(--blue)', color: 'var(--blue-l)' } },
+  { key: 'labels',   label: 'LABELS',   active: { bg: 'var(--teal-dim)', border: 'var(--teal)', color: 'var(--teal)' } },
 ];
 
 const DEFAULT_VISIBILITY: LayerVisibility = {
-  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true, disinfo: true, relationships: true,
+  strikes: true, missiles: true, targets: true, assets: true, flights: false, zones: true, heat: true, disinfo: true, relationships: true, maritime: true, labels: true,
 };
 
 export function IntelMap() {
@@ -61,8 +64,11 @@ export function IntelMap() {
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const [visibility, setVisibility] = useState<LayerVisibility>(DEFAULT_VISIBILITY);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [isSatStyle, setIsSatStyle] = useState(true);
+  const [is3dPitch, setIs3dPitch] = useState(true);
   const activeLayerCount = BUTTON_CONFIG.filter(c => visibility[c.key]).length;
   const { data: disinfoData } = useLiveDisinformation('MA', visibility.disinfo);
+
   
   // MapLibre map instance for 3D controls
   const mapRef = useRef<MapRef>(null);
@@ -331,6 +337,35 @@ export function IntelMap() {
 
         {/* Toggle buttons */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center', position: 'relative' }}>
+          {/* Map Config Toggles */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSatStyle(s => !s)}
+            className="h-auto px-1.5 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono border border-[var(--bd)] bg-[var(--bg-1)] text-[var(--t2)] hover:bg-[var(--bg-2)]"
+            title="Toggle Satellite vs Dark Map style"
+          >
+            {isSatStyle ? '🛰 SAT' : '🗺 DARK'}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setIs3dPitch(p => {
+                const next = !p;
+                setViewState(prev => ({ ...prev, pitch: next ? 45 : 0, transitionDuration: 800 }));
+                return next;
+              });
+            }}
+            className={`h-auto px-1.5 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono border ${
+              is3dPitch ? 'border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue-l)]' : 'border-[var(--bd)] bg-[var(--bg-1)] text-[var(--t3)]'
+            }`}
+            title="Toggle 3D Pitch camera tilt"
+          >
+            📐 3D {is3dPitch ? 'ON' : 'OFF'}
+          </Button>
+
           {/* Clear Selection Button */}
           {(eventSelection.selectedEventId || eventSelection.selectedLocation) && (
             <Button
@@ -438,8 +473,8 @@ export function IntelMap() {
             const zoom = nextViewState.zoom ?? 0;
             setViewState({
               ...nextViewState,
-              // Gradually increase pitch at higher zoom for a more realistic earth feel.
-              pitch: zoom >= 9 ? Math.min(60, 28 + (zoom - 9) * 5) : 0,
+              // Gradually increase pitch at higher zoom if 3D pitch mode is active.
+              pitch: is3dPitch ? (zoom >= 9 ? Math.min(60, 28 + (zoom - 9) * 5) : (nextViewState.pitch ?? 0)) : 0,
             });
           }}
           controller={true}
@@ -450,9 +485,10 @@ export function IntelMap() {
         >
           <MapGL 
             ref={mapRef}
-            mapStyle={MAP_STYLE_SAT} 
+            mapStyle={isSatStyle ? MAP_STYLE_SAT : MAP_STYLE_DARK} 
           />
         </DeckGL>
+
 
         {/* 3D View Controls */}
         <Map3DControls map={mapInstance} isLoaded={isMapLoaded} />

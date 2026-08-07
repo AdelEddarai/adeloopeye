@@ -127,12 +127,31 @@ export function playMonitoringAlert(level: AlertLevel) {
 }
 
 /**
- * Play the built-in mp3 notification sound (asset-based fallback).
+ * Play the built-in notification ring bell sound using Web Audio synthesizer.
  */
-export function playNotificationTone() {
+export function playNotificationTone(): boolean {
   if (typeof window === 'undefined') return false;
-  const audio = new Audio('/sounds/notification.mp3');
-  audio.volume = 0.7;
-  void audio.play().catch(() => {});
-  return true;
+
+  const ctx = getContext();
+  if (ctx) {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    // Dual bell tone: 880Hz + 1318Hz chime ring
+    tone(ctx, { start: 0, duration: 0.4, frequency: 880, type: 'sine', gainValue: 0.16 });
+    tone(ctx, { start: 0.08, duration: 0.5, frequency: 1318.5, type: 'sine', gainValue: 0.14 });
+    return true;
+  }
+
+  try {
+    const audio = new Audio('/sounds/notification.mp3');
+    audio.volume = 0.7;
+    void audio.play().catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
 }
+

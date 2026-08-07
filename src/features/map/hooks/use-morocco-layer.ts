@@ -640,28 +640,29 @@ export function useMoroccoLayer({
     // ═══════════════════════════════════════════════════════════
     // EVENT LABELS - City and event type (only at high zoom)
     // ═══════════════════════════════════════════════════════════
-    if (!isMobile && visibleEvents.length > 0 && zoom >= 10) {
+    if (!isMobile && visibleEvents.length > 0 && zoom >= 5.5) {
       const eventLabelLayer = new TextLayer<typeof visibleEvents[0]>({
         id: 'morocco-event-labels',
         data: visibleEvents,
         getPosition: (d): [number, number] => d.offsetPosition,
         getText: (d): string => `${getEventIcon(d.type)} ${d.location}`,
-        getSize: 11,
+        getSize: 10,
         getColor: (d): RGBA => {
           const [r, g, b] = getEventColor(d.type, d.severity);
           return [r + 40, g + 40, b + 40, 255];
         },
-        getPixelOffset: [0, -35],
+        getPixelOffset: [0, -26],
         fontFamily: 'SFMono-Regular, Menlo, monospace',
         fontWeight: 700,
         background: true,
         getBackgroundColor: isSatellite ? [10, 14, 22, 230] : [28, 33, 39, 200],
-        backgroundPadding: [4, 3, 4, 3] as [number, number, number, number],
+        backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
         pickable: true,
       });
       
       layers.push(eventLabelLayer);
     }
+
     
     // ═══════════════════════════════════════════════════════════
     // INFRASTRUCTURE MARKERS

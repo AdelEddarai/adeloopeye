@@ -29,7 +29,10 @@ export type LayerVisibility = {
   heat: boolean;
   disinfo: boolean;
   relationships: boolean;
+  maritime: boolean;
+  labels: boolean;
 };
+
 
 export type DisinfoPayload = { edges: DisinfoEdge[]; nodes: DisinfoNode[] };
 
@@ -253,7 +256,7 @@ export function useMapLayers(
         data: targets,
         getPosition: (d: Target): [number, number] => d.position,
         getRadius: (d: Target): number =>
-          d.status === 'DESTROYED' ? 18000 : d.status === 'DAMAGED' ? 14000 : 10000,
+          d.status === 'DESTROYED' ? 12000 : d.status === 'DAMAGED' ? 9000 : 6000,
         getFillColor: (d: Target): [number, number, number, number] =>
           d.status === 'DESTROYED'
             ? [220, 50, 50, 200]
@@ -263,6 +266,8 @@ export function useMapLayers(
         stroked: true,
         getLineColor: (): [number, number, number, number] => [255, 255, 255, 100],
         lineWidthMinPixels: 1,
+        radiusMinPixels: 4,
+        radiusMaxPixels: 14,
         pickable: true,
         autoHighlight: true,
         updateTriggers: {
@@ -276,12 +281,14 @@ export function useMapLayers(
         id: 'assets',
         data: assets,
         getPosition: (d: Asset): [number, number] => d.position,
-        getRadius: (d: Asset): number => (d.type === 'CARRIER' ? 20000 : 14000),
+        getRadius: (d: Asset): number => (d.type === 'CARRIER' ? 12000 : 8000),
         getFillColor: (d: Asset): [number, number, number, number] =>
           d.actor === 'US' ? [45, 114, 210, 220] : [50, 200, 200, 220],
         stroked: true,
         getLineColor: (): [number, number, number, number] => [255, 255, 255, 150],
         lineWidthMinPixels: 1,
+        radiusMinPixels: 4,
+        radiusMaxPixels: 14,
         pickable: true,
         autoHighlight: true,
         updateTriggers: {
@@ -290,7 +297,8 @@ export function useMapLayers(
         },
       }),
 
-    visibility.targets && targets.length > 0 &&
+
+    visibility.labels && visibility.targets && targets.length > 0 &&
       new TextLayer<Target>({
         id: 'target-labels',
         data: targets,
@@ -305,7 +313,7 @@ export function useMapLayers(
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       }),
 
-    visibility.assets && assets.length > 0 &&
+    visibility.labels && visibility.assets && assets.length > 0 &&
       new TextLayer<Asset>({
         id: 'asset-labels',
         data: assets,
@@ -319,6 +327,7 @@ export function useMapLayers(
         getBackgroundColor: (): [number, number, number, number] => [28, 33, 39, 200],
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       }),
+
 
     // Flight icons using IconLayer for better rendering
     visibility.flights && flights.length > 0 &&
@@ -448,7 +457,7 @@ export function useMapLayers(
         },
       }),
 
-    maritimeLanes.length > 0 &&
+    visibility.maritime && maritimeLanes.length > 0 &&
       new PathLayer({
         id: 'maritime-lanes',
         data: maritimeLanes,
@@ -466,55 +475,156 @@ export function useMapLayers(
         }
       }),
 
-    // Disinformation / bot network arcs (reported campaigns + observed bot sources)
-    visibility.disinfo && disinfo && disinfo.edges.length > 0 &&
-      new ArcLayer<DisinfoEdge>({
+
+    // Disinformation / bot network animated arcs & cyber flow particles
+    ...(() => {
+      if (!visibility.disinfo || !disinfo || !disinfo.edges || disinfo.edges.length === 0) return [];
+
+      const edges = disinfo.edges;
+      const nodes = disinfo.nodes || [];
+
+      const getSourcePos = (d: DisinfoEdge): [number, number] => {
+        const n = nodes.find(x => x.code === d.source);
+        return n ? [n.lon, n.lat] : [0, 0];
+      };
+
+      const getTargetPos = (d: DisinfoEdge): [number, number] => {
+        const n = nodes.find(x => x.code === d.target);
+        return n ? [n.lon, n.lat] : [0, 0];
+      };
+
+      // 1. Ambient Glow Arc Layer (breathing threat aura)
+      const glowArcs = new ArcLayer<DisinfoEdge>({
+        id: 'disinfo-glow-arcs',
+        data: edges,
+        getSourcePosition: getSourcePos,
+        getTargetPosition: getTargetPos,
+        getSourceColor: (d: DisinfoEdge): [number, number, number, number] => {
+          const pulse = Math.sin(time * 0.15 + d.weight) * 0.3 + 0.7;
+          return d.kind === 'CAMPAIGN'
+            ? [245, 158, 11, Math.floor(90 * pulse)]
+            : [56, 189, 248, Math.floor(90 * pulse)];
+        },
+        getTargetColor: (): [number, number, number, number] => [255, 255, 255, 60],
+        getWidth: (d: DisinfoEdge): number => Math.min(5 + d.weight * 1.5, 12),
+        getHeight: 0.14,
+        widthUnits: 'pixels',
+        greatCircle: true,
+        pickable: false,
+        updateTriggers: {
+          getSourceColor: [time],
+        },
+      });
+
+      // 2. Main High-Contrast Arc Layer
+      const mainArcs = new ArcLayer<DisinfoEdge>({
         id: 'disinfo-arcs',
-        data: disinfo.edges,
-        getSourcePosition: (d: DisinfoEdge): [number, number] => {
-          const n = disinfo.nodes.find(x => x.code === d.source);
-          return n ? [n.lon, n.lat] : [0, 0];
-        },
-        getTargetPosition: (d: DisinfoEdge): [number, number] => {
-          const n = disinfo.nodes.find(x => x.code === d.target);
-          return n ? [n.lon, n.lat] : [0, 0];
-        },
+        data: edges,
+        getSourcePosition: getSourcePos,
+        getTargetPosition: getTargetPos,
         getSourceColor: (d: DisinfoEdge): [number, number, number, number] =>
-          d.kind === 'CAMPAIGN' ? [245, 158, 11, 220] : [56, 189, 248, 200],
-        getTargetColor: (): [number, number, number, number] => [255, 255, 255, 180],
-        getWidth: (d: DisinfoEdge): number => Math.min(1.5 + d.weight, 6),
+          d.kind === 'CAMPAIGN' ? [255, 170, 0, 240] : [0, 210, 255, 240],
+        getTargetColor: (): [number, number, number, number] => [255, 255, 255, 220],
+        getWidth: (d: DisinfoEdge): number => Math.min(2 + d.weight, 5),
         getHeight: 0.14,
         widthUnits: 'pixels',
         greatCircle: true,
         pickable: true,
         autoHighlight: true,
-        updateTriggers: {
-          getSourceColor: [],
-          getTargetColor: [],
-        },
-      }),
+      });
 
-    // Disinformation / bot network node volume
-    visibility.disinfo && disinfo && disinfo.nodes.length > 0 &&
-      new ScatterplotLayer<DisinfoNode>({
+      // 3. Flowing Cyber Data Packets (traveling along arc trajectories from source to target)
+      const particleData: Array<{ position: [number, number]; kind: string; id: string }> = [];
+      edges.forEach((edge, idx) => {
+        const src = getSourcePos(edge);
+        const tgt = getTargetPos(edge);
+        if ((src[0] === 0 && src[1] === 0) || (tgt[0] === 0 && tgt[1] === 0)) return;
+
+        // 2 moving data particles per edge
+        for (let p = 0; p < 2; p++) {
+          const offset = (idx * 0.25 + p * 0.5) % 1;
+          const progress = (time * 0.04 + offset) % 1;
+          const lon = src[0] + (tgt[0] - src[0]) * progress;
+          const lat = src[1] + (tgt[1] - src[1]) * progress;
+          particleData.push({
+            id: `particle-${edge.id}-${p}`,
+            position: [lon, lat],
+            kind: edge.kind,
+          });
+        }
+      });
+
+      const flowParticles = new ScatterplotLayer<typeof particleData[0]>({
+        id: 'disinfo-flow-particles',
+        data: particleData,
+        getPosition: d => d.position,
+        getRadius: 8000,
+        getFillColor: (d): [number, number, number, number] =>
+          d.kind === 'CAMPAIGN' ? [255, 220, 100, 240] : [100, 230, 255, 240],
+        stroked: true,
+        getLineColor: [255, 255, 255, 255],
+        lineWidthMinPixels: 1.5,
+        radiusMinPixels: 3,
+        radiusMaxPixels: 7,
+        pickable: false,
+        updateTriggers: {
+          getPosition: [time],
+        },
+      });
+
+      // 4. Disinformation / bot network node volume
+      const validNodes = nodes.filter(n => n.campaignVolume + n.botVolume > 0);
+      const disinfoNodes = new ScatterplotLayer<DisinfoNode>({
         id: 'disinfo-nodes',
-        data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
+        data: validNodes,
         getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
         getRadius: (d: DisinfoNode): number =>
-          20000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000),
+          10000 + Math.min(80000, Math.sqrt(d.campaignVolume + d.botVolume) * 30000),
         getFillColor: (d: DisinfoNode): [number, number, number, number] =>
-          d.campaignVolume >= d.botVolume ? [245, 158, 11, 60] : [56, 189, 248, 60],
+          d.campaignVolume >= d.botVolume ? [245, 158, 11, 70] : [56, 189, 248, 70],
         stroked: true,
         getLineColor: (d: DisinfoNode): [number, number, number, number] =>
-          d.campaignVolume >= d.botVolume ? [245, 158, 11, 180] : [56, 189, 248, 160],
+          d.campaignVolume >= d.botVolume ? [245, 158, 11, 200] : [56, 189, 248, 200],
         lineWidthMinPixels: 1,
+        radiusMinPixels: 5,
+        radiusMaxPixels: 18,
         pickable: true,
         autoHighlight: true,
         updateTriggers: {
-          getFillColor: [],
-          getLineColor: [],
+          getFillColor: [time],
+          getLineColor: [time],
         },
-      }),
+      });
+
+      // 5. Node Pulsing Radar Rings
+      const nodeRings = new ScatterplotLayer<DisinfoNode>({
+        id: 'disinfo-nodes-pulse',
+        data: validNodes,
+        getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
+        getRadius: (d: DisinfoNode): number => {
+          const pulse = (time * 0.08) % 1;
+          return (15000 + Math.min(80000, Math.sqrt(d.campaignVolume + d.botVolume) * 30000)) * (0.8 + pulse * 0.5);
+        },
+        getFillColor: [0, 0, 0, 0],
+        stroked: true,
+        getLineColor: (d: DisinfoNode): [number, number, number, number] => {
+          const pulse = (time * 0.08) % 1;
+          const alpha = Math.floor(180 * (1 - pulse));
+          return d.campaignVolume >= d.botVolume ? [255, 170, 0, alpha] : [0, 210, 255, alpha];
+        },
+        lineWidthMinPixels: 1,
+        radiusMinPixels: 7,
+        radiusMaxPixels: 24,
+        pickable: false,
+        updateTriggers: {
+          getRadius: [time],
+          getLineColor: [time],
+        },
+      });
+
+      return [glowArcs, mainArcs, flowParticles, nodeRings, disinfoNodes];
+    })(),
+
 
     // Geopolitical relationship / conflict lines (source→target arcs)
     ...(() => {

@@ -207,21 +207,23 @@ export function countryFromCode(code: string) {
 const GDELT_URL = 'https://api.gdeltproject.org/api/v2/doc/doc';
 
 const GDELT_QUERIES = {
-  // Maghreb/Morocco-centric disinformation & influence operations
+  // Maghreb/Morocco-centric disinformation, Facebook/Meta bot networks, phishing & digital deception
   maghreb:
-    '(morocco OR algeria OR sahrawi OR "western sahara" OR maghreb) ' +
-    '(disinformation OR propaganda OR "influence operation" OR "bot network" OR ' +
-    '"fake accounts" OR disinfo OR manipulation OR "information war")',
+    '(morocco OR algeria OR sahrawi OR "western sahara" OR maghreb OR rabat OR casablanca) ' +
+    '(disinformation OR propaganda OR "influence operation" OR "bot network" OR "fake accounts" OR ' +
+    'disinfo OR manipulation OR "information war" OR phishing OR astroturfing OR "facebook bots" OR ' +
+    '"social media manipulation" OR "coordinated inauthentic" OR "fake news" OR "cyber attack" OR "data breach")',
   // Worldwide disinformation / coordinated inauthentic behavior
   disinfo:
     '(disinformation OR "influence operation" OR "bot network" OR "coordinated inauthentic" OR ' +
-    '"fake accounts" OR disinfo OR propaganda OR "information war")',
+    '"fake accounts" OR disinfo OR propaganda OR "information war" OR phishing OR astroturfing OR "digital deception")',
   // Worldwide cyber attacks, espionage and state-backed hacking
   cyber:
     '(cyber attack OR cyberattack OR cyberwar OR "cyber warfare" OR "cyber espionage" OR ' +
     'hacking OR hacker OR ransomware OR malware OR "data breach" OR DDoS OR ' +
-    '"denial-of-service" OR "zero-day" OR "state-sponsored" OR "state-backed" OR botnet)',
+    '"denial-of-service" OR "zero-day" OR "state-sponsored" OR "state-backed" OR botnet OR phishing)',
 };
+
 
 function parseGDELTDate(seendate: string): string {
   const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/.exec(seendate || '');

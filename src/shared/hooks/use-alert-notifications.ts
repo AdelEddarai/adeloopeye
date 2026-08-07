@@ -24,7 +24,15 @@ type AlertNotification = {
 export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean = true) {
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [soundMuted, setSoundMuted] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = window.localStorage.getItem('adeloopeye_sound_muted');
+      return stored === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [pushGranted, setPushGranted] = useState<boolean | null>(() => {
     if (typeof window === 'undefined') return null;
     return 'Notification' in window && window.Notification.permission === 'granted';
@@ -32,6 +40,7 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
   const processedEventIds = useRef(new Set<string>());
   const swRef = useRef<ServiceWorkerRegistration | null>(null);
   const initializedRef = useRef(false);
+
 
   // Preload notification worker so system alerts are possible
   useEffect(() => {
@@ -154,10 +163,14 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
   const toggleSound = useCallback(() => {
     setSoundMuted(prev => {
       const next = !prev;
+      try {
+        window.localStorage.setItem('adeloopeye_sound_muted', String(next));
+      } catch {}
       if (!next) playMonitoringAlert('MEDIUM'); // preview tone on unmute
       return next;
     });
   }, []);
+
 
   const enableNotifications = useCallback(async () => {
     const permission = await requestNotificationPermission();

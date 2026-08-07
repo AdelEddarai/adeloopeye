@@ -150,17 +150,25 @@ export default function AlertCenter({
             >
               {soundMuted ? '🔇 Sound off' : '🔊 Sound on'}
             </button>
+            <button
+              onClick={() => playNotificationTone()}
+              className="flex items-center gap-1 py-1 px-2 rounded-md text-[9px] font-mono tracking-wider uppercase border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 transition-colors hover:bg-cyan-500/20"
+              title="Test ring bell sound"
+            >
+              🔔 Test Ring
+            </button>
             {pushGranted !== true && (
               <button
                 onClick={() => onEnableNotifications()}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-mono tracking-wider uppercase border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-mono tracking-wider uppercase border border-blue-500/40 bg-blue-500/10 text-blue-300 transition-colors hover:bg-blue-500/20"
                 title="Enable browser push notifications"
               >
-                🔔 Enable push
+                Push
               </button>
             )}
             <span className="ml-auto text-[8px] text-slate-500 font-mono tracking-widest">LIVE</span>
           </div>
+
 
           {/* Alert list */}
           <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">

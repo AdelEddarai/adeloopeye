@@ -59,8 +59,26 @@ export function NotificationSettingsCard() {
     setIsWorking(false);
   };
 
+  const playTestSound = () => {
+    const success = playNotificationSound();
+    if (success) {
+      toast.success('🔔 Ring Bell sound played', {
+        description: 'Web Audio chime triggered successfully.',
+      });
+    } else {
+      toast.error('Could not play sound', {
+        description: 'Click anywhere on the page to unlock audio playback in your browser.',
+      });
+    }
+  };
+
   const sendTestNotification = async () => {
     setIsWorking(true);
+    // Play sound immediately on test trigger if sound enabled
+    if (prefs.playSound) {
+      playNotificationSound();
+    }
+
     try {
       const registration = await registerNotificationWorker();
       const delivered = await showSystemNotification({
@@ -71,22 +89,18 @@ export function NotificationSettingsCard() {
         url: '/dashboard/settings',
       });
 
-      const playedSound = delivered && prefs.playSound ? playNotificationSound() : false;
-
       if (delivered) {
         toast.success('Test notification sent', {
-          description: playedSound
-            ? 'You should hear the sound and see a browser notification now.'
-            : 'You should see a browser notification now.',
+          description: 'You should see a system notification and hear the ring bell.',
         });
       } else {
-        toast.error('Test notification failed', {
-          description: 'Check browser notification permission and service worker registration.',
+        toast.info('In-app alert triggered', {
+          description: 'System notification blocked by OS/browser, but in-app sound and toast succeeded.',
         });
       }
     } catch {
-      toast.error('Test notification failed', {
-        description: 'The browser could not create a system notification.',
+      toast.error('System notification error', {
+        description: 'In-app notification sound was played.',
       });
     }
 
@@ -98,7 +112,7 @@ export function NotificationSettingsCard() {
       <CardHeader className="border-b border-[var(--bd)] px-5 py-4">
         <CardTitle className="text-[var(--t1)]">Browser notifications</CardTitle>
         <CardDescription className="text-[var(--t3)]">
-          In this first version, alerts arrive while Adeloopeye is open in your browser.
+          Alerts arrive in real time while Adeloopeye is open in your browser.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5 px-5 py-5">
@@ -164,11 +178,18 @@ export function NotificationSettingsCard() {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
+            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+            onClick={playTestSound}
+          >
+            🔔 Test Ring Bell Sound
+          </Button>
+          <Button
+            variant="outline"
             className="border-[var(--bd)] bg-[var(--bg-2)] text-[var(--t1)] hover:bg-[var(--bg-3)]"
             onClick={sendTestNotification}
             disabled={!canPersistPreferences || prefs.permission !== 'granted' || isWorking}
           >
-            Test notification
+            Test system notification
           </Button>
           <span className="text-xs text-[var(--t4)]">
             {!canPersistPreferences
@@ -180,3 +201,4 @@ export function NotificationSettingsCard() {
     </Card>
   );
 }
+

@@ -138,12 +138,10 @@ async function notifyForEvents(
         registration,
         title,
         url: targetUrl,
-      });
+      }).catch(() => false);
     }
 
-    if (!delivered) continue;
-
-    if (prefs.playSound && delivered) {
+    if (prefs.playSound) {
       playNotificationSound();
     }
 
@@ -153,6 +151,7 @@ async function notifyForEvents(
     latestSeen = event.createdAt;
     latestSeenId = event.id;
   }
+
 
   patchNotificationPrefs({
     lastSeenCreatedAt: latestSeen,

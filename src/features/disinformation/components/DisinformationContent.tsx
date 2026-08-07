@@ -118,6 +118,23 @@ export function DisinformationContent() {
         </div>
       </div>
 
+      {/* Tactical Threat Banner for Morocco */}
+      {focus === 'MA' && (
+        <div className="shrink-0 px-4 py-2 bg-[var(--danger-dim)] border-b border-[var(--danger-bd)] flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[length:var(--text-tiny)] font-mono text-[var(--danger)]">
+          <span className="font-bold flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-[var(--danger)] animate-pulse" />
+            MOROCCO THREAT MATRIX:
+          </span>
+          <span className="text-[var(--t1)]">🤖 Facebook/X Bot Networks (CIB)</span>
+          <span className="text-[var(--t3)]">·</span>
+          <span className="text-[var(--t1)]">🎣 Targeted Phishing (Starry Addax / Spyware)</span>
+          <span className="text-[var(--t3)]">·</span>
+          <span className="text-[var(--t1)]">📢 Astroturfing &amp; Social Unrest Rumors</span>
+          <span className="text-[var(--t3)]">·</span>
+          <span className="text-[var(--t1)]">🔒 Data Breach &amp; Infrastructure Espionage</span>
+        </div>
+      )}
+
       {isError ? (
         <div className="flex flex-col items-center justify-center py-16">
           <span className="mono text-[length:var(--text-label)] text-[var(--danger)]">
@@ -130,6 +147,7 @@ export function DisinformationContent() {
       ) : (
         <>
           <DisinformationStats stats={data?.stats ?? { campaigns: 0, botSources: 0, botCountries: 0, articleCount: 0 }} />
+
 
           <div className="flex-1 min-h-0 min-w-0 flex flex-col">
             {isMobile ? (
