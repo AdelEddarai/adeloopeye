@@ -20,6 +20,7 @@ export function FullMapPage({ embedded = false }: { embedded?: boolean }) {
   const ctx = useMapPage({ isMobile: isMobile || isLandscapePhone });
   const mode = isLandscapePhone ? 'landscape' : (isMobile ? 'mobile' : 'desktop');
   const { setSelectedItem, setSidebarOpen } = ctx;
+  const prevModeRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (prevModeRef.current === null) {
