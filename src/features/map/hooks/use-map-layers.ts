@@ -175,7 +175,10 @@ export function useMapLayers({
   const maritimeNeedsPulse = showMaritime && (maritimeLaneCount > 0 || vesselCount > 0);
 
   const needsPulseAnimation =
-    (showCyberThreats && cyberThreats.length > 0) || moroccoNeedsPulse || maritimeNeedsPulse;
+    (showCyberThreats && cyberThreats.length > 0) ||
+    moroccoNeedsPulse ||
+    maritimeNeedsPulse ||
+    (showDisinfo && !!disinfo && disinfo.edges.length > 0);
 
   useEffect(() => {
     if (!needsPulseAnimation) return;
@@ -1578,11 +1581,10 @@ export function useMapLayers({
     });
 
     // ═══════════════════════════════════════════════════════════
-    // MOROCCO INTELLIGENCE LAYER
+    // DISINFORMATION & COGNITIVE WARFARE TELEMETRY LAYER
     // ═══════════════════════════════════════════════════════════
-    // Morocco layers are created outside useMemo and passed in
 
-    // Disinformation / bot network arcs (reported campaigns + observed bot sources)
+    // Base Great-Circle Arcs
     const disinfoLayer = showDisinfo && disinfo && disinfo.edges.length > 0 && new ArcLayer<DisinfoEdge>({
       id: 'disinfo-arcs',
       data: disinfo.edges,
@@ -1595,10 +1597,10 @@ export function useMapLayers({
         return n ? [n.lon, n.lat] : [0, 0];
       },
       getSourceColor: (d: DisinfoEdge): RGBA =>
-        d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 240 : 220] : [56, 189, 248, isSatellite ? 230 : 200],
-      getTargetColor: (): RGBA => [255, 255, 255, isSatellite ? 200 : 160],
-      getWidth: (d: DisinfoEdge): number => Math.min(1.1 + d.weight * 0.4, 2.2),
-      getHeight: 0.14,
+        d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 250 : 220] : [239, 68, 68, isSatellite ? 240 : 210],
+      getTargetColor: (): RGBA => [56, 189, 248, isSatellite ? 240 : 200],
+      getWidth: (d: DisinfoEdge): number => Math.min(1.4 + d.weight * 0.35, 3.2),
+      getHeight: 0.18,
       widthUnits: 'pixels',
       greatCircle: true,
       pickable: true,
@@ -1609,25 +1611,106 @@ export function useMapLayers({
       },
     });
 
+    // Real-Time Animated Disinformation Pulse Particles (moving packets along arcs)
+    const disinfoPulseParticles = useMemo(() => {
+      if (!showDisinfo || !disinfo || !disinfo.edges.length) return [];
+      const normalizedPhase = (pulseTime / (Math.PI * 2)); // 0 to 1
+
+      return disinfo.edges.map(edge => {
+        const srcNode = disinfo.nodes.find(n => n.code === edge.source);
+        const tgtNode = disinfo.nodes.find(n => n.code === edge.target);
+        if (!srcNode || !tgtNode) return null;
+
+        // Linear interpolation with slight arch curvature simulation
+        const t = (normalizedPhase + (edge.weight % 10) * 0.1) % 1;
+        const lon = srcNode.lon + (tgtNode.lon - srcNode.lon) * t;
+        const lat = srcNode.lat + (tgtNode.lat - srcNode.lat) * t;
+
+        return {
+          id: `disinfo-pulse-${edge.id}`,
+          position: [lon, lat] as [number, number],
+          kind: edge.kind,
+          weight: edge.weight,
+        };
+      }).filter(Boolean);
+    }, [showDisinfo, disinfo, pulseTime]);
+
+    const disinfoArcPulseLayer = disinfoPulseParticles.length > 0 && new ScatterplotLayer({
+      id: 'disinfo-arc-pulses',
+      data: disinfoPulseParticles,
+      getPosition: (d: any) => d.position,
+      getRadius: (d: any) => 35000 + Math.min(50000, d.weight * 800),
+      getFillColor: (d: any): RGBA =>
+        d.kind === 'CAMPAIGN' ? [251, 191, 36, 240] : [248, 113, 113, 240],
+      getLineColor: [255, 255, 255, 220],
+      stroked: true,
+      lineWidthMinPixels: 1.5,
+      pickable: false,
+      updateTriggers: {
+        getPosition: [pulseTime],
+      },
+    });
+
     // Disinformation / bot network node volume
     const disinfoNodeLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
       id: 'disinfo-nodes',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
       getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
       getRadius: (d: DisinfoNode): number =>
-        20000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000),
+        25000 + Math.min(240000, Math.sqrt(d.campaignVolume + d.botVolume) * 95000),
       getFillColor: (d: DisinfoNode): RGBA =>
-        d.campaignVolume >= d.botVolume ? [245, 158, 11, 60] : [56, 189, 248, 60],
+        d.campaignVolume >= d.botVolume ? [245, 158, 11, 75] : [239, 68, 68, 75],
       stroked: true,
       getLineColor: (d: DisinfoNode): RGBA =>
-        d.campaignVolume >= d.botVolume ? [245, 158, 11, 180] : [56, 189, 248, 160],
-      lineWidthMinPixels: 1,
+        d.campaignVolume >= d.botVolume ? [251, 191, 36, 220] : [248, 113, 113, 220],
+      lineWidthMinPixels: 1.5,
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
         getFillColor: [isSatellite],
         getLineColor: [isSatellite],
       },
+    });
+
+    // Expanding Radiating Radar Shockwave Rings around CIB Source Hubs
+    const shockwavePhase = (Math.sin(pulseTime * 2) + 1) / 2; // 0 to 1
+    const disinfoNodeShockwaveLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
+      id: 'disinfo-nodes-shockwave',
+      data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
+      getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
+      getRadius: (d: DisinfoNode): number => {
+        const base = 30000 + Math.min(240000, Math.sqrt(d.campaignVolume + d.botVolume) * 95000);
+        return base * (1 + shockwavePhase * 0.7);
+      },
+      getFillColor: [0, 0, 0, 0],
+      stroked: true,
+      getLineColor: (d: DisinfoNode): RGBA => {
+        const alpha = Math.round((1 - shockwavePhase) * 190);
+        return d.campaignVolume >= d.botVolume ? [251, 191, 36, alpha] : [239, 68, 68, alpha];
+      },
+      lineWidthMinPixels: 1.2,
+      pickable: false,
+      updateTriggers: {
+        getRadius: [pulseTime],
+        getLineColor: [pulseTime],
+      },
+    });
+
+    // Tactical Disinfo Node Text Badges
+    const disinfoLabelsLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new TextLayer<DisinfoNode>({
+      id: 'disinfo-node-labels',
+      data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
+      getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
+      getText: (d: DisinfoNode) => `⚠️ ${d.name} (${d.campaignVolume + d.botVolume} CIB)`,
+      getSize: 10,
+      getColor: [255, 255, 255, 230],
+      getPixelOffset: [0, -16],
+      fontFamily: 'monospace',
+      fontWeight: 700,
+      background: true,
+      getBackgroundColor: [15, 23, 42, 210],
+      backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
+      pickable: false,
     });
 
     const layers = [
@@ -1651,10 +1734,10 @@ export function useMapLayers({
       relationshipLayer,
       relationshipLabels,
       relationshipMidLabels,
-       logisticsCrisisLayer,
-       investmentFlowLayer,
-       newsPulseLayer,
-       cityLayer,
+      logisticsCrisisLayer,
+      investmentFlowLayer,
+      newsPulseLayer,
+      cityLayer,
       targetLabels,
       assetLabels,
       cityLabels,
@@ -1665,7 +1748,10 @@ export function useMapLayers({
       maritimeVesselLayer,
       maritimeVesselLabels,
       disinfoLayer,
+      disinfoArcPulseLayer,
+      disinfoNodeShockwaveLayer,
       disinfoNodeLayer,
+      disinfoLabelsLayer,
       ...(showMoroccoLayer ? moroccoLayers : []),
     ].filter(Boolean);
 

@@ -227,6 +227,20 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
                 isMobile={false}
               />
             )}
+            {/* Real-time Disinformation & Attack Activity HUD Banner */}
+            {(overlayVisibility.disinfo || dataLayers.disinfo) && (
+              <div className="absolute top-3 left-3 z-30 flex items-center gap-2 px-3 py-1.5 rounded-sm bg-zinc-950/90 border border-amber-500/40 backdrop-blur-xl shadow-[0_0_16px_rgba(245,158,11,0.2)] font-mono text-[9px] text-zinc-200 pointer-events-auto">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span className="font-bold text-amber-300 tracking-wider flex items-center gap-1 uppercase">
+                  COGNITIVE CIB RADAR // LIVE ATTACKS
+                </span>
+                <span className="text-zinc-600">|</span>
+                <span className="text-zinc-400">PULSING VECTORS: <strong className="text-cyan-300">ACTIVE</strong></span>
+                <span className="text-zinc-600">|</span>
+                <span className="text-amber-400/90 font-semibold">BOTNET AMPLIFICATION DETECTED</span>
+              </div>
+            )}
+
             {/* Tactical Coordinates & Projection Watermark Bar */}
             <div className="absolute bottom-2 left-3 z-10 pointer-events-none hidden md:flex items-center gap-3 px-2.5 py-1 rounded-xs bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md font-mono text-[9px] text-zinc-400 shadow-xl">
               <span className="flex items-center gap-1.5 text-zinc-300 font-bold">

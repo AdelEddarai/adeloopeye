@@ -23,6 +23,8 @@ type IntelDataLayers = {
   fires: boolean;
   infrastructure: boolean;
   maritime: boolean;
+  disinfo?: boolean;
+  cyberThreats?: boolean;
 };
 
 type UnifiedControlsProps = {
@@ -261,6 +263,8 @@ export function UnifiedMapControls({
               </Label>
               <div className="space-y-1">
                 {[
+                  { key: 'disinfo', label: 'DISINFO & CIB ATTACKS', icon: ShieldAlert, color: 'text-amber-400' },
+                  { key: 'cyberThreats', label: 'LIVE CYBER ATTACK BEACONS', icon: Sparkles, color: 'text-red-400' },
                   { key: 'flights', label: 'ADS-B LIVE FLIGHTS', icon: Plane, color: 'text-purple-400' },
                   { key: 'maritime', label: 'AIS MARITIME & LANES', icon: Anchor, color: 'text-cyan-400' },
                   { key: 'fires', label: 'THERMAL & WILDFIRES', icon: Flame, color: 'text-amber-400' },
@@ -275,8 +279,12 @@ export function UnifiedMapControls({
                       <Icon size={11} className={color} /> {label}
                     </span>
                     <Switch
-                      checked={dataLayers[key as keyof IntelDataLayers]}
-                      onCheckedChange={() => onDataLayerToggle(key as keyof IntelDataLayers)}
+                      checked={dataLayers[key as keyof IntelDataLayers] ?? (key === 'disinfo' ? visibility.disinfo : key === 'cyberThreats' ? visibility.cyberThreats : false)}
+                      onCheckedChange={() => {
+                        onDataLayerToggle(key as keyof IntelDataLayers);
+                        if (key === 'disinfo') onVisibilityToggle('disinfo');
+                        if (key === 'cyberThreats') onVisibilityToggle('cyberThreats');
+                      }}
                       className="scale-75"
                     />
                   </div>

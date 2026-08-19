@@ -158,8 +158,10 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const { data: moroccoData, isLoading: moroccoLoading, error: moroccoError } = useMoroccoIntelligence(showMoroccoLayer);
   const { data: stories = [], isLoading: storiesLoading } = useMapStories(undefined, enableOtherAPIs);
 
-  // Disinformation / bot network radar (Morocco focus) - only when layer enabled
-  const { data: disinfoData } = useLiveDisinformation('MA', overlayVisibility.disinfo);
+  // Disinformation / bot network radar - enabled when layer toggled on
+  const isDisinfoActive = overlayVisibility.disinfo || dataLayers.disinfo;
+  const isCyberActive = overlayVisibility.cyberThreats || dataLayers.cyberThreats;
+  const { data: disinfoData } = useLiveDisinformation(scope.world ? 'WLD' : 'MA', isDisinfoActive);
 
   // Dynamic Live Flights fetching based on Viewport
   // If zoomed out (< 4), fetch globally (15 cities). If zoomed in, fetch local bbox.
@@ -178,11 +180,66 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
 
   const { data: liveFlightsResp, isLoading: flightsLoading } = useLiveFlights(
     flightBbox, 
-    dataLayers.flights, 
-    isGlobalFlights
+    dataLayers.flights,
   );
-  const rawFlights = useMemo(() => liveFlightsResp?.flights || [], [liveFlightsResp]);
-  const globalFlights = useInterpolatedFlights(rawFlights, dataLayers.flights);
+
+  const globalFlights = useMemo(() => liveFlightsResp?.flights || [], [liveFlightsResp]);
+
+  const toggleDataLayer = useCallback((layer: keyof typeof dataLayers) => {
+    dispatch(toggleDataLayerAction(layer));
+  }, [dispatch]);
+
+  const handleSetViewState = useCallback((nextState: MapViewState) => {
+    dispatch(setViewStateAction(nextState));
+  }, [dispatch]);
+
+  const handleSetSelectedItem = useCallback((item: SelectedItem | null) => {
+    dispatch(setSelectedItemAction(item));
+  }, [dispatch]);
+
+  const handleSetActiveStory = useCallback((story: any | null) => {
+    dispatch(setActiveStoryAction(story));
+  }, [dispatch]);
+
+  const handleActivateStory = useCallback((story: any) => {
+    dispatch(activateStoryAction(story));
+  }, [dispatch]);
+
+  const handleSetShowAllLabels = useCallback((show: boolean) => {
+    dispatch(setShowAllLabelsAction(show));
+  }, [dispatch]);
+
+  const handleToggleSidebar = useCallback(() => {
+    dispatch(toggleSidebarAction());
+  }, [dispatch]);
+
+  const handleSetMapStyle = useCallback((style: 'dark' | 'satellite') => {
+    dispatch(setMapStyleAction(style));
+  }, [dispatch]);
+
+  const handleToggleTerrain = useCallback(() => {
+    dispatch(toggleTerrainAction());
+  }, [dispatch]);
+
+  const handleSetTerrainExaggeration = useCallback((v: number) => {
+    dispatch(setTerrainExaggerationAction(v));
+  }, [dispatch]);
+
+  const handleSetHillshadeIntensity = useCallback((v: number) => {
+    dispatch(setHillshadeIntensityAction(v));
+  }, [dispatch]);
+
+  const handleSetShowRoads = useCallback((v: boolean) => {
+    dispatch(setShowRoadsAction(v));
+  }, [dispatch]);
+
+  const handleSetShow3DBuildings = useCallback((v: boolean) => {
+    dispatch(setShow3DBuildingsAction(v));
+  }, [dispatch]);
+
+  const handleSetScope = useCallback((s: { world?: boolean; morocco?: boolean }) => {
+    dispatch(setScopeAction(s));
+  }, [dispatch]);
 
   // Morocco coordinates (center of the country)
   const MOROCCO_CENTER: [number, number] = [-7.0926, 31.7917]; // Between Casablanca and Marrakech
@@ -201,17 +258,6 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
         zoom: MOROCCO_ZOOM,
         transitionDuration: 2000,
       }));
-
-      track('map_object_clicked', {
-        type: 'morocco_layer',
-        action: 'enabled',
-        from_location: [viewState.longitude, viewState.latitude],
-      });
-
-      track('map_object_clicked', {
-        type: 'morocco_layer',
-        action: 'disabled',
-      });
     }
   }, [showMoroccoLayer, viewState, dispatch]);
 
@@ -220,12 +266,6 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
       ...prev,
       [layer]: !prev[layer],
     }));
-
-    // @ts-ignore
-    track('map_layer_toggled', {
-      layer: `morocco_${layer}`,
-      enabled: !moroccoLayerToggles[layer],
-    });
   }, [moroccoLayerToggles]);
 
   const toggleOverlay = useCallback((key: keyof OverlayVisibility) => {
@@ -280,13 +320,13 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     showFlights: dataLayers.flights,
     showEvents: overlayVisibility.events,
     showZones: overlayVisibility.zones,
-    showCyberThreats: overlayVisibility.cyberThreats,
+    showCyberThreats: isCyberActive,
     showMaritime,
     moroccoIntelligence: moroccoIntelForLayers,
     showMoroccoLayer,
     selectedEventId,
     globalFlights,
-    showDisinfo: overlayVisibility.disinfo,
+    showDisinfo: isDisinfoActive,
     disinfo: disinfoData ? { edges: disinfoData.edges, nodes: disinfoData.nodes } : null,
   });
 

@@ -54,6 +54,8 @@ export type MapState = {
     fires: boolean;
     infrastructure: boolean;
     maritime: boolean;
+    disinfo: boolean;
+    cyberThreats: boolean;
   };
 
   // Data scope (can enable both)
@@ -84,6 +86,8 @@ type PersistedMapPrefs = {
     fires: boolean;
     infrastructure: boolean;
     maritime: boolean;
+    disinfo?: boolean;
+    cyberThreats?: boolean;
   };
   scope: {
     world: boolean;
@@ -160,6 +164,8 @@ const DEFAULT_DATA_LAYERS: MapState['dataLayers'] = {
   fires: false,
   infrastructure: false,
   maritime: true,
+  disinfo: true,
+  cyberThreats: true,
 };
 
 function buildInitialState(): MapState {
