@@ -302,7 +302,7 @@ export function useMapLayers({
           ? [255, 255, 255, isSatellite ? 230 : 180]
           : [255, 255, 255, 30],
       getWidth: (d: StrikeArc): number =>
-        (isSatellite ? 1 : 0) + (d.severity === 'CRITICAL' ? 3 : 2),
+        (d.severity === 'CRITICAL' ? 1.6 : 1.1),
       widthUnits: 'pixels',
       pickable: true,
       autoHighlight: true,
@@ -326,7 +326,7 @@ export function useMapLayers({
         return d.status === 'INTERCEPTED' ? [255, 200, 0, alpha] : [255, 50, 50, alpha];
       },
       getWidth: (d: MissileTrack): number =>
-        (isSatellite ? 1 : 0) + (d.severity === 'CRITICAL' ? 3 : 2),
+        (d.severity === 'CRITICAL' ? 1.6 : 1.1),
       widthUnits: 'pixels',
       pickable: true,
       autoHighlight: true,
@@ -537,8 +537,8 @@ export function useMapLayers({
       id: 'flight-contrails',
       data: flightContrailsData,
       getPath: (d: any) => d.contrailPath,
-      getColor: (): RGBA => [160, 200, 255, 80],
-      getWidth: 2.5,
+      getColor: (): RGBA => [160, 200, 255, 70],
+      getWidth: 1.0,
       widthUnits: 'pixels',
       rounded: true,
       pickable: false,
@@ -547,13 +547,17 @@ export function useMapLayers({
       },
     });
 
-    // Asset layer with modern SVG aircraft icons
+    const currentZoom = viewState?.zoom ?? 3;
+    const zoomScale = Math.max(0.42, Math.min(1.25, 0.4 + (currentZoom / 9) * 0.7));
+    const showDenseLabels = currentZoom >= 4.0;
+
+    // Asset layer with modern SVG aircraft icons (dynamically scaled by zoom)
     const assetLayer = showFlights && allAssets.length > 0 && new IconLayer<Asset>({
       id: 'assets',
       data: allAssets,
       getPosition: (d: Asset): [number, number] => d.position,
       getIcon: (d: Asset) => getAircraftIconName(d),
-      getSize: (d: Asset): number => (d.type === 'CARRIER' ? 52 : 38),
+      getSize: (d: Asset): number => Math.round((d.type === 'CARRIER' ? 44 : 32) * zoomScale),
       getAngle: (d: Asset): number => -(d.heading || 0),
       getColor: (d: Asset): RGBA => {
         if (dimActive && !(mergedActiveStory?.highlightAssetIds ?? []).includes(d.id)) {
@@ -574,14 +578,15 @@ export function useMapLayers({
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
+        getSize: [currentZoom],
         getColor: [mergedActiveStory?.id, isSatellite],
         getAngle: [allAssets.map(a => a.heading).join(',')],
         getPosition: [allAssets.map(a => a.position.join(',')).join('|')],
       },
     });
 
-    // Asset labels (show callsigns + altitude for flights)
-    const assetLabelsData = !isMobile && showFlights ? allAssets : [];
+    // Asset labels (show callsigns + altitude for flights only when zoomed in or on desktop)
+    const assetLabelsData = !isMobile && showFlights && showDenseLabels ? allAssets : [];
     const assetLabels = assetLabelsData.length > 0 && new TextLayer<any>({
       id: 'asset-labels',
       data: assetLabelsData,
@@ -751,41 +756,38 @@ export function useMapLayers({
         return baseColor;
       },
       getWidth: (d: any): number => {
-        // REFINED: Much smaller, tighter lines for trade routes
         if (d.type === 'TRADE_ROUTE' || d.type === 'ECONOMIC_PARTNERSHIP') {
-          return 1.5; // Very thin for trade
+          return 1.0;
         }
         if (d.type === 'ENERGY_DEPENDENCY' || d.type === 'SUPPLY_CHAIN' || d.type === 'MIGRATION_FLOW') {
-          return 2.0; // Slightly thicker for energy/supply/migration
+          return 1.2;
         }
         if (['LOGISTICS_CRISIS', 'LOGISTICS_PLAN'].includes(d.type)) {
-          return 2.5; // Medium-thick for logistics
+          return 1.4;
         }
         if (d.type === 'ALLIANCE' || d.type === 'CEASEFIRE' || d.type === 'DIPLOMATIC_AGREEMENT') {
-          return 2.5; // Medium for alliances & deals
+          return 1.4;
         }
         if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
-          // Subtle pulsing width for active/threatened conflicts only
-          const pulse = Math.sin(pulseTime * 1.5) * 0.3 + 1;
-          return Math.max(3, Math.min(6, 3.0 * pulse + (d.intensity || 0) * 0.2)); // Thickest for conflicts
+          const pulse = Math.sin(pulseTime * 1.5) * 0.2 + 1;
+          return Math.max(1.6, Math.min(2.8, 1.8 * pulse + (d.intensity || 0) * 0.1));
         }
-        return Math.max(1.5, 2.0 + (d.intensity || 0) * 0.15); // Default
+        return Math.max(1.0, 1.2 + (d.intensity || 0) * 0.1);
       },
       getHeight: (d: any): number => {
-        // COMPLETELY FLAT for trade and shipping - NO 3D arc
         if (['TRADE_ROUTE', 'ECONOMIC_PARTNERSHIP', 'ENERGY_DEPENDENCY', 'MIGRATION_FLOW', 'SUPPLY_CHAIN'].includes(d.type)) {
-          return 0; // ZERO height = completely flat line
+          return 0;
         }
         if (['LOGISTICS_CRISIS', 'LOGISTICS_PLAN'].includes(d.type)) {
-          return 0.05; // Nearly flat for logistics
+          return 0.05;
         }
         if (['ALLIANCE', 'CEASEFIRE', 'DIPLOMATIC_AGREEMENT', 'DIPLOMATIC_TENSION'].includes(d.type)) {
-          return 0.05; // Nearly flat for alliances/deals
+          return 0.05;
         }
         if (['MILITARY_CONFLICT', 'WAR_ALERT', 'MILITARY_DEPLOYMENT', 'BORDER_CLOSURE'].includes(d.type)) {
-          return 0.15; // Higher arc for conflicts (drama)
+          return 0.15;
         }
-        return 0.05; // Default subtle curve
+        return 0.05;
       },
       widthUnits: 'pixels',
       pickable: true,
@@ -808,17 +810,17 @@ export function useMapLayers({
       getTargetPosition: (d: any): [number, number] => d.targetPosition,
       getSourceColor: (d: any): RGBA => {
         const [r, g, b] = getRelationshipColor(d.type, true);
-        return [r, g, b, 45]; // Soft halo under conflict arcs
+        return [r, g, b, 35];
       },
       getTargetColor: (d: any): RGBA => {
         const [r, g, b] = getRelationshipColor(d.type, false);
-        return [r, g, b, 32];
+        return [r, g, b, 25];
       },
       getWidth: (d: any): number => {
         if (['MILITARY_CONFLICT', 'WAR_ALERT'].includes(d.type)) {
-          return 7; // Wider glow for conflicts
+          return 3.5;
         }
-        return 5; // Subtle glow for others
+        return 2.5;
       },
       getHeight: (d: any): number => {
         // Match main layer heights
@@ -1064,19 +1066,18 @@ export function useMapLayers({
       data: tradeLanes,
       getPath: d => d.path,
       getColor: (d: MaritimeLane): RGBA => {
-        // Different colors for different lane types
         if (d.kind === 'TANKER') {
-          return [255, 140, 0, 25]; // Orange glow for tankers
+          return [255, 140, 0, 20];
         }
         if (d.kind === 'CHOKEPOINT') {
-          return [255, 50, 50, 30]; // Red glow for chokepoints
+          return [255, 50, 50, 25];
         }
-        return [NAVAL_RGB[0], NAVAL_RGB[1], NAVAL_RGB[2], 20]; // Subtle blue glow
+        return [NAVAL_RGB[0], NAVAL_RGB[1], NAVAL_RGB[2], 15];
       },
       getWidth: (d: MaritimeLane): number => {
-        if (d.kind === 'TANKER') return 6; // Wider glow for tankers
-        if (d.kind === 'CHOKEPOINT') return 8; // Widest for chokepoints
-        return 5; // Default glow width
+        if (d.kind === 'TANKER') return 3;
+        if (d.kind === 'CHOKEPOINT') return 4;
+        return 2.5;
       },
       widthUnits: 'pixels',
       rounded: true,
@@ -1089,30 +1090,27 @@ export function useMapLayers({
       data: tradeLanes,
       getPath: d => d.path,
       getColor: (d: MaritimeLane): RGBA => {
-        // Color-coded by lane type
         if (d.kind === 'TANKER') {
-          return [255, 140, 0, isSatellite ? 200 : 160]; // Orange for tankers
+          return [255, 140, 0, isSatellite ? 180 : 150];
         }
         if (d.kind === 'CHOKEPOINT') {
-          return [255, 80, 80, isSatellite ? 220 : 180]; // Red for chokepoints
+          return [255, 80, 80, isSatellite ? 200 : 170];
         }
         if (d.kind === 'CONTAINER') {
-          return [100, 180, 255, isSatellite ? 200 : 160]; // Light blue for containers
+          return [100, 180, 255, isSatellite ? 180 : 150];
         }
-        return [NAVAL_RGB[0], NAVAL_RGB[1], NAVAL_RGB[2], isSatellite ? 180 : 140]; // Default blue
+        return [NAVAL_RGB[0], NAVAL_RGB[1], NAVAL_RGB[2], isSatellite ? 160 : 130];
       },
       getWidth: (d: MaritimeLane): number => {
-        // Fixed widths - no pulsing for clean look
-        if (d.kind === 'TANKER') return 3; // Thicker for tankers
-        if (d.kind === 'CHOKEPOINT') return 4; // Thickest for chokepoints
-        if (d.kind === 'CONTAINER') return 2.5; // Medium for containers
-        return 2; // Thin for mixed/other
+        if (d.kind === 'TANKER') return 1.5;
+        if (d.kind === 'CHOKEPOINT') return 1.8;
+        if (d.kind === 'CONTAINER') return 1.2;
+        return 1.0;
       },
       widthUnits: 'pixels',
       rounded: true,
       pickable: true,
       autoHighlight: true,
-      // No pulsing animation - clean and stable
     });
 
     // OPTIMIZED: Smooth workflow-style flow animation along shipping lanes
@@ -1271,14 +1269,16 @@ export function useMapLayers({
 
     const getVesselSize = (d: MaritimeVessel): number => {
       const cat = d.category;
-      if (cat === 'CARRIER') return 52;
-      if (cat === 'CONTAINER' || cat === 'TANKER') return 44;
-      if (cat === 'DESTROYER') return 40;
-      if (cat === 'FRIGATE' || cat === 'SUBMARINE') return 36;
-      return 32;
+      let base = 28;
+      if (cat === 'CARRIER') base = 42;
+      else if (cat === 'CONTAINER' || cat === 'TANKER') base = 36;
+      else if (cat === 'DESTROYER') base = 32;
+      else if (cat === 'FRIGATE' || cat === 'SUBMARINE') base = 28;
+      else if (cat === 'PATROL') base = 24;
+      return Math.round(base * zoomScale);
     };
 
-    // Modern vessel deck layer
+    // Modern vessel deck layer (dynamically scaled by zoom)
     const maritimeVesselLayer = showMaritime && tradeVessels.length > 0 && new IconLayer<MaritimeVessel>({
       id: 'maritime-vessels',
       data: tradeVessels,
@@ -1301,6 +1301,7 @@ export function useMapLayers({
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
+        getSize: [currentZoom],
         getAngle: [tradeVessels.map(v => v.cog).join(',')],
         getPosition: [tradeVessels.map(v => v.position.join(',')).join('|')],
       },
@@ -1319,7 +1320,7 @@ export function useMapLayers({
         const isCarrier = d.category === 'CARRIER';
         const pulse = (pulseTime * 1.2) % (Math.PI * 2);
         const factor = Math.sin(pulse) * 0.35 + 1;
-        return (isCarrier ? 35000 : 20000) * factor;
+        return (isCarrier ? 35000 : 20000) * factor * Math.max(0.6, zoomScale);
       },
       getFillColor: [0, 0, 0, 0],
       stroked: true,
@@ -1332,14 +1333,14 @@ export function useMapLayers({
       lineWidthMinPixels: 1.5,
       pickable: false,
       updateTriggers: {
-        getRadius: [pulseTime],
+        getRadius: [pulseTime, currentZoom],
         getLineColor: [pulseTime],
         getPosition: [militaryVessels.map(v => v.position.join(',')).join('|')],
       },
     });
 
-    // Vessel callout labels (showing Name & Speed in Knots)
-    const maritimeVesselLabels = showMaritime && !isMobile && tradeVessels.length > 0 && new TextLayer<MaritimeVessel>({
+    // Vessel callout labels (showing Name & Speed in Knots only when zoomed in or on desktop)
+    const maritimeVesselLabels = showMaritime && !isMobile && showDenseLabels && tradeVessels.length > 0 && new TextLayer<MaritimeVessel>({
       id: 'maritime-vessel-labels',
       data: tradeVessels,
       getPosition: (d: MaritimeVessel): [number, number] => d.position,
@@ -1384,7 +1385,7 @@ export function useMapLayers({
       getSourceColor: (d: DisinfoEdge): RGBA =>
         d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 240 : 220] : [56, 189, 248, isSatellite ? 230 : 200],
       getTargetColor: (): RGBA => [255, 255, 255, isSatellite ? 200 : 160],
-      getWidth: (d: DisinfoEdge): number => Math.min(1.5 + d.weight, 6),
+      getWidth: (d: DisinfoEdge): number => Math.min(1.1 + d.weight * 0.4, 2.2),
       getHeight: 0.14,
       widthUnits: 'pixels',
       greatCircle: true,

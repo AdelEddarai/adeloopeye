@@ -65,17 +65,6 @@ export function MapCanvas({ ctx, onOpenStories, onSelectFeature }: Props) {
               <ArrowLeft size={14} strokeWidth={2} />
             </Link>
           </Button>
-
-          {/* Stories */}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onOpenStories}
-            className="h-8 w-8 bg-[rgba(28,33,39,0.85)] border border-[var(--bd)] text-[var(--blue-l)] hover:text-[var(--t1)] transition-colors rounded-none"
-            title="Stories"
-          >
-            <BookOpen size={14} strokeWidth={2} />
-          </Button>
         </div>
 
         {/* ── Floating controls: top-right ── */}

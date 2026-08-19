@@ -331,15 +331,15 @@ export function WorkspaceDashboard() {
                               )}
 
                               {!editing && (
-                                <div className="ml-auto flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                <div className="ml-auto flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
                                   <Button
                                     variant="ghost"
                                     size="icon-sm"
                                     title="Fullscreen Mode"
-                                    className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                                    className="h-6 w-6 text-muted-foreground hover:text-cyan-400 hover:bg-accent/60 rounded-xs"
                                     onClick={() => setFullscreenWidget({ key: widget, label: WIDGET_LABELS[widget] })}
                                   >
-                                    <Maximize2 size={11} strokeWidth={2} />
+                                    <Maximize2 size={12} strokeWidth={2} />
                                   </Button>
 
                                   {widgetLinks[widget] && (

@@ -149,8 +149,6 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
             <MapOverlays
               activeStory={activeStory}
               onClearStory={() => setActiveStory(null)}
-              sidebarOpen={sidebarOpen}
-              onToggleSidebar={toggleSidebar}
               embedded={embedded}
               isMobile={false}
             />
@@ -229,6 +227,21 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
                 isMobile={false}
               />
             )}
+            {/* Tactical Coordinates & Projection Watermark Bar */}
+            <div className="absolute bottom-2 left-3 z-10 pointer-events-none hidden md:flex items-center gap-3 px-2.5 py-1 rounded-xs bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md font-mono text-[9px] text-zinc-400 shadow-xl">
+              <span className="flex items-center gap-1.5 text-zinc-300 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                TACTICAL OSINT
+              </span>
+              <span className="text-zinc-700">|</span>
+              <span>LAT: <strong className="text-zinc-200">{viewState.latitude?.toFixed(4) ?? '0.0000'}°N</strong></span>
+              <span>LON: <strong className="text-zinc-200">{Math.abs(viewState.longitude ?? 0).toFixed(4)}°{(viewState.longitude ?? 0) >= 0 ? 'E' : 'W'}</strong></span>
+              <span className="text-zinc-700">|</span>
+              <span>ZOOM: <strong className="text-cyan-300">{viewState.zoom?.toFixed(1) ?? '3.0'}x</strong></span>
+              <span>PITCH: <strong className="text-zinc-300">{Math.round(viewState.pitch ?? 0)}°</strong></span>
+              <span className="text-zinc-700">|</span>
+              <span className="text-zinc-500">EPSG:4326 WGS84</span>
+            </div>
           </Map>
         </div>
       </ResizablePanel>

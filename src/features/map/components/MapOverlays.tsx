@@ -86,41 +86,12 @@ type Props = {
   isMobile?: boolean;
 };
 
-export function MapOverlays({ activeStory, onClearStory, sidebarOpen, onToggleSidebar, embedded = false, isMobile = false }: Props) {
+export function MapOverlays({ activeStory, onClearStory, embedded = false, isMobile = false }: Props) {
   const safeTop = isMobile && !embedded;
 
   return (
     <>
       {!embedded && <BackButton isMobile={isMobile} safeTop={safeTop} />}
-      {!sidebarOpen && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleSidebar}
-          className="mono h-7 px-2"
-          style={{
-            position:     'absolute',
-            top:          safeTop ? 'calc(12px + var(--safe-top))' : 12,
-            left:         isMobile
-              ? (embedded ? 'max(12px, var(--safe-left))' : 'calc(max(12px, var(--safe-left)) + 96px)')
-              : (embedded ? 12 : 170),
-            background:   'rgba(28,33,39,0.92)',
-            border:       '1px solid var(--bd)',
-            borderRadius: 2,
-            color:        'var(--t3)',
-            fontSize: 'var(--text-label)',
-            fontWeight:   700,
-            zIndex:       10,
-            display:      'flex',
-            alignItems:   'center',
-            gap:          4,
-          }}
-          title="Open stories panel"
-        >
-          <PanelLeft size={14} strokeWidth={2} />
-          STORIES
-        </Button>
-      )}
       {activeStory && <ActiveStoryPill story={activeStory} onClear={onClearStory} isMobile={isMobile} safeTop={safeTop} />}
     </>
   );

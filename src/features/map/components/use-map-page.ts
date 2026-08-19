@@ -65,8 +65,8 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
 
   const [overlayVisibility, setOverlayVisibility] = useState<OverlayVisibility>(() => (
     typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
-      ? { timeline: true, filters: false, legend: false, zones: true, events: true, cyberThreats: true, disinfo: true }
-      : { timeline: true, filters: true, legend: true, zones: true, events: true, cyberThreats: true, disinfo: true }
+      ? { timeline: true, filters: false, legend: false, zones: true, events: true, cyberThreats: true, disinfo: false }
+      : { timeline: true, filters: true, legend: true, zones: true, events: true, cyberThreats: true, disinfo: false }
   ));
 
   // Removed duplicate sync for flights, we use dataLayers.flights directly now
