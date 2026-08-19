@@ -4,20 +4,23 @@ import { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   TrendingUp,
-  TrendingDown,
   Activity,
   AlertTriangle,
   MapPin,
   Flame,
   Car,
-  Calendar,
-  BarChart3,
-  LineChart as LineChartIcon,
+  Building2,
   GitMerge,
   Target,
+  Shield,
+  Radio,
+  Layers,
+  Crosshair,
+  Terminal,
+  RefreshCw,
 } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,11 +40,12 @@ import {
   NewsNetwork,
   EventDistribution,
   DisinfoMiniPanel,
+  ThreatRadarMatrix,
+  StrategicHubsMatrix,
 } from './morocco-kpi';
 
 type TimeRange = '24h' | '7d' | '30d';
 
-// Helper function to calculate time ago
 function getTimeAgo(timestamp: string): string {
   const now = Date.now();
   const time = new Date(timestamp).getTime();
@@ -58,12 +62,11 @@ function getTimeAgo(timestamp: string): string {
 }
 
 export function MoroccoKPIDashboard() {
-  const { data, isLoading, error } = useMoroccoIntelligence(true);
+  const { data, isLoading, error, refetch, isFetching } = useMoroccoIntelligence(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
   const [activeTab, setActiveTab] = useState('overview');
   const dispatch = useDispatch();
 
-  // Get event selection state for bidirectional sync
   const eventSelection = useSelector((state: RootState) => state?.eventSelection) || {
     selectedEventId: null,
     selectedLocation: null,
@@ -71,7 +74,6 @@ export function MoroccoKPIDashboard() {
     followSelection: false,
   };
 
-  // Helper to open map widget (Redux now handles duplicates)
   const openMapWidget = (location: string) => {
     dispatch(addWidget({ colId: 'col-a', widget: 'map' }));
     const eventIdsAtLocation =
@@ -79,21 +81,12 @@ export function MoroccoKPIDashboard() {
     dispatch(selectLocation({ location, eventIds: eventIdsAtLocation }));
   };
 
-  // Handle event selection from network graph
-  const handleEventSelect = (eventId: string, location?: string) => {
-    dispatch(selectEvent({ eventId, location }));
-  };
-
-  // Handle location selection from Sankey
   const handleLocationSelect = (location: string) => {
-    // Find all events at this location
     const eventsAtLocation =
       data?.events?.filter((e: any) => e.location === location).map((e: any) => e.id) || [];
-
     dispatch(selectLocation({ location, eventIds: eventsAtLocation }));
   };
 
-  // Clear selection button
   const handleClearSelection = () => {
     dispatch(clearSelection());
   };
@@ -145,7 +138,6 @@ export function MoroccoKPIDashboard() {
     });
   }, [data, timeRange]);
 
-  // Calculate trends
   const trends = useMemo(() => {
     if (historicalData.length < 2) return null;
 
@@ -168,35 +160,24 @@ export function MoroccoKPIDashboard() {
     };
   }, [historicalData]);
 
-  // Event type breakdown
   const eventTypeData = useMemo(() => {
     if (!data) return [];
-
     const types = Object.entries(data.summary.eventsByType);
     return types
       .map(([type, count]) => ({
         type: type.replace(/_/g, ' '),
         count,
-        percentage:
-          data.summary.totalEvents > 0
-            ? ((count / data.summary.totalEvents) * 100).toFixed(1)
-            : '0',
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
   }, [data]);
 
-  // Real-time event stream data
   const eventStreamData = useMemo(() => {
-    if (!data || !data.events || data.events.length === 0) {
-      return [];
-    }
-
-    // Get latest 20 events sorted by timestamp
+    if (!data || !data.events) return [];
     return data.events
       .slice()
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 20)
+      .slice(0, 30)
       .map((event) => ({
         ...event,
         timeAgo: getTimeAgo(event.timestamp),
@@ -205,47 +186,12 @@ export function MoroccoKPIDashboard() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-[var(--blue)] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-[var(--t3)] mono">Loading Morocco KPIs...</span>
-          {error && (
-            <div className="mt-2 text-xs text-red-400 max-w-md text-center">
-              <p className="font-mono">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
-              <p className="text-[10px] text-zinc-500 mt-1">Check console for details</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Handle empty data case (only when ALL sources are down — weather/earthquakes
-  // come from reliable keyless APIs, so their presence means we have real data)
-  const hasAnyData =
-    (data.events && data.events.length > 0) ||
-    (data.weather && data.weather.length > 0) ||
-    (data.earthquakes && data.earthquakes.length > 0) ||
-    (data.fires && data.fires.length > 0);
-
-  if (!hasAnyData) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3 text-center max-w-md">
-          <div className="w-12 h-12 rounded-full bg-zinc-800/50 flex items-center justify-center">
-            <MapPin className="w-6 h-6 text-zinc-500" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-zinc-300 mb-1">No Morocco Data Available</h3>
-            <p className="text-xs text-zinc-500 mono">
-              No intelligence data found. This could mean:
-            </p>
-            <ul className="text-[10px] text-zinc-600 mt-2 text-left space-y-1">
-              <li>• News sources are currently unavailable</li>
-              <li>• API keys may need to be configured</li>
-              <li>• No recent Morocco-related events detected</li>
-            </ul>
-          </div>
+      <div className="flex items-center justify-center h-full bg-zinc-950/80">
+        <div className="flex flex-col items-center gap-3 p-6 border border-zinc-800 rounded bg-zinc-900/60 shadow-xl">
+          <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-zinc-400 font-mono tracking-widest uppercase animate-pulse">
+            INITIALIZING PALANTIR MOROCCO MATRIX...
+          </span>
         </div>
       </div>
     );
@@ -262,239 +208,227 @@ export function MoroccoKPIDashboard() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-zinc-950/10">
-      <div className="p-2.5 space-y-3 max-w-[1400px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-1 border-b border-white/5">
-          <div>
-            <h2 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-              <span className="text-sm">🇲🇦</span>
-              Morocco Intelligence KPIs
-              {eventSelection.selectedEventId && (
-                <Badge variant="outline" className="ml-2 text-[8px] bg-blue-500/10 border-blue-500/30 text-blue-400 animate-pulse">
-                  <Target className="w-2.5 h-2.5 mr-1" />
-                  EVENT SELECTED
-                </Badge>
-              )}
-              {eventSelection.selectedLocation && !eventSelection.selectedEventId && (
-                <Badge variant="outline" className="ml-2 text-[8px] bg-emerald-500/10 border-emerald-500/30 text-emerald-400 animate-pulse">
-                  <MapPin className="w-2.5 h-2.5 mr-1" />
-                  {eventSelection.selectedLocation}
-                </Badge>
-              )}
-            </h2>
-            <p className="text-[10px] text-zinc-500 mt-0.5">
-              Live OSINT telemetry & infrastructure mapping
-              {eventSelection.highlightedEvents.length > 0 && (
-                <span className="ml-2 text-blue-400">
-                  • {eventSelection.highlightedEvents.length} event
-                  {eventSelection.highlightedEvents.length > 1 ? 's' : ''} highlighted
+    <div className="h-full overflow-y-auto bg-zinc-950/95 text-zinc-100 font-sans selection:bg-cyan-500/30">
+      <div className="p-3 space-y-3 max-w-[1600px] mx-auto">
+        {/* ── TOP PALANTIR CLASSIFICATION & HEADER BAR ── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-zinc-800/80">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded bg-zinc-900 border border-zinc-800 text-cyan-400 shadow-inner flex items-center justify-center">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold font-mono tracking-wider text-zinc-100 uppercase">
+                  🇲🇦 KINGDOM OF MOROCCO // FOUNDRY OSINT MATRIX
                 </span>
-              )}
-            </p>
+                <Badge variant="outline" className="text-[8px] font-mono bg-cyan-500/10 border-cyan-500/40 text-cyan-400">
+                  DEFCON-2 NORMAL
+                </Badge>
+                {eventSelection.selectedEventId && (
+                  <Badge variant="outline" className="text-[8px] font-mono bg-red-500/15 border-red-500/40 text-red-400 animate-pulse">
+                    <Target className="w-2.5 h-2.5 mr-1" />
+                    PINNED TARGET
+                  </Badge>
+                )}
+                {eventSelection.selectedLocation && (
+                  <Badge variant="outline" className="text-[8px] font-mono bg-emerald-500/15 border-emerald-500/40 text-emerald-400 animate-pulse">
+                    <MapPin className="w-2.5 h-2.5 mr-1" />
+                    {eventSelection.selectedLocation}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[9px] font-mono text-zinc-500 mt-0.5">
+                REAL-TIME MULTI-DOMAIN TELEMETRY · STRATEGIC CHOKEPOINTS · RADAR OSINT
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 scale-90 origin-right">
+          {/* Right Toolbar: Time Range, Follow, Refresh */}
+          <div className="flex items-center gap-2 shrink-0">
             {(eventSelection.selectedEventId || eventSelection.selectedLocation) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClearSelection}
-                className="h-6 px-2.5 text-[9px] font-bold mono uppercase tracking-wider rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                className="h-7 px-2 text-[9px] font-mono font-bold uppercase tracking-wider rounded-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800"
               >
-                <Target className="w-3 h-3 mr-1" />
-                CLEAR
+                <Target className="w-3 h-3 mr-1 text-red-400" />
+                CLEAR SELECTION
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => dispatch(setFollowSelection(!eventSelection.followSelection))}
-              className={`h-6 px-2.5 text-[9px] font-bold mono uppercase tracking-wider rounded-sm ${
-                eventSelection.followSelection
-                  ? 'text-blue-300 bg-blue-500/10 hover:bg-blue-500/20'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-              }`}
-            >
-              FOLLOW {eventSelection.followSelection ? 'ON' : 'OFF'}
-            </Button>
 
-            <div className="flex items-center gap-0.5 bg-zinc-900/50 border border-white/10 rounded-md p-0.5">
-              {(['24h', '7d', '30d'] as TimeRange[]).map((range) => (
-                <Button
-                  key={range}
-                  variant={timeRange === range ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setTimeRange(range)}
-                  className={`h-6 px-2.5 text-[9px] font-bold mono uppercase tracking-wider rounded-sm ${
-                    timeRange === range
-                      ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+            <div className="flex items-center p-0.5 bg-zinc-900 border border-zinc-800 rounded-sm">
+              {(['24h', '7d', '30d'] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setTimeRange(r)}
+                  className={`px-2 py-1 text-[9px] font-mono font-bold uppercase transition-all rounded-sm ${
+                    timeRange === r
+                      ? 'bg-zinc-800 text-cyan-300 shadow'
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  {range}
-                </Button>
+                  {r}
+                </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-              <span className="text-[9px] font-bold text-emerald-400 mono tracking-widest">LIVE</span>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="h-7 px-2 text-[9px] font-mono font-bold uppercase tracking-wider rounded-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800"
+            >
+              <RefreshCw className={`w-3 h-3 mr-1 ${isFetching ? 'animate-spin text-cyan-400' : ''}`} />
+              SYNC
+            </Button>
           </div>
         </div>
 
-        {/* Metric Cards - Responsive Container Grid */}
-        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
+        {/* ── 6 PALANTIR TACTICAL METRIC CARDS ── */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           <MetricCard
-            title="Total Events"
+            title="Total Incidents"
             value={latest.events}
             trend={trends?.events}
             icon={<Activity className="w-3.5 h-3.5" />}
             color="blue"
+            classification="EVENTS"
+            targetValue={100}
           />
           <MetricCard
-            title="Critical Events"
+            title="Critical Threats"
             value={latest.critical}
             trend={trends?.critical}
             icon={<AlertTriangle className="w-3.5 h-3.5" />}
             color="danger"
+            classification="ALERT"
+            targetValue={20}
           />
           <MetricCard
-            title="Active Fires"
+            title="Active Wildfires"
             value={latest.fires}
             trend={trends?.fires}
             icon={<Flame className="w-3.5 h-3.5" />}
             color="warning"
+            classification="THERMAL"
+            targetValue={15}
           />
           <MetricCard
-            title="Traffic Incidents"
+            title="Civil Traffic"
             value={latest.traffic}
             trend={trends?.traffic}
             icon={<Car className="w-3.5 h-3.5" />}
             color="info"
+            classification="ROADWAYS"
+            targetValue={30}
+          />
+          <MetricCard
+            title="Grid & Infra"
+            value={latest.infrastructure}
+            icon={<Building2 className="w-3.5 h-3.5" />}
+            color="success"
+            classification="FACILITIES"
+            targetValue={100}
+            subtitle="Operational"
+          />
+          <MetricCard
+            title="Strategic Links"
+            value={latest.connections}
+            icon={<GitMerge className="w-3.5 h-3.5" />}
+            color="purple"
+            classification="VECTORS"
+            targetValue={50}
           />
         </div>
 
-        {/* Tabs */}
+        {/* ── PALANTIR WORKSPACE TABS ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-zinc-900/50 border border-zinc-800/80 h-9 p-0.5 rounded-lg">
+          <TabsList className="w-full justify-start bg-zinc-900/60 p-1 border border-zinc-800/80 rounded-sm overflow-x-auto">
             <TabsTrigger
               value="overview"
-              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md transition-all"
+              className="text-[9px] font-mono font-bold tracking-wider data-[state=active]:bg-zinc-800 data-[state=active]:text-cyan-300 rounded-sm"
             >
-              <BarChart3 className="w-3 h-3 mr-1.5 opacity-70" />
-              Overview
+              [01 OVERVIEW]
             </TabsTrigger>
             <TabsTrigger
-              value="breakdown"
-              className="h-7 text-[10px] data-[state=active]:bg-zinc-800 data-[state=active]:text-white rounded-md transition-all"
+              value="graph"
+              className="text-[9px] font-mono font-bold tracking-wider data-[state=active]:bg-zinc-800 data-[state=active]:text-purple-300 rounded-sm"
             >
-              <MapPin className="w-3 h-3 mr-1.5 opacity-70" />
-              Breakdown
+              [02 GOTHAM KNOWLEDGE GRAPH]
             </TabsTrigger>
             <TabsTrigger
               value="flow"
-              className="h-7 text-[10px] data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 rounded-md transition-all"
+              className="text-[9px] font-mono font-bold tracking-wider data-[state=active]:bg-zinc-800 data-[state=active]:text-emerald-300 rounded-sm"
             >
-              <GitMerge className="w-3 h-3 mr-1.5 rotate-90 opacity-70" />
-              Flows
+              [03 INTELLIGENCE FLOW & SANKEY]
+            </TabsTrigger>
+            <TabsTrigger
+              value="hubs"
+              className="text-[9px] font-mono font-bold tracking-wider data-[state=active]:bg-zinc-800 data-[state=active]:text-amber-300 rounded-sm"
+            >
+              [04 STRATEGIC CHOKEPOINTS]
+            </TabsTrigger>
+            <TabsTrigger
+              value="terminal"
+              className="text-[9px] font-mono font-bold tracking-wider data-[state=active]:bg-zinc-800 data-[state=active]:text-cyan-300 rounded-sm"
+            >
+              [05 SIGINT TERMINAL]
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-2 mt-2">
-            <EventsTimeline data={historicalData} />
-            <IncidentCategories data={historicalData} />
-            <DisinfoMiniPanel />
-          </TabsContent>
+          {/* TAB 1: OVERVIEW */}
+          <TabsContent value="overview" className="mt-3 space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div className="lg:col-span-2 space-y-3">
+                <EventsTimeline data={historicalData} />
+                <StrategicHubsMatrix onNavigateLocation={openMapWidget} />
+              </div>
 
-          <TabsContent value="breakdown" className="space-y-2 mt-2">
-            <EventDistribution data={eventTypeData} />
-
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-              <Card className="bg-zinc-900/40 border-zinc-800">
-                <CardHeader className="p-3 pb-1 border-b border-zinc-800/50">
-                  <CardTitle className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-                    Data Sources
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-1.5">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800/50">
-                    <span className="text-[10px] text-zinc-400">RSS Feeds</span>
-                    <span className="text-[11px] font-bold text-blue-400 mono">
-                      {data.summary.sources.rss}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800/50">
-                    <span className="text-[10px] text-zinc-400">API Sources</span>
-                    <span className="text-[11px] font-bold text-emerald-400 mono">
-                      {data.summary.sources.api}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">
-                      Total
-                    </span>
-                    <span className="text-xs font-bold text-white mono">
-                      {data.summary.sources.total}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-zinc-900/40 border-zinc-800">
-                <CardHeader className="p-3 pb-1 border-b border-zinc-800/50">
-                  <CardTitle className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-                    Infrastructure
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-1.5">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800/50">
-                    <span className="text-[10px] text-zinc-400">Operational</span>
-                    <span className="text-[11px] font-bold text-emerald-400 mono">
-                      {data.summary.operationalInfrastructure}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800/50">
-                    <span className="text-[10px] text-zinc-400">Routes</span>
-                    <span className="text-[11px] font-bold text-blue-400 mono">
-                      {data.summary.totalRoutes}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">
-                      Disrupted
-                    </span>
-                    <span className="text-xs font-bold text-amber-500 mono">
-                      {data.summary.disruptedRoutes}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-3">
+                <ThreatRadarMatrix data={data} />
+                <EventDistribution data={eventTypeData} />
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="flow" className="space-y-2 mt-2">
-            <RealTimeEventStream data={eventStreamData} />
-            <IntuitiveSankey
-              data={data}
-              onNavigate={openMapWidget}
-              onLocationSelect={handleLocationSelect}
-              selectedLocation={eventSelection.selectedLocation}
-            />
+          {/* TAB 2: GOTHAM KNOWLEDGE GRAPH */}
+          <TabsContent value="graph" className="mt-3">
             <NewsNetwork data={data} onNavigate={openMapWidget} />
           </TabsContent>
-        </Tabs>
 
-        {/* Last Updated */}
-        <div className="flex items-center justify-between opacity-50 pl-1">
-          <div className="flex items-center gap-1.5 text-zinc-500">
-            <Calendar className="w-3 h-3" />
-            <span className="text-[9px] font-mono">
-              Telemetry synced: {new Date(data.timestamp).toLocaleTimeString()}
-            </span>
-          </div>
-        </div>
+          {/* TAB 3: INTELLIGENCE FLOW & SANKEY */}
+          <TabsContent value="flow" className="mt-3 space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div className="lg:col-span-2">
+                <IntuitiveSankey
+                  data={data}
+                  onNavigate={openMapWidget}
+                  onLocationSelect={handleLocationSelect}
+                  selectedLocation={eventSelection.selectedLocation}
+                />
+              </div>
+              <div>
+                <EventDistribution data={eventTypeData} />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 4: STRATEGIC CHOKEPOINTS */}
+          <TabsContent value="hubs" className="mt-3 space-y-3">
+            <StrategicHubsMatrix onNavigateLocation={openMapWidget} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <ThreatRadarMatrix data={data} />
+              <IncidentCategories data={historicalData} />
+            </div>
+          </TabsContent>
+
+          {/* TAB 5: SIGINT TERMINAL */}
+          <TabsContent value="terminal" className="mt-3">
+            <RealTimeEventStream data={eventStreamData} onNavigateLocation={openMapWidget} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

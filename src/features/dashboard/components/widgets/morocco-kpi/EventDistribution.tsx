@@ -1,8 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPin } from 'lucide-react';
+import { PieChart, Layers } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
@@ -11,71 +13,88 @@ type EventDistributionProps = {
 };
 
 export function EventDistribution({ data }: EventDistributionProps) {
-  const option = {
-    backgroundColor: 'transparent',
-    grid: { left: '20%', right: '8%', bottom: '0%', top: '5%', containLabel: false },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(24, 24, 27, 0.95)',
-      borderColor: '#3b82f6',
-      textStyle: { color: '#e4e4e7', fontSize: 10 },
-    },
-    xAxis: {
-      type: 'value',
-      axisLine: { show: false },
-      axisLabel: { show: false },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: 'category',
-      data: data.map((d) => d.type),
-      axisLine: { show: false },
-      axisLabel: { color: '#a1a1aa', fontSize: 9 },
-      axisTick: { show: false },
-    },
-    series: [
-      {
-        name: 'Events',
-        type: 'bar',
-        data: data.map((d) => d.count),
-        barWidth: '60%',
+  const option = useMemo(() => {
+    const formattedData = data.map((d, idx) => {
+      const colors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#a855f7', '#06b6d4', '#ec4899', '#64748b'];
+      return {
+        value: d.count,
+        name: d.type,
         itemStyle: {
-          color: {
-            type: 'linear',
-            x: 1,
-            y: 0,
-            x2: 0,
-            y2: 0,
-            colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.8)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.2)' },
-            ],
-          },
-          borderRadius: [0, 2, 2, 0],
+          color: colors[idx % colors.length],
         },
-        label: {
-          show: true,
-          position: 'right',
-          color: '#71717a',
-          fontSize: 9,
+      };
+    });
+
+    return {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(10, 14, 22, 0.96)',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        textStyle: { color: '#e4e4e7', fontSize: 10, fontFamily: 'monospace' },
+        formatter: '{b}: {c} events ({d}%)',
+      },
+      legend: {
+        orient: 'vertical',
+        right: '2%',
+        top: 'middle',
+        itemWidth: 8,
+        itemHeight: 8,
+        textStyle: {
+          color: '#94a3b8',
+          fontSize: 8.5,
           fontFamily: 'monospace',
-          formatter: '{c}',
         },
       },
-    ],
-  };
+      series: [
+        {
+          name: 'Incident Types',
+          type: 'pie',
+          radius: ['38%', '70%'],
+          center: ['35%', '50%'],
+          roseType: 'radius',
+          itemStyle: {
+            borderRadius: 3,
+            borderColor: '#09090b',
+            borderWidth: 1.5,
+          },
+          label: {
+            show: false,
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 9,
+              fontWeight: 'bold',
+              color: '#f8fafc',
+              fontFamily: 'monospace',
+            },
+          },
+          data: formattedData,
+        },
+      ],
+    };
+  }, [data]);
 
   return (
-    <Card className="bg-zinc-900/40 border-zinc-800">
-      <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-[10px] font-bold text-zinc-400 flex items-center gap-1.5 uppercase tracking-widest">
-          <MapPin className="w-3 h-3 text-blue-500" />
-          Topology Distribution
+    <Card className="bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md relative overflow-hidden shadow-lg">
+      <div className="absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-zinc-700/80 pointer-events-none" />
+      <div className="absolute top-1 right-1 w-1.5 h-1.5 border-t border-r border-zinc-700/80 pointer-events-none" />
+      <div className="absolute bottom-1 left-1 w-1.5 h-1.5 border-b border-l border-zinc-700/80 pointer-events-none" />
+      <div className="absolute bottom-1 right-1 w-1.5 h-1.5 border-b border-r border-zinc-700/80 pointer-events-none" />
+
+      <CardHeader className="p-3 pb-1 border-b border-zinc-900 flex flex-row items-center justify-between">
+        <CardTitle className="text-[10px] font-bold text-zinc-300 flex items-center gap-1.5 uppercase font-mono tracking-widest">
+          <Layers className="w-3.5 h-3.5 text-cyan-400" />
+          Topology & Incident Rose Matrix
+          <Badge variant="outline" className="ml-1.5 text-[8px] bg-cyan-500/10 border-cyan-500/30 text-cyan-400 font-mono">
+            RADIAL OSINT
+          </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 pt-0">
-        <ReactECharts option={option} style={{ height: '140px' }} />
+      <CardContent className="p-2 pt-0">
+        <ReactECharts option={option} style={{ height: '170px' }} />
       </CardContent>
     </Card>
   );

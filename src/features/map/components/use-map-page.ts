@@ -377,7 +377,7 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   }, [dispatch, moroccoData?.events, viewState]);
 
   const showTimeline = overlayVisibility.timeline && !(isMobile && !!selectedItem);
-  const isLoading = storiesLoading || f.isLoading || flightsLoading;
+  const isLoading = f.isLoading;
 
   const storyId = searchParams.get('story');
   const prevStoryIdRef = useRef<string | null>(null);

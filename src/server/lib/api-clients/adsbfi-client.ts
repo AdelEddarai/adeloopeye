@@ -106,45 +106,34 @@ export class ADSBFiClient {
   }
 
   /**
-   * Get live flights over / near Morocco by searching multiple Moroccan hubs
-   * and merging unique aircraft. Covers mainland Morocco plus Western Sahara.
+   * Get live flights over / near Morocco by searching key Moroccan hubs in parallel
    */
   async getMoroccoFlights(): Promise<ADSBFiAircraft[]> {
     const hubs = [
-      { lat: 33.5731, lon: -7.5898 },  // Casablanca
-      { lat: 33.9716, lon: -6.8498 },  // Rabat
-      { lat: 31.6295, lon: -7.9811 },  // Marrakech
-      { lat: 35.7595, lon: -5.8134 },  // Tangier
-      { lat: 34.0181, lon: -5.0003 },  // Fes
-      { lat: 30.4278, lon: -9.5981 },  // Agadir
-      { lat: 34.6814, lon: -1.9085 },  // Oujda
-      { lat: 27.1536, lon: -13.1994 }, // Laayoune
-      { lat: 23.7158, lon: -15.9582 }, // Dakhla
-      { lat: 35.2517, lon: -3.9372 },  // Al Hoceima
+      { lat: 33.5731, lon: -7.5898, dist: 250 }, // Casablanca / North & Central Morocco
+      { lat: 27.1536, lon: -13.1994, dist: 250 }, // Laayoune / South Morocco & Western Sahara
+      { lat: 35.7595, lon: -5.8134, dist: 150 },  // Tangier / Gibraltar Strait
     ];
 
     const cacheKey = 'morocco-flights';
     const cached = this.getCache<ADSBFiAircraft[]>(cacheKey);
     if (cached) return cached;
 
+    const results = await Promise.allSettled(
+      hubs.map(hub => this.getFlightsByLocation(hub.lat, hub.lon, hub.dist))
+    );
+
     const allAircraft: ADSBFiAircraft[] = [];
     const seenHexes = new Set<string>();
 
-    for (let i = 0; i < hubs.length; i++) {
-      const hub = hubs[i];
-      try {
-        const aircraft = await this.getFlightsByLocation(hub.lat, hub.lon, 250);
-        for (const ac of aircraft) {
+    for (const r of results) {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        for (const ac of r.value) {
           if (!seenHexes.has(ac.hex) && ac.lat !== null && ac.lon !== null) {
             seenHexes.add(ac.hex);
             allAircraft.push(ac);
           }
         }
-        if (i < hubs.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1100));
-        }
-      } catch (err) {
-        // Silently continue if one hub fails
       }
     }
 
@@ -160,7 +149,7 @@ export class ADSBFiClient {
     try {
       const cacheKey = `hex-${hex}`;
       const cached = this.getCache<ADSBFiAircraft | null>(cacheKey);
-      if (cached !== null) return cached; // Notice this returns cached nulls too
+      if (cached !== null) return cached;
 
       const url = `${this.baseUrl}/v2/hex/${hex}`;
       
@@ -169,7 +158,7 @@ export class ADSBFiClient {
           'Content-Type': 'application/json',
         },
         next: { revalidate: 10 },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(5000),
       });
 
       if (!res.ok) {
@@ -181,84 +170,50 @@ export class ADSBFiClient {
       this.setCache(cacheKey, aircraft);
       return aircraft;
     } catch (error) {
-      console.error('[ADSB.fi Client] Failed to fetch aircraft:', error);
-      throw error;
+      console.warn('[ADSB.fi Client] Failed to fetch aircraft:', error);
+      return null;
     }
   }
 
   /**
    * Get all aircraft (full snapshot)
-   * Note: This endpoint requires feeder authentication
-   * For public access, use getFlightsByLocation or getFlightsInBbox
    */
   async getAllAircraft(): Promise<ADSBFiAircraft[]> {
-    console.warn('[ADSB.fi Client] getAllAircraft requires feeder authentication');
-    console.warn('[ADSB.fi Client] Use getFlightsByLocation or getFlightsInBbox instead');
     return [];
   }
 
   /**
-   * Get GLOBAL flights by searching multiple strategic points worldwide
-   * This covers major flight corridors and busy airspace
+   * Get GLOBAL flights by querying top strategic airspace corridors concurrently
    */
   async getGlobalFlights(): Promise<ADSBFiAircraft[]> {
-    // Strategic search points covering major flight routes worldwide
     const searchPoints = [
-      // Primary: North Africa / Morocco
-      { lat: 33.5731, lon: -7.5898, dist: 250 }, // Casablanca, Morocco
-
-      // North America
-      { lat: 40.7128, lon: -74.0060, dist: 250 }, // New York
-      { lat: 34.0522, lon: -118.2437, dist: 250 }, // Los Angeles
-      { lat: 41.8781, lon: -87.6298, dist: 250 }, // Chicago
-      
-      // Europe
-      { lat: 51.5074, lon: -0.1278, dist: 250 }, // London
-      { lat: 48.8566, lon: 2.3522, dist: 250 }, // Paris
-      { lat: 52.5200, lon: 13.4050, dist: 250 }, // Berlin
-      
-      // Middle East
-      { lat: 25.2048, lon: 55.2708, dist: 250 }, // Dubai
-      { lat: 33.3152, lon: 44.3661, dist: 250 }, // Baghdad
-      
-      // Asia
-      { lat: 35.6762, lon: 139.6503, dist: 250 }, // Tokyo
-      { lat: 31.2304, lon: 121.4737, dist: 250 }, // Shanghai
-      { lat: 1.3521, lon: 103.8198, dist: 250 }, // Singapore
-      
-      // Australia
-      { lat: -33.8688, lon: 151.2093, dist: 250 }, // Sydney
-      
-      // Africa
-      { lat: -26.2041, lon: 28.0473, dist: 250 }, // Johannesburg
+      { lat: 33.5731, lon: -7.5898, dist: 250 }, // Casablanca / North Africa
+      { lat: 51.5074, lon: -0.1278, dist: 250 },  // London / West Europe
+      { lat: 25.2048, lon: 55.2708, dist: 250 },  // Dubai / Middle East
+      { lat: 40.7128, lon: -74.0060, dist: 250 }, // New York / North America
+      { lat: 35.6762, lon: 139.6503, dist: 250 }, // Tokyo / East Asia
+      { lat: 33.3152, lon: 44.3661, dist: 250 },  // Baghdad / Levant Corridor
     ];
 
     const cacheKey = 'global-flights';
     const cached = this.getCache<ADSBFiAircraft[]>(cacheKey);
     if (cached) return cached;
 
+    const results = await Promise.allSettled(
+      searchPoints.map(p => this.getFlightsByLocation(p.lat, p.lon, p.dist))
+    );
+
     const allAircraft: ADSBFiAircraft[] = [];
     const seenHexes = new Set<string>();
 
-    // Search each location with delay to respect rate limits
-    for (let i = 0; i < searchPoints.length; i++) {
-      const point = searchPoints[i];
-      
-      try {
-        const aircraft = await this.getFlightsByLocation(point.lat, point.lon, point.dist);
-        
-        for (const ac of aircraft) {
+    for (const r of results) {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        for (const ac of r.value) {
           if (!seenHexes.has(ac.hex) && ac.lat !== null && ac.lon !== null) {
             seenHexes.add(ac.hex);
             allAircraft.push(ac);
           }
         }
-        
-        if (i < searchPoints.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1200));
-        }
-      } catch (err) {
-        // Silently continue if one location fails
       }
     }
 

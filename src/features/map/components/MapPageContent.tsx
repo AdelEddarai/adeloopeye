@@ -19,7 +19,7 @@ export function FullMapPage({ embedded = false }: { embedded?: boolean }) {
   const isMobile = useIsMobile(1024);
   const ctx = useMapPage({ isMobile: isMobile || isLandscapePhone });
   const mode = isLandscapePhone ? 'landscape' : (isMobile ? 'mobile' : 'desktop');
-  const prevModeRef = useRef<string | null>(null);
+  const { setSelectedItem, setSidebarOpen } = ctx;
 
   useEffect(() => {
     if (prevModeRef.current === null) {
@@ -27,11 +27,11 @@ export function FullMapPage({ embedded = false }: { embedded?: boolean }) {
       return;
     }
     if (prevModeRef.current !== mode) {
-      ctx.setSelectedItem(null);
-      if (mode === 'landscape') ctx.setSidebarOpen(false);
+      setSelectedItem(null);
+      if (mode === 'landscape') setSidebarOpen(false);
       prevModeRef.current = mode;
     }
-  }, [mode, ctx]);
+  }, [mode, setSelectedItem, setSidebarOpen]);
 
   if (ctx.isLoading) return <MapScreenSkeleton />;
 

@@ -24,9 +24,22 @@ export function MapCNDeckGLOverlay(props: MapboxOverlayProps & { interleaved?: b
   // Add/remove control when map is ready
   useEffect(() => {
     if (map) {
-      map.addControl(overlay as any);
+      try {
+        map.addControl(overlay as any);
+      } catch (err) {
+        console.warn('[DeckGLOverlay] addControl:', err);
+      }
       return () => {
-        map.removeControl(overlay as any);
+        try {
+          // @ts-ignore
+          if (map.hasControl && map.hasControl(overlay as any)) {
+            map.removeControl(overlay as any);
+          } else {
+            map.removeControl(overlay as any);
+          }
+        } catch {
+          // ignore cleanup on unmounted map instance
+        }
       };
     }
   }, [map, overlay]);

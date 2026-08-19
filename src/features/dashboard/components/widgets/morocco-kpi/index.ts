@@ -8,3 +8,5 @@ export { InfrastructureChart } from './InfrastructureChart';
 export { CriticalTrend } from './CriticalTrend';
 export { EventDistribution } from './EventDistribution';
 export { DisinfoMiniPanel } from './DisinfoMiniPanel';
+export { ThreatRadarMatrix } from './ThreatRadarMatrix';
+export { StrategicHubsMatrix } from './StrategicHubsMatrix';
