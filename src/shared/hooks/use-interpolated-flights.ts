@@ -93,17 +93,23 @@ export function useInterpolatedFlights(
     }
   }, [rawFlights, enabled]);
 
-  // 60 FPS requestAnimationFrame loop for continuous dead reckoning
+  // Smooth requestAnimationFrame loop for continuous dead reckoning with efficient render pacing
   useEffect(() => {
     if (!enabled) return;
 
     let animId: number;
-    let lastFrameTime = performance.now();
+    let lastRenderTime = performance.now();
+    const RENDER_INTERVAL_MS = 60; // Paced updates (~16 FPS) for smooth visual motion without CPU overloading
 
     const renderLoop = (frameTime: number) => {
-      const dt = (frameTime - lastFrameTime) / 1000;
-      lastFrameTime = frameTime;
+      const elapsedSinceLastRender = frameTime - lastRenderTime;
 
+      if (elapsedSinceLastRender < RENDER_INTERVAL_MS) {
+        animId = requestAnimationFrame(renderLoop);
+        return;
+      }
+
+      lastRenderTime = frameTime;
       const map = stateRef.current;
       if (map.size === 0) {
         animId = requestAnimationFrame(renderLoop);

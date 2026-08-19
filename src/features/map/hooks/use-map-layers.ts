@@ -363,7 +363,9 @@ export function useMapLayers({
         getLineColor: [isSatellite],
         getRadius: [isSatellite],
       },
-    }    // Transform OpenSkyFlights / InterpolatedFlights into rich Asset format on the fly
+    });
+
+    // Transform OpenSkyFlights / InterpolatedFlights into rich Asset format on the fly
     const flightAssets: (Asset & { contrailPath?: [number, number][]; category?: string; speedKnots?: number; flightLevel?: string })[] = globalFlights.map((f: any) => {
       let actor = 'unknown';
       const country = (f.origin_country || '').toLowerCase();
@@ -1426,7 +1428,7 @@ export function useMapLayers({
     ].filter(Boolean);
 
     return layers as Layer[];
-   }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights, allNewsPulses, showDisinfo, disinfo]);
+   }, [filtered, actorMeta, activeStory, selectedItem, viewState, isSatellite, isMobile, showAllLabels, showFlights, showEvents, showZones, showCyberThreats, showMaritime, pulseTime, cyberThreats, showMoroccoLayer, moroccoLayers, globalFlights, allNewsPulses, showDisinfo, disinfo]);
 }
 
 // Re-export so tooltip handler can share STATUS_META without another import

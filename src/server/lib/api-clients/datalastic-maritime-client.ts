@@ -6,6 +6,7 @@
  */
 
 import type { MaritimeVessel } from '@/data/map-data';
+import { liveVesselsClient } from './live-vessels-client';
 
 const BASE = 'https://api.datalastic.com/api/v0/vessel_inradius';
 
