@@ -285,6 +285,88 @@ export function useMapLayers({
       updateTriggers: { getFillColor: [dimActive], getLineColor: [dimActive] },
     });
 
+    // High-priority Strategic Conflict Sectors & Maritime Chokepoints (Hormuz, Bab el-Mandeb, Gibraltar, Taiwan)
+    const STRATEGIC_SECTORS = [
+      {
+        id: 'sector-hormuz',
+        name: 'A2/AD SECTOR · STRAIT OF HORMUZ',
+        level: 'CRITICAL',
+        color: [239, 68, 68, 30] as RGBA,
+        borderColor: [239, 68, 68, 220] as RGBA,
+        coordinates: [
+          [56.0, 26.9], [56.7, 26.6], [56.6, 25.9], [55.9, 25.9], [55.5, 26.4], [56.0, 26.9]
+        ],
+        center: [56.2, 26.4] as [number, number],
+      },
+      {
+        id: 'sector-bab-el-mandeb',
+        name: 'THREAT CORRIDOR · BAB EL-MANDEB',
+        level: 'HIGH',
+        color: [249, 115, 22, 25] as RGBA,
+        borderColor: [249, 115, 22, 200] as RGBA,
+        coordinates: [
+          [43.0, 13.0], [43.7, 12.7], [43.5, 12.1], [42.8, 12.4], [43.0, 13.0]
+        ],
+        center: [43.3, 12.6] as [number, number],
+      },
+      {
+        id: 'sector-gibraltar',
+        name: 'SURVEILLANCE SECTOR · GIBRALTAR',
+        level: 'ELEVATED',
+        color: [6, 182, 212, 25] as RGBA,
+        borderColor: [6, 182, 212, 200] as RGBA,
+        coordinates: [
+          [-5.9, 35.8], [-5.2, 35.9], [-5.2, 36.2], [-5.9, 36.1], [-5.9, 35.8]
+        ],
+        center: [-5.55, 36.0] as [number, number],
+      },
+      {
+        id: 'sector-taiwan-strait',
+        name: 'MEDIAN LINE CORRIDOR · TAIWAN STRAIT',
+        level: 'CRITICAL',
+        color: [239, 68, 68, 20] as RGBA,
+        borderColor: [239, 68, 68, 180] as RGBA,
+        coordinates: [
+          [118.8, 25.5], [120.2, 25.8], [121.2, 23.5], [119.5, 23.0], [118.8, 25.5]
+        ],
+        center: [119.8, 24.5] as [number, number],
+      },
+    ];
+
+    const strategicHotspotPolygons = showZones && new PolygonLayer<any>({
+      id: 'strategic-hotspot-polygons',
+      data: STRATEGIC_SECTORS,
+      getPolygon: (d: any) => d.coordinates,
+      getFillColor: (d: any) => {
+        const pulse = Math.sin(pulseTime * 1.5) * 0.25 + 1;
+        return [d.color[0], d.color[1], d.color[2], Math.floor(d.color[3] * pulse)];
+      },
+      getLineColor: (d: any) => d.borderColor,
+      lineWidthMinPixels: 1.5,
+      filled: true,
+      stroked: true,
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: {
+        getFillColor: [pulseTime],
+      },
+    });
+
+    const strategicHotspotLabels = showZones && new TextLayer<any>({
+      id: 'strategic-hotspot-labels',
+      data: STRATEGIC_SECTORS,
+      getPosition: (d: any) => d.center,
+      getText: (d: any) => `[ ${d.name} ]`,
+      getSize: textToken('--text-tiny', 9.5),
+      getColor: (d: any) => [d.borderColor[0], d.borderColor[1], d.borderColor[2], 240],
+      fontFamily: 'SFMono-Regular, Menlo, monospace',
+      fontWeight: 700,
+      background: true,
+      getBackgroundColor: () => [15, 23, 42, 220],
+      backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
+      pickable: false,
+    });
+
     // Strike arcs
     const strikeLayer = filtered.strikes.length > 0 && new ArcLayer<StrikeArc>({
       id: 'strikes',
@@ -614,15 +696,14 @@ export function useMapLayers({
       },
     });
 
-    // Cyber threat layer with icon instead of pulse
+    // Cyber threat layer with icon
     const cyberThreatLayer = showCyberThreats && cyberThreats.length > 0 && new IconLayer<CyberThreat>({
       id: 'cyber-threats',
       data: cyberThreats,
       getPosition: (d: CyberThreat): [number, number] => d.position,
       getIcon: () => 'cyber',
-      getSize: 40,
+      getSize: 36,
       getColor: (d: CyberThreat): RGBA => {
-        // Color based on threat type
         switch (d.type) {
           case 'DDOS':
             return [255, 50, 50, 255]; // Red
@@ -659,6 +740,83 @@ export function useMapLayers({
       autoHighlight: true,
       updateTriggers: {
         getColor: [],
+      },
+    });
+
+    // Real-time Cyber Attack expanding shockwave pulse (radiates then disappears)
+    const cyberThreatPulseLayer = showCyberThreats && cyberThreats.length > 0 && new ScatterplotLayer<CyberThreat>({
+      id: 'cyber-threat-pulse',
+      data: cyberThreats,
+      getPosition: (d: CyberThreat): [number, number] => d.position,
+      getRadius: (): number => {
+        const phase = (pulseTime * 0.7) % 1;
+        return 12000 + phase * 85000;
+      },
+      getFillColor: [0, 0, 0, 0],
+      stroked: true,
+      getLineColor: (): RGBA => {
+        const phase = (pulseTime * 0.7) % 1;
+        const alpha = Math.floor((1 - phase) * 190);
+        return [0, 240, 255, alpha];
+      },
+      lineWidthMinPixels: 1.5,
+      pickable: false,
+      updateTriggers: {
+        getRadius: [pulseTime],
+        getLineColor: [pulseTime],
+      },
+    });
+
+    // ── Selected Aircraft Target Tracking Overlay ──
+    const selectedAsset = (selectedItem?.type === 'asset' ? (selectedItem.data as Asset) : null);
+    const selectedFlightId = selectedAsset?.id;
+
+    // Aircraft Target Lock-On Pulse Reticle
+    const selectedFlightReticleLayer = showFlights && selectedAsset && new ScatterplotLayer<Asset>({
+      id: 'selected-flight-reticle',
+      data: [selectedAsset],
+      getPosition: (d: Asset) => d.position,
+      getRadius: () => {
+        const pulse = Math.sin(pulseTime * 3) * 0.2 + 1;
+        return 22000 * pulse;
+      },
+      getFillColor: [168, 85, 247, 30],
+      stroked: true,
+      getLineColor: () => [168, 85, 247, 240],
+      lineWidthMinPixels: 2,
+      pickable: false,
+      updateTriggers: {
+        getRadius: [pulseTime],
+        data: [selectedFlightId, selectedAsset?.position?.join(',')],
+      },
+    });
+
+    // Aircraft Projected Heading Vector (Forward trajectory vector extrapolation)
+    const selectedFlightProjectedPath = showFlights && selectedAsset && selectedAsset.heading !== undefined ? (() => {
+      const hdgRad = (selectedAsset.heading * Math.PI) / 180;
+      const distM = 150000; // 150 km projection forward
+      const R = 6371000;
+      const lat1 = (selectedAsset.position[1] * Math.PI) / 180;
+      const lon1 = (selectedAsset.position[0] * Math.PI) / 180;
+      const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distM / R) + Math.cos(lat1) * Math.sin(distM / R) * Math.cos(hdgRad));
+      const lon2 = lon1 + Math.atan2(Math.sin(hdgRad) * Math.sin(distM / R) * Math.cos(lat1), Math.cos(distM / R) - Math.sin(lat1) * Math.sin(lat2));
+      return [{
+        id: selectedAsset.id,
+        path: [selectedAsset.position, [lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]],
+      }];
+    })() : [];
+
+    const selectedFlightProjectionLayer = selectedFlightProjectedPath.length > 0 && new PathLayer({
+      id: 'selected-flight-projected-vector',
+      data: selectedFlightProjectedPath,
+      getPath: (d: any) => d.path,
+      getColor: (): RGBA => [168, 85, 247, 220],
+      getWidth: 1.8,
+      widthUnits: 'pixels',
+      dashJustified: true,
+      pickable: false,
+      updateTriggers: {
+        data: [selectedFlightId, selectedAsset?.heading, selectedAsset?.position?.join(',')],
       },
     });
 
@@ -1421,11 +1579,16 @@ export function useMapLayers({
     const layers = [
       heatLayer,
       zoneLayer,
+      strategicHotspotPolygons,
+      strategicHotspotLabels,
       strikeLayer,
       missileLayer,
       targetLayer,
       flightContrailLayer,
       assetLayer,
+      selectedFlightReticleLayer,
+      selectedFlightProjectionLayer,
+      cyberThreatPulseLayer,
       cyberThreatLayer,
       fireLayer,
       relationshipGlowLayer,

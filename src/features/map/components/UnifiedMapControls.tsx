@@ -157,7 +157,7 @@ export function UnifiedMapControls({
       </div>
 
       {/* Content Body */}
-      <div className="p-3 space-y-3.5 max-h-[65vh] overflow-y-auto custom-scrollbar font-mono">
+      <div className="p-3 space-y-3.5 max-h-[calc(100vh-210px)] md:max-h-[480px] overflow-y-auto custom-scrollbar font-mono">
         {/* TAB 1: BASE MAP */}
         {activeTab === 'base' && (
           <div className="space-y-3">

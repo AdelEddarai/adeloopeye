@@ -165,7 +165,7 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
               position: 'absolute',
               top: 12,
               right: selectedItem ? 344 : 12,
-              zIndex: 10,
+              zIndex: 40,
               transition: 'right 0.22s cubic-bezier(0.4,0,0.2,1)',
             }}>
               <UnifiedMapControls
