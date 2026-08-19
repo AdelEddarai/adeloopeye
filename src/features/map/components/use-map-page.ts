@@ -15,6 +15,8 @@ import { createBuildTooltip } from '@/features/map/lib/map-tooltip';
 import { useMapStories } from '@/features/map/queries';
 import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
 import { useLiveFlights } from '@/shared/hooks/use-live-flights';
+import { useInterpolatedFlights } from '@/shared/hooks/use-interpolated-flights';
+import { useLiveVessels } from '@/shared/hooks/use-live-vessels';
 import { useMoroccoIntelligence } from '@/shared/hooks/use-morocco-intelligence';
 import {
   activateStory as activateStoryAction,
@@ -180,7 +182,8 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     dataLayers.flights, 
     isGlobalFlights
   );
-  const globalFlights = useMemo(() => liveFlightsResp?.flights || [], [liveFlightsResp]);
+  const rawFlights = useMemo(() => liveFlightsResp?.flights || [], [liveFlightsResp]);
+  const globalFlights = useInterpolatedFlights(rawFlights, dataLayers.flights);
 
   // Morocco coordinates (center of the country)
   const MOROCCO_CENTER: [number, number] = [-7.0926, 31.7917]; // Between Casablanca and Marrakech
@@ -248,9 +251,26 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   }, [showMoroccoLayer, moroccoData, moroccoLayerToggles]);
 
   const showMaritime = dataLayers.maritime;
+  const { data: liveVesselsResp } = useLiveVessels(showMaritime);
+  const liveVessels = useMemo(() => liveVesselsResp?.vessels || [], [liveVesselsResp]);
+
+  const filteredWithLiveVessels = useMemo(() => {
+    if (!liveVessels.length) return f.filtered;
+    const existing = f.filtered.vessels || [];
+    const merged = [...existing];
+    for (const v of liveVessels) {
+      if (!merged.some(m => m.id === v.id || (m.mmsi && m.mmsi === v.mmsi))) {
+        merged.push(v);
+      }
+    }
+    return {
+      ...f.filtered,
+      vessels: merged,
+    };
+  }, [f.filtered, liveVessels]);
 
   const layers = useMapLayers({
-    filtered: f.filtered,
+    filtered: filteredWithLiveVessels,
     actorMeta: f.actorMeta,
     activeStory,
     selectedItem,

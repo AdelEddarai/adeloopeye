@@ -97,7 +97,11 @@ export function WorkspaceDashboard() {
 
   if (isMobile || isLandscapePhone) {
     if (isDashboardLoading) return <MobileOverviewSkeleton />;
-    return <MobileOverview />;
+    return (
+      <DashCtx.Provider value={dashData}>
+        <MobileOverview />
+      </DashCtx.Provider>
+    );
   }
 
   if (isDashboardLoading) return <OverviewScreenSkeleton />;

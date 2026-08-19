@@ -77,7 +77,7 @@ export function BriefWidget() {
       {/* executive summary */}
       <div className="px-4 py-3 border-b border-[var(--bd)]">
         <div className="label text-[length:var(--text-tiny)] text-[var(--t4)] mb-1.5 tracking-[0.10em]">EXECUTIVE SUMMARY</div>
-        <p className="text-[length:var(--text-body-sm)] text-[var(--t2)] leading-relaxed">{snap.summary.slice(0, 600)}...</p>
+        <p className="text-[length:var(--text-body-sm)] text-[var(--t2)] leading-relaxed">{(snap.summary || '').slice(0, 600)}...</p>
       </div>
 
       {/* top events */}

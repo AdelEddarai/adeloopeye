@@ -80,7 +80,7 @@ export function PredictionsWidget() {
                   >
                     {status.label}
                   </span>
-                  {m.subMarkets.length > 1 && (
+                  {(m.subMarkets?.length ?? 0) > 1 && (
                     <span className="mono text-[length:var(--text-micro)] text-[var(--t4)]">{m.subMarkets.length} sub</span>
                   )}
                 </div>

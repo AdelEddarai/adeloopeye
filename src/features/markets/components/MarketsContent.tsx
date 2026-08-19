@@ -420,19 +420,22 @@ export function MarketsContent({ isWidget = false }: MarketsContentProps) {
 }
 
 function MarketChart({ data }: { data: any }) {
-  const isPositive = data.changePct >= 0;
+  const isPositive = (data?.changePct ?? 0) >= 0;
+  const chartPoints = data?.chart || [];
   
   // FIX: When markets are closed, all 300+ data points might be exactly the same value.
   // ECharts 'scale: true' disappears/crashes when max === min.
   // We manually compute the domain and pad it if it's perfectly flat.
-  const values = data.chart?.map((p: any) => p.close) || [];
+  const values = chartPoints.map((p: any) => p.close).filter((v: any) => typeof v === 'number');
   
   let minVal: number | undefined = undefined;
   let maxVal: number | undefined = undefined;
   
   if (values.length > 0) {
-    minVal = Math.min(...values, ...data.chart.map((p: any) => p.low));
-    maxVal = Math.max(...values, ...data.chart.map((p: any) => p.high));
+    const lowValues = chartPoints.map((p: any) => p.low).filter((v: any) => typeof v === 'number');
+    const highValues = chartPoints.map((p: any) => p.high).filter((v: any) => typeof v === 'number');
+    minVal = Math.min(...values, ...(lowValues.length ? lowValues : values));
+    maxVal = Math.max(...values, ...(highValues.length ? highValues : values));
     if (minVal === maxVal) {
       minVal = minVal * 0.99;
       maxVal = maxVal * 1.01;
@@ -450,23 +453,24 @@ function MarketChart({ data }: { data: any }) {
       textStyle: { color: '#e4e4e7', fontSize: 10 },
       formatter: (params: any) => {
         const point = params[0];
+        if (!point?.data) return '';
         const [time, open, close, low, high] = point.data;
         return `
           <div style="font-weight:bold; margin-bottom:4px; border-bottom: 1px solid #3f3f46; padding-bottom: 4px;">
             ${new Date(time).toLocaleTimeString()}
           </div>
           <div style="display:grid; grid-template-columns: auto auto; gap: 4px 12px;">
-            <span style="color:#a1a1aa">Open</span> <span style="font-family:monospace; text-align:right">${open.toFixed(2)}</span>
-            <span style="color:#a1a1aa">High</span> <span style="font-family:monospace; text-align:right; color:#10b981">${high.toFixed(2)}</span>
-            <span style="color:#a1a1aa">Low</span> <span style="font-family:monospace; text-align:right; color:#ef4444">${low.toFixed(2)}</span>
-            <span style="color:#a1a1aa">Close</span> <span style="font-family:monospace; text-align:right; color:${close >= open ? '#10b981' : '#ef4444'}">${close.toFixed(2)}</span>
+            <span style="color:#a1a1aa">Open</span> <span style="font-family:monospace; text-align:right">${(open ?? 0).toFixed(2)}</span>
+            <span style="color:#a1a1aa">High</span> <span style="font-family:monospace; text-align:right; color:#10b981">${(high ?? 0).toFixed(2)}</span>
+            <span style="color:#a1a1aa">Low</span> <span style="font-family:monospace; text-align:right; color:#ef4444">${(low ?? 0).toFixed(2)}</span>
+            <span style="color:#a1a1aa">Close</span> <span style="font-family:monospace; text-align:right; color:${close >= open ? '#10b981' : '#ef4444'}">${(close ?? 0).toFixed(2)}</span>
           </div>
         `;
       }
     },
     xAxis: {
       type: 'category',
-      data: data.chart.map((p: any) => p.time * 1000),
+      data: chartPoints.map((p: any) => (p.time || 0) * 1000),
       axisLine: { show: false },
       axisLabel: { show: false }, // Hide time labels to keep it clean like before
       axisTick: { show: false },
@@ -506,11 +510,11 @@ function MarketChart({ data }: { data: any }) {
     series: [
       {
         type: 'candlestick',
-        data: data.chart.map((point: any) => [
-          point.open,
-          point.close,
-          point.low,
-          point.high
+        data: chartPoints.map((point: any) => [
+          point.open ?? 0,
+          point.close ?? 0,
+          point.low ?? 0,
+          point.high ?? 0
         ]),
         itemStyle: {
           color: '#10b981',      // Bullish candle fill
@@ -536,7 +540,7 @@ function MarketChart({ data }: { data: any }) {
             <div className="text-lg font-bold mono text-[var(--t1)]">
               {data.currency !== 'USD' && data.currency !== 'MAD' ? data.currency + ' ' : ''}
               {data.currency === 'USD' ? '$' : ''}
-              {data.price.toFixed(2)}
+              {(data.price ?? 0).toFixed(2)}
               {data.currency === 'MAD' ? ' MAD' : ''}
             </div>
             <div className={`flex items-center gap-1 justify-end ${
@@ -544,7 +548,7 @@ function MarketChart({ data }: { data: any }) {
             }`}>
               {isPositive ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
               <span className="mono text-xs font-semibold">
-                {isPositive ? '+' : ''}{data.change.toFixed(2)} ({Math.abs(data.changePct).toFixed(2)}%)
+                {isPositive ? '+' : ''}{(data.change ?? 0).toFixed(2)} ({Math.abs(data.changePct ?? 0).toFixed(2)}%)
               </span>
             </div>
           </div>

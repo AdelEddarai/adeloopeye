@@ -363,10 +363,8 @@ export function useMapLayers({
         getLineColor: [isSatellite],
         getRadius: [isSatellite],
       },
-    });
-
-    // Transform OpenSkyFlights into Asset format on the fly
-    const flightAssets: Asset[] = globalFlights.map(f => {
+    }    // Transform OpenSkyFlights / InterpolatedFlights into rich Asset format on the fly
+    const flightAssets: (Asset & { contrailPath?: [number, number][]; category?: string; speedKnots?: number; flightLevel?: string })[] = globalFlights.map((f: any) => {
       let actor = 'unknown';
       const country = (f.origin_country || '').toLowerCase();
       if (country.includes('united states') || country.includes('usa')) actor = 'us';
@@ -374,97 +372,217 @@ export function useMapLayers({
       else if (country.includes('iran')) actor = 'iran';
       else if (country.includes('russia')) actor = 'russia';
       else if (country.includes('china')) actor = 'china';
+      else if (country.includes('morocco')) actor = 'morocco';
+
+      const altM = f.baro_altitude || f.geo_altitude || 0;
+      const altFt = f.altitudeFt || Math.round(altM * 3.28084);
+      const fl = f.flightLevel || (altFt > 0 ? `FL${Math.round(altFt / 100)}` : 'GND');
+      const spd = f.speedKnots || (f.velocity ? Math.round(f.velocity) : 450);
+
+      const pos: [number, number] = f.currentPosition || [f.longitude!, f.latitude!];
 
       return {
         id: `flight-${f.icao24}`,
         sourceEventId: null,
         actor: actor as any,
-        priority: (f.baro_altitude && f.baro_altitude > 10000) ? 'P2' : 'P3',
+        priority: altFt > 30000 ? 'P2' : 'P3',
         category: 'INSTALLATION',
         type: 'AIRCRAFT',
         status: 'ACTIVE',
         name: f.callsign?.trim() || f.icao24,
-        position: [f.longitude!, f.latitude!],
+        position: pos,
         heading: f.true_track || 0,
-        description: `${f.origin_country} - Alt: ${Math.round(f.baro_altitude || 0)}m, Speed: ${Math.round(f.velocity || 0)}m/s`,
+        description: `${f.origin_country} - ${fl} (${Math.round(altM)}m), Speed: ${spd}kn`,
+        contrailPath: f.contrailPath,
+        speedKnots: spd,
+        flightLevel: fl,
       };
     });
 
-    // Combine any non-flight assets from the map engine (like Aircraft Carriers) with live flights
+    // Combine any non-flight assets from the map engine with live flights
     const allAssets = [...filtered.assets, ...flightAssets];
 
-    // Asset layer with airplane icons for flights
+    // High-tech Aircraft Icon Atlas (512x256)
+    const AIRCRAFT_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+      <svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
+        <!-- AIRLINER (0, 0) -->
+        <g id="airliner" transform="translate(0, 0)">
+          <!-- Swept-wing Commercial Jet -->
+          <path d="M64 12 L70 42 L112 70 L112 78 L70 66 L70 102 L86 114 L86 120 L64 116 L42 120 L42 114 L58 102 L58 66 L16 78 L16 70 L58 42 Z" 
+                fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+          <!-- Engines -->
+          <rect x="78" y="62" width="5" height="12" rx="2" fill="#333"/>
+          <rect x="45" y="62" width="5" height="12" rx="2" fill="#333"/>
+        </g>
+        <!-- FIGHTER (128, 0) -->
+        <g id="fighter" transform="translate(128, 0)">
+          <!-- Stealth Fighter / Interceptor -->
+          <path d="M64 10 L70 38 L98 78 L98 86 L74 76 L74 106 L86 116 L86 122 L64 116 L42 122 L42 116 L54 106 L54 76 L30 86 L30 78 L58 38 Z" 
+                fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <!-- Twin Tail Fins -->
+          <polygon points="64,30 67,48 61,48" fill="#333"/>
+          <!-- Afterburner Glow -->
+          <circle cx="64" cy="116" r="3" fill="#ff4400"/>
+        </g>
+        <!-- HEAVY TRANSPORT / TANKER (256, 0) -->
+        <g id="heavy" transform="translate(256, 0)">
+          <!-- High-Wing Strategic Transport (C-17 / Tanker) -->
+          <path d="M64 10 L72 36 L118 64 L118 74 L72 66 L72 104 L88 114 L88 122 L64 116 L40 122 L40 114 L56 104 L56 66 L10 74 L10 64 L56 36 Z" 
+                fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <!-- 4 Turbofan Engines -->
+          <rect x="82" y="58" width="4" height="10" rx="1" fill="#333"/>
+          <rect x="96" y="62" width="4" height="10" rx="1" fill="#333"/>
+          <rect x="42" y="58" width="4" height="10" rx="1" fill="#333"/>
+          <rect x="28" y="62" width="4" height="10" rx="1" fill="#333"/>
+        </g>
+        <!-- UAV / REAPER DRONE (384, 0) -->
+        <g id="uav" transform="translate(384, 0)">
+          <!-- High-Aspect Glider Wing Drone -->
+          <path d="M64 18 L68 46 L122 52 L122 56 L68 56 L68 108 L78 118 L78 122 L64 116 L50 122 L50 118 L60 108 L60 56 L6 56 L6 52 L60 46 Z" 
+                fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="1.8"/>
+          <!-- Sensor Ball Turret Nose -->
+          <circle cx="64" cy="18" r="4" fill="#00e5ff"/>
+          <!-- Pusher Propeller -->
+          <line x1="58" y1="116" x2="70" y2="116" stroke="#ff8800" stroke-width="2"/>
+        </g>
+        <!-- CARRIER (0, 128) -->
+        <g id="carrier" transform="translate(0, 128)">
+          <rect x="52" y="16" width="24" height="96" rx="3" fill="#444" stroke="white" stroke-width="2"/>
+          <rect x="56" y="20" width="16" height="88" fill="#333"/>
+          <line x1="70" y1="24" x2="56" y2="96" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-dasharray="3,3"/>
+        </g>
+        <!-- HELICOPTER (128, 128) -->
+        <g id="helicopter" transform="translate(128, 128)">
+          <ellipse cx="64" cy="54" rx="12" ry="24" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+          <line x1="64" y1="78" x2="64" y2="118" stroke="white" stroke-width="3"/>
+          <line x1="58" y1="116" x2="70" y2="116" stroke="white" stroke-width="2"/>
+          <!-- Rotor Blades -->
+          <line x1="16" y1="54" x2="112" y2="54" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
+          <line x1="64" y1="6" x2="64" y2="102" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
+          <circle cx="64" cy="54" r="3" fill="#222"/>
+        </g>
+        <!-- AIRPLANE DEFAULT (256, 128) -->
+        <g id="airplane" transform="translate(256, 128)">
+          <path d="M64 20 L68 50 L88 64 L88 70 L68 62 L68 96 L76 106 L76 110 L64 106 L52 110 L52 106 L60 96 L60 62 L40 70 L40 64 L60 50 Z" 
+                fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+        </g>
+      </svg>
+    `);
+
+    const getAircraftIconName = (d: Asset): string => {
+      if (d.type === 'CARRIER') return 'carrier';
+      const name = (d.name || '').toUpperCase();
+      const desc = (d.description || '').toUpperCase();
+
+      if (name.startsWith('PYTHON') || name.startsWith('VIPER') || name.startsWith('IAF') || name.startsWith('F-') || desc.includes('FIGHTER')) {
+        return 'fighter';
+      }
+      if (name.startsWith('REAPER') || desc.includes('UAV') || desc.includes('DRONE')) {
+        return 'uav';
+      }
+      if (name.startsWith('RCH') || name.startsWith('SENTRY') || name.startsWith('SHELL') || name.startsWith('CNA') || desc.includes('TRANSPORT') || desc.includes('TANKER')) {
+        return 'heavy';
+      }
+      if (desc.includes('ROTOR') || desc.includes('HELICOPTER')) {
+        return 'helicopter';
+      }
+      return 'airliner';
+    };
+
+    const getAircraftColor = (d: Asset): RGBA => {
+      const name = (d.name || '').toUpperCase();
+      const desc = (d.description || '').toUpperCase();
+
+      if (name.startsWith('PYTHON') || name.startsWith('VIPER') || name.startsWith('IAF') || desc.includes('FIGHTER')) {
+        return [255, 75, 75, 255]; // Tactical Red
+      }
+      if (name.startsWith('REAPER') || desc.includes('UAV')) {
+        return [0, 230, 255, 255]; // Cyber Cyan
+      }
+      if (name.startsWith('SENTRY') || name.startsWith('SHELL') || desc.includes('AWACS') || desc.includes('TANKER')) {
+        return [255, 190, 40, 255]; // Amber Gold
+      }
+      if (d.actor === 'us') return [100, 180, 255, 255];
+      if (d.actor === 'morocco') return [50, 220, 150, 255];
+      return [240, 240, 255, 255]; // Bright white for airliners
+    };
+
+    // Dynamic vapor contrail paths for high-altitude aircraft
+    const flightContrailsData = showFlights ? flightAssets.filter(f => f.contrailPath && f.contrailPath.length > 1) : [];
+    const flightContrailLayer = flightContrailsData.length > 0 && new PathLayer({
+      id: 'flight-contrails',
+      data: flightContrailsData,
+      getPath: (d: any) => d.contrailPath,
+      getColor: (): RGBA => [160, 200, 255, 80],
+      getWidth: 2.5,
+      widthUnits: 'pixels',
+      rounded: true,
+      pickable: false,
+      updateTriggers: {
+        getPath: [flightContrailsData.map(f => f.contrailPath?.length).join(',')],
+      },
+    });
+
+    // Asset layer with modern SVG aircraft icons
     const assetLayer = showFlights && allAssets.length > 0 && new IconLayer<Asset>({
       id: 'assets',
       data: allAssets,
       getPosition: (d: Asset): [number, number] => d.position,
-      getIcon: (d: Asset) => d.type === 'CARRIER' ? 'carrier' : 'airplane',
-      getSize: (d: Asset): number => (d.type === 'CARRIER' ? 48 : 36),
-      getAngle: (d: Asset): number => {
-        // Rotate airplane icon based on heading (true_track from OpenSky)
-        // Heading is in degrees clockwise from north
-        return -(d.heading || 0); // Negative because deck.gl rotates counter-clockwise
-      },
-      getColor: (d: Asset): [number, number, number, number] => {
-        const rgb = (actorMeta[d.actor] ?? FALLBACK_META).rgb;
+      getIcon: (d: Asset) => getAircraftIconName(d),
+      getSize: (d: Asset): number => (d.type === 'CARRIER' ? 52 : 38),
+      getAngle: (d: Asset): number => -(d.heading || 0),
+      getColor: (d: Asset): RGBA => {
         if (dimActive && !(mergedActiveStory?.highlightAssetIds ?? []).includes(d.id)) {
-          return [rgb[0], rgb[1], rgb[2], DIM];
+          return [140, 150, 170, DIM];
         }
-        return [rgb[0], rgb[1], rgb[2], alpha];
+        return getAircraftColor(d);
       },
-      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="256" height="128" viewBox="0 0 256 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="airplane" transform="translate(0, 0)">
-            <!-- Airplane body pointing up (north) -->
-            <path d="M64 20 L68 50 L80 54 L68 58 L64 88 L60 58 L48 54 L60 50 Z" 
-                  fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>
-            <!-- Nose -->
-            <circle cx="64" cy="20" r="4" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1"/>
-          </g>
-          <g id="carrier" transform="translate(128, 0)">
-            <rect x="54" y="20" width="20" height="88" rx="2" fill="#555" stroke="white" stroke-width="2"/>
-            <rect x="58" y="24" width="12" height="80" fill="#444"/>
-          </g>
-        </svg>
-      `),
+      iconAtlas: AIRCRAFT_ATLAS_SVG,
       iconMapping: {
-        airplane: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        carrier: { x: 128, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        airliner:   { x: 0,   y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        fighter:    { x: 128, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        heavy:      { x: 256, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        uav:        { x: 384, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        carrier:    { x: 0,   y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        helicopter: { x: 128, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        airplane:   { x: 256, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
       },
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
-        getColor: [mergedActiveStory?.id, mergedActiveStory?.highlightAssetIds.join('|'), isSatellite],
-        getSize: [isSatellite],
-        getAngle: [allAssets.map(a => a.heading).join(',')], // Update when headings change
+        getColor: [mergedActiveStory?.id, isSatellite],
+        getAngle: [allAssets.map(a => a.heading).join(',')],
+        getPosition: [allAssets.map(a => a.position.join(',')).join('|')],
       },
     });
 
-    // Target labels - REMOVED to reduce clutter
-    // Users can hover to see event details in tooltip
-    const targetLabels = false; // Disabled
-
-    // Asset labels (show callsigns for flights)
+    // Asset labels (show callsigns + altitude for flights)
     const assetLabelsData = !isMobile && showFlights ? allAssets : [];
-    const assetLabels = assetLabelsData.length > 0 && new TextLayer<Asset>({
+    const assetLabels = assetLabelsData.length > 0 && new TextLayer<any>({
       id: 'asset-labels',
       data: assetLabelsData,
-      getPosition:       (d: Asset): [number, number] => d.position,
-      getText:           (d: Asset): string => d.name,
-      getSize:           isSatellite ? baseLabelSize : textToken('--text-label', 10),
-      getColor:          (d: Asset): RGBA => {
-        const [r, g, b] = (actorMeta[d.actor] ?? FALLBACK_META).rgb;
-        return isSatellite ? [r + 40, g + 40, b + 40, 255] : [r, g, b, 200];
+      getPosition: (d: any): [number, number] => d.position,
+      getText: (d: any): string => {
+        const fl = d.flightLevel ? ` · ${d.flightLevel}` : '';
+        const spd = d.speedKnots ? ` · ${d.speedKnots}kn` : '';
+        return `${d.name}${fl}${spd}`;
       },
-      getPixelOffset:    (): [number, number] => [0, -28],
-      fontFamily:        'SFMono-Regular, Menlo, monospace',
-      fontWeight:        labelWeight,
-      background:        true,
+      getSize: textToken('--text-tiny', 9),
+      getColor: (d: any): RGBA => {
+        const c = getAircraftColor(d);
+        return [c[0], c[1], c[2], 230];
+      },
+      getPixelOffset: (): [number, number] => [0, -24],
+      fontFamily: 'SFMono-Regular, Menlo, monospace',
+      fontWeight: 700,
+      background: true,
       getBackgroundColor: (): RGBA => labelBg,
-      backgroundPadding: [4, 3, 4, 3] as [number, number, number, number],
-      pickable:          true,
-      autoHighlight:     true,
-      updateTriggers:    { getColor: [isSatellite], getBackgroundColor: [isSatellite] },
+      backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: {
+        getPosition: [allAssets.map(a => a.position.join(',')).join('|')],
+      },
     });
 
     // Cyber threat layer with icon instead of pulse
@@ -1027,26 +1145,199 @@ export function useMapLayers({
       },
     });
 
+    // Modern vessel icon atlas with high-fidelity naval warships, carriers, submarines, mega-containers, supertankers, and frigates
+    const VESSEL_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+      <svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
+        <!-- CARRIER (0, 0) -->
+        <g id="carrier" transform="translate(0, 0)">
+          <path d="M48 10 L80 10 L88 28 L86 118 L42 118 L40 28 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <path d="M72 16 L48 112" stroke="rgba(0,0,0,0.4)" stroke-width="2.5" stroke-dasharray="4,3"/>
+          <path d="M64 12 L64 116" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+          <rect x="76" y="52" width="8" height="24" rx="2" fill="#222" stroke="white" stroke-width="1"/>
+          <line x1="56" y1="12" x2="56" y2="40" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+        </g>
+        <!-- DESTROYER (128, 0) -->
+        <g id="destroyer" transform="translate(128, 0)">
+          <path d="M64 14 L76 42 L74 112 L54 112 L52 42 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <circle cx="64" cy="36" r="4.5" fill="#333" stroke="white" stroke-width="1"/>
+          <line x1="64" y1="36" x2="64" y2="25" stroke="#222" stroke-width="2"/>
+          <polygon points="64,48 71,58 57,58" fill="#333"/>
+          <rect x="59" y="66" width="10" height="16" fill="#555" rx="1"/>
+          <circle cx="64" cy="98" r="6" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+          <text x="64" y="101" font-size="7" font-weight="bold" text-anchor="middle" fill="rgba(0,0,0,0.6)">H</text>
+        </g>
+        <!-- SUBMARINE (256, 0) -->
+        <g id="submarine" transform="translate(256, 0)">
+          <path d="M64 16 C74 26 74 100 64 114 C54 100 54 26 64 16 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <rect x="61" y="46" width="6" height="24" rx="3" fill="#222" stroke="white" stroke-width="1"/>
+          <line x1="50" y1="58" x2="78" y2="58" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <line x1="52" y1="108" x2="76" y2="108" stroke="white" stroke-width="2"/>
+        </g>
+        <!-- CONTAINER (384, 0) -->
+        <g id="container" transform="translate(384, 0)">
+          <path d="M64 12 L82 32 L82 114 L46 114 L46 32 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <rect x="50" y="32" width="28" height="12" fill="#3b82f6" stroke="rgba(0,0,0,0.4)"/>
+          <rect x="50" y="46" width="28" height="12" fill="#ef4444" stroke="rgba(0,0,0,0.4)"/>
+          <rect x="50" y="60" width="28" height="12" fill="#10b981" stroke="rgba(0,0,0,0.4)"/>
+          <rect x="50" y="74" width="28" height="12" fill="#f59e0b" stroke="rgba(0,0,0,0.4)"/>
+          <rect x="48" y="90" width="32" height="10" rx="1" fill="#1e293b" stroke="white" stroke-width="1"/>
+        </g>
+        <!-- TANKER / LNG (0, 128) -->
+        <g id="tanker" transform="translate(0, 128)">
+          <path d="M64 12 C78 20 80 34 80 114 L48 114 C48 34 50 20 64 12 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <circle cx="64" cy="36" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
+          <circle cx="64" cy="56" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
+          <circle cx="64" cy="76" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
+          <line x1="64" y1="26" x2="64" y2="86" stroke="#222" stroke-width="1.5"/>
+          <rect x="52" y="96" width="24" height="10" rx="1" fill="#1e293b" stroke="white" stroke-width="1"/>
+        </g>
+        <!-- FRIGATE (128, 128) -->
+        <g id="frigate" transform="translate(128, 128)">
+          <path d="M64 16 L74 38 L72 112 L56 112 L54 38 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <circle cx="64" cy="34" r="3.5" fill="#333" stroke="white" stroke-width="1"/>
+          <polygon points="64,46 70,54 58,54" fill="#333"/>
+          <circle cx="64" cy="98" r="5" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.2"/>
+        </g>
+        <!-- PATROL (256, 128) -->
+        <g id="patrol" transform="translate(256, 128)">
+          <path d="M64 20 L74 44 L70 108 L58 108 L54 44 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <circle cx="64" cy="40" r="3" fill="#333"/>
+          <rect x="60" y="52" width="8" height="16" rx="2" fill="#222"/>
+        </g>
+        <!-- SHIP / GENERAL (384, 128) -->
+        <g id="ship" transform="translate(384, 128)">
+          <path d="M64 18 L84 48 L80 110 L48 110 L44 48 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+          <path d="M54 50 L74 50 L64 28 Z" fill="rgba(0,0,0,0.2)"/>
+          <rect x="52" y="78" width="24" height="16" rx="2" fill="#333"/>
+        </g>
+      </svg>
+    `);
+
+    const getVesselIcon = (d: MaritimeVessel): string => {
+      const cat = d.category;
+      if (cat === 'CARRIER') return 'carrier';
+      if (cat === 'DESTROYER') return 'destroyer';
+      if (cat === 'SUBMARINE') return 'submarine';
+      if (cat === 'FRIGATE') return 'frigate';
+      if (cat === 'CONTAINER' || cat === 'CARGO') return 'container';
+      if (cat === 'TANKER') return 'tanker';
+      if (cat === 'PATROL') return 'patrol';
+
+      const type = (d.shipType || '').toLowerCase();
+      if (type.includes('carrier')) return 'carrier';
+      if (type.includes('destroyer')) return 'destroyer';
+      if (type.includes('submarine')) return 'submarine';
+      if (type.includes('frigate') || type.includes('corvette')) return 'frigate';
+      if (type.includes('container') || type.includes('cargo')) return 'container';
+      if (type.includes('tanker') || type.includes('lng') || type.includes('crude')) return 'tanker';
+      if (type.includes('patrol') || type.includes('guard')) return 'patrol';
+      return 'ship';
+    };
+
+    const getVesselColor = (d: MaritimeVessel): RGBA => {
+      const cat = d.category;
+      if (cat === 'CARRIER') return [255, 200, 50, 255]; // Gold
+      if (cat === 'DESTROYER' || cat === 'FRIGATE' || cat === 'MILITARY') return [0, 220, 255, 255]; // High-tech Cyan
+      if (cat === 'SUBMARINE') return [190, 120, 255, 255]; // Deep Violet
+      if (cat === 'TANKER') return [255, 150, 30, 255]; // Tanker Amber
+      if (cat === 'CONTAINER' || cat === 'CARGO') return [45, 212, 191, 255]; // Teal Emerald
+      if (cat === 'PATROL') return [100, 200, 255, 255];
+      return [140, 180, 230, 255];
+    };
+
+    const getVesselSize = (d: MaritimeVessel): number => {
+      const cat = d.category;
+      if (cat === 'CARRIER') return 52;
+      if (cat === 'CONTAINER' || cat === 'TANKER') return 44;
+      if (cat === 'DESTROYER') return 40;
+      if (cat === 'FRIGATE' || cat === 'SUBMARINE') return 36;
+      return 32;
+    };
+
+    // Modern vessel deck layer
     const maritimeVesselLayer = showMaritime && tradeVessels.length > 0 && new IconLayer<MaritimeVessel>({
       id: 'maritime-vessels',
       data: tradeVessels,
-      getPosition: d => d.position,
-      getIcon: () => 'ship',
-      getSize: () => 36,
-      getAngle: d => -(d.cog ?? 0),
-      getColor: (): RGBA => [NAVAL_RGB[0], NAVAL_RGB[1], NAVAL_RGB[2], 255],
-      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="ship">
-            <path d="M64 18 L92 52 L88 98 L40 98 L36 52 Z" fill="white" stroke="rgba(0,0,0,0.45)" stroke-width="2"/>
-            <path d="M52 52 L76 52 L64 28 Z" fill="rgba(0,0,0,0.2)"/>
-          </g>
-        </svg>
-      `),
-      iconMapping: { ship: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 } },
+      getPosition: (d: MaritimeVessel): [number, number] => d.position,
+      getIcon: (d: MaritimeVessel) => getVesselIcon(d),
+      getSize: (d: MaritimeVessel) => getVesselSize(d),
+      getAngle: (d: MaritimeVessel) => -(d.cog ?? 0),
+      getColor: (d: MaritimeVessel): RGBA => getVesselColor(d),
+      iconAtlas: VESSEL_ATLAS_SVG,
+      iconMapping: {
+        carrier:   { x: 0,   y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        destroyer: { x: 128, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        submarine: { x: 256, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        container: { x: 384, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        tanker:    { x: 0,   y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        frigate:   { x: 128, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        patrol:    { x: 256, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+        ship:      { x: 384, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+      },
       pickable: true,
       autoHighlight: true,
-      updateTriggers: { getAngle: [tradeVessels.map(v => v.cog).join(',')] },
+      updateTriggers: {
+        getAngle: [tradeVessels.map(v => v.cog).join(',')],
+        getPosition: [tradeVessels.map(v => v.position.join(',')).join('|')],
+      },
+    });
+
+    // Radar signature rings for military vessels & carrier strike groups
+    const militaryVessels = tradeVessels.filter(v =>
+      ['CARRIER', 'DESTROYER', 'FRIGATE', 'SUBMARINE', 'MILITARY'].includes(v.category || '')
+    );
+
+    const maritimeRadarRings = showMaritime && militaryVessels.length > 0 && new ScatterplotLayer<MaritimeVessel>({
+      id: 'maritime-radar-rings',
+      data: militaryVessels,
+      getPosition: (d: MaritimeVessel): [number, number] => d.position,
+      getRadius: (d: MaritimeVessel): number => {
+        const isCarrier = d.category === 'CARRIER';
+        const pulse = (pulseTime * 1.2) % (Math.PI * 2);
+        const factor = Math.sin(pulse) * 0.35 + 1;
+        return (isCarrier ? 35000 : 20000) * factor;
+      },
+      getFillColor: [0, 0, 0, 0],
+      stroked: true,
+      getLineColor: (d: MaritimeVessel): RGBA => {
+        const isCarrier = d.category === 'CARRIER';
+        const pulse = (pulseTime * 1.2) % (Math.PI * 2);
+        const alpha = Math.floor(Math.max(20, (1 - pulse / (Math.PI * 2)) * 140));
+        return isCarrier ? [255, 200, 50, alpha] : [0, 220, 255, alpha];
+      },
+      lineWidthMinPixels: 1.5,
+      pickable: false,
+      updateTriggers: {
+        getRadius: [pulseTime],
+        getLineColor: [pulseTime],
+        getPosition: [militaryVessels.map(v => v.position.join(',')).join('|')],
+      },
+    });
+
+    // Vessel callout labels (showing Name & Speed in Knots)
+    const maritimeVesselLabels = showMaritime && !isMobile && tradeVessels.length > 0 && new TextLayer<MaritimeVessel>({
+      id: 'maritime-vessel-labels',
+      data: tradeVessels,
+      getPosition: (d: MaritimeVessel): [number, number] => d.position,
+      getText: (d: MaritimeVessel): string => {
+        const sog = d.sog != null ? ` · ${Number(d.sog).toFixed(0)}kn` : '';
+        return `${d.name}${sog}`;
+      },
+      getSize: textToken('--text-tiny', 9),
+      getColor: (d: MaritimeVessel): RGBA => {
+        const c = getVesselColor(d);
+        return [c[0], c[1], c[2], 230];
+      },
+      getPixelOffset: (): [number, number] => [0, 22],
+      fontFamily: 'SFMono-Regular, Menlo, monospace',
+      fontWeight: 700,
+      background: true,
+      getBackgroundColor: [10, 14, 22, 200],
+      backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+      pickable: false,
+      updateTriggers: {
+        getPosition: [tradeVessels.map(v => v.position.join(',')).join('|')],
+      },
     });
 
     // ═══════════════════════════════════════════════════════════
@@ -1108,6 +1399,7 @@ export function useMapLayers({
       strikeLayer,
       missileLayer,
       targetLayer,
+      flightContrailLayer,
       assetLayer,
       cyberThreatLayer,
       fireLayer,
@@ -1125,7 +1417,9 @@ export function useMapLayers({
       maritimeLaneGlow,
       maritimeLaneCore,
       maritimeFlowLayer,
+      maritimeRadarRings,
       maritimeVesselLayer,
+      maritimeVesselLabels,
       disinfoLayer,
       disinfoNodeLayer,
       ...(showMoroccoLayer ? moroccoLayers : []),

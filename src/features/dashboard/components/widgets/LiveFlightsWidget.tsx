@@ -48,7 +48,7 @@ export function LiveFlightsWidget() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
-        {data?.flights.slice(0, 30).map((flight) => {
+        {(data?.flights || []).slice(0, 30).map((flight) => {
           const speedKmh = flight.velocity ? Math.round(flight.velocity * 3.6) : null;
           const altitudeM = flight.baro_altitude ? Math.round(flight.baro_altitude) : null;
           const altitudeFt = altitudeM ? Math.round(altitudeM * 3.281) : null;

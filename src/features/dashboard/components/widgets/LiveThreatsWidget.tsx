@@ -75,7 +75,7 @@ export function LiveThreatsWidget() {
         <div>
           <h3 className="label mb-2">RECENT THREATS</h3>
           <div className="space-y-1.5">
-            {data?.blacklist.slice(0, 20).map((ip) => (
+            {(data?.blacklist || []).slice(0, 20).map((ip) => (
               <div
                 key={ip.ipAddress}
                 className="p-2 rounded bg-[var(--bg-2)] border border-[var(--bd)]"

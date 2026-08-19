@@ -41,7 +41,7 @@ export function ActorsWidget() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[length:var(--text-body-sm)] text-[var(--t2)] leading-snug line-clamp-2">▸ {snap.doing[0]}</p>
+                <p className="text-[length:var(--text-body-sm)] text-[var(--t2)] leading-snug line-clamp-2">▸ {snap.doing?.[0] || 'Monitoring developments'}</p>
               </div>
               <div className="shrink-0 w-10 flex flex-col gap-0.5 items-end">
                 <span className="mono text-[length:var(--text-label)] font-bold" style={{ color: actC }}>{snap.activityScore}</span>

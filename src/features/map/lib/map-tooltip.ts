@@ -136,18 +136,21 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     const m = meta(d.actor);
     const sm = safeStatus(d.status);
 
-    // Check if this is a flight (has properties from OpenSky)
-    const isFlightData = d.name && (d.name.startsWith('flight-') || d.description?.includes('Alt:'));
+    // Check if this is a flight (has properties from OpenSky / Live Flights)
+    const isFlightData = d.type === 'AIRCRAFT' || (d.name && (d.name.startsWith('flight-') || d.description?.includes('Alt:') || d.description?.includes('FL') || d.description?.includes('kn')));
 
     if (isFlightData) {
       // Flight-specific tooltip
       const ts = fmtTs(d.timestamp);
+      const isMilitary = d.actor === 'us' || d.actor === 'israel' || d.actor === 'iran' || d.actor === 'russia' || d.actor === 'morocco' || (d.name && (d.name.includes('PYTHON') || d.name.includes('REAPER') || d.name.includes('SENTRY') || d.name.includes('IAF') || d.name.includes('CNA')));
+      const badgeColor = isMilitary ? 'var(--danger)' : 'var(--info)';
+
       return `
-        <div style="font-weight:700;font-size:12px;color:var(--info);margin-bottom:5px">✈ ${d.name}</div>
+        <div style="font-weight:700;font-size:12px;color:${badgeColor};margin-bottom:5px">✈ ${d.name}</div>
         ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:5px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
-        <div style="margin-bottom:4px">${pill(m.label, m.cssVar)}${pill('LIVE FLIGHT', 'var(--info)')}${pill(sm.label, sm.cssVar)}</div>
+        <div style="margin-bottom:4px">${pill(m.label, m.cssVar)}${pill(isMilitary ? 'MILITARY / COMBAT' : 'COMMERCIAL FLIGHT', badgeColor)}${pill('60 FPS LIVE', 'var(--teal)')}</div>
         ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.5;margin-top:4px">${d.description}</div>` : ''}
-        <div style="color:var(--info);font-size:9px;margin-top:4px;font-weight:700">▶ REAL-TIME TRACKING</div>
+        <div style="color:${badgeColor};font-size:9px;margin-top:4px;font-weight:700">▶ REAL-TIME TELEMETRY TRACKING</div>
       `;
     }
 
@@ -587,19 +590,40 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
 
   function maritimeVesselTooltip(d: MaritimeVessel): string {
     const ts = fmtTs(d.timestamp);
-    const sog = d.sog != null ? `${Math.round(d.sog)} kn` : '—';
+    const sog = d.sog != null ? `${Number(d.sog).toFixed(1)} kn` : '—';
     const cog = d.cog != null ? `${Math.round(d.cog)}°` : '—';
+    const isMilitary = ['CARRIER', 'DESTROYER', 'FRIGATE', 'SUBMARINE', 'MILITARY'].includes(d.category || '');
+    const titleColor = isMilitary ? 'var(--blue-l)' : d.category === 'TANKER' ? 'var(--warning)' : 'var(--teal)';
+    const categoryLabel = d.category ? d.category.replace(/_/g, ' ') : 'VESSEL';
+
     return `
-      <div style="font-weight:700;font-size:11px;color:var(--teal);margin-bottom:4px">⚓ ${d.name}</div>
-      ${ts ? `<div style="font-size:9px;color:var(--blue-l);font-weight:700;margin-bottom:4px;letter-spacing:0.04em">⏱ ${ts}</div>` : ''}
-      <div style="margin-bottom:4px">${pill(d.source, 'var(--info)')}${d.shipType ? pill(d.shipType, 'var(--teal)') : ''}</div>
-      <div style="background:var(--bg-2);border:1px solid var(--bd);padding:6px;margin-bottom:6px;border-radius:2px">
-        <div style="color:var(--t2);font-size:10px;line-height:1.5"><strong>SOG:</strong> ${sog}</div>
-        <div style="color:var(--t2);font-size:10px;line-height:1.5"><strong>COG:</strong> ${cog}</div>
-        ${d.mmsi ? `<div style="color:var(--t2);font-size:10px;line-height:1.5"><strong>MMSI:</strong> ${d.mmsi}</div>` : ''}
-        ${d.flag ? `<div style="color:var(--t2);font-size:10px;line-height:1.5"><strong>Flag:</strong> ${d.flag}</div>` : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-weight:800;font-size:12px;color:${titleColor}">⚓ ${d.name}</div>
+        <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;background:rgba(255,255,255,0.08);color:${titleColor};border:1px solid ${titleColor}40">
+          ${categoryLabel}
+        </span>
       </div>
-      <div style="color:var(--t3);font-size:9px">AIS snapshot — refresh cadence follows map data polling.</div>
+      ${d.militaryClass ? `<div style="font-size:10px;color:var(--t1);font-weight:600;margin-bottom:4px">${d.militaryClass}</div>` : ''}
+      ${ts ? `<div style="font-size:9px;color:var(--t4);font-mono;margin-bottom:6px">⏱ AIS FIX: ${ts}</div>` : ''}
+      
+      <div style="margin-bottom:6px;display:flex;gap:4px;flex-wrap:wrap">
+        ${pill(d.source, 'var(--info)')}
+        ${d.shipType ? pill(d.shipType, titleColor) : ''}
+        ${d.flag ? pill(d.flag, 'var(--t2)') : ''}
+      </div>
+
+      <div style="background:var(--bg-2);border:1px solid var(--bd);padding:6px 8px;margin-bottom:6px;border-radius:3px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">
+        <div style="color:var(--t3);font-size:10px">SPEED: <strong style="color:var(--t1);font-family:monospace">${sog}</strong></div>
+        <div style="color:var(--t3);font-size:10px">COURSE: <strong style="color:var(--t1);font-family:monospace">${cog}</strong></div>
+        ${d.callsign ? `<div style="color:var(--t3);font-size:10px">CALLSIGN: <strong style="color:var(--t1);font-family:monospace">${d.callsign}</strong></div>` : ''}
+        ${d.mmsi ? `<div style="color:var(--t3);font-size:10px">MMSI: <strong style="color:var(--t1);font-family:monospace">${d.mmsi}</strong></div>` : ''}
+        ${d.length ? `<div style="color:var(--t3);font-size:10px">LENGTH: <strong style="color:var(--t1);font-family:monospace">${d.length}m</strong></div>` : ''}
+        ${d.draft ? `<div style="color:var(--t3);font-size:10px">DRAFT: <strong style="color:var(--t1);font-family:monospace">${d.draft}m</strong></div>` : ''}
+      </div>
+
+      ${d.destination ? `<div style="font-size:10px;color:var(--t2);margin-bottom:3px"><strong>DESTINATION:</strong> ${d.destination}</div>` : ''}
+      ${d.status ? `<div style="font-size:9px;color:var(--warning);font-weight:600;margin-bottom:3px">STATUS: ${d.status}</div>` : ''}
+      <div style="color:var(--t4);font-size:9px;margin-top:4px;border-top:1px solid var(--bd);padding-top:3px">Real-time AIS Telemetry & Dead Reckoning</div>
     `;
   }
 

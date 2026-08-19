@@ -23,6 +23,8 @@ import { IntelMapLegend } from './IntelMapLegend';
 import { Map3DControls } from './Map3DControls';
 
 import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
+import { useLiveFlights } from '@/shared/hooks/use-live-flights';
+import { useInterpolatedFlights } from '@/shared/hooks/use-interpolated-flights';
 
 import { getCoordinatesForLocation } from '@/shared/lib/location-coordinates';
 import { clearSelection } from '@/shared/state/event-selection-slice';
@@ -118,23 +120,40 @@ export function IntelMap() {
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
-  // Use flights from mapData.assets (already includes flights from map/data endpoint)
-  // This is more reliable than separate useLiveFlights() which can timeout in production
+  // Live flights polling + 60 FPS dead-reckoning movement interpolation
+  const { data: liveFlightsResp } = useLiveFlights(undefined, visibility.flights, true);
+  const rawFlights = useMemo(() => liveFlightsResp?.flights || [], [liveFlightsResp]);
+  const interpolatedLiveFlights = useInterpolatedFlights(rawFlights, visibility.flights);
+
+  // Combine flights from mapData.assets with live interpolated flights
   const flights = useMemo(() => {
-    if (!mapData?.assets) {
-      return [];
-    }
-    
-    // Filter only aircraft assets (flights)
-    const flightAssets = mapData.assets.filter(asset => {
+    const flightAssetsFromMap = (mapData?.assets || []).filter(asset => {
       const isAircraft = asset.type === 'AIRCRAFT';
       const hasPosition = asset.position && asset.position.length === 2;
-      
       return isAircraft && hasPosition;
     });
-    
-    return flightAssets;
-  }, [mapData]);
+
+    const liveConvertedAssets: Asset[] = interpolatedLiveFlights.map(f => ({
+      id: f.icao24,
+      sourceEventId: null,
+      actor: (f.origin_country?.toLowerCase().includes('morocco') ? 'morocco' : f.origin_country?.toLowerCase().includes('united states') ? 'us' : 'unknown') as any,
+      priority: (f.altitudeFt || 0) > 30000 ? 'P2' : 'P3',
+      category: 'INSTALLATION',
+      type: 'AIRCRAFT',
+      status: 'ACTIVE',
+      name: f.callsign?.trim() || f.icao24,
+      position: f.currentPosition || [f.longitude!, f.latitude!],
+      heading: f.true_track || 0,
+      description: `${f.origin_country} - ${f.flightLevel || 'FL320'}, Speed: ${f.speedKnots || 450}kn`,
+    }));
+
+    // Merge by id
+    const mergedMap = new Map<string, Asset>();
+    for (const a of flightAssetsFromMap) mergedMap.set(a.id.toLowerCase(), a);
+    for (const a of liveConvertedAssets) mergedMap.set(a.id.toLowerCase(), a);
+
+    return Array.from(mergedMap.values());
+  }, [mapData, interpolatedLiveFlights]);
   
   // Update flight trails when positions change
   useEffect(() => {

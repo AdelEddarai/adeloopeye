@@ -40,10 +40,10 @@ export function SituationWidget() {
             </Card>
           </div>
           <div className="flex gap-3 mt-3 flex-wrap">
-            <CasChip label="US KIA"       val={String(snap.casualties.us.kia)}       color="var(--danger)"  />
-            <CasChip label="IL Civilians" val={String(snap.casualties.israel.civilians)} color="var(--warning)" />
-            <CasChip label="IR Killed"    val={String(snap.casualties.iran.killed)}   color="var(--t2)"      />
-            <CasChip label="Regional"     val={String(Object.values(snap.casualties.regional).reduce((s, c) => s + c.killed, 0))} color="var(--t3)" />
+            <CasChip label="US KIA"       val={String(snap.casualties?.us?.kia ?? 0)}       color="var(--danger)"  />
+            <CasChip label="IL Civilians" val={String(snap.casualties?.israel?.civilians ?? 0)} color="var(--warning)" />
+            <CasChip label="IR Killed"    val={String(snap.casualties?.iran?.killed ?? 0)}   color="var(--t2)"      />
+            <CasChip label="Regional"     val={String(Object.values(snap.casualties?.regional || {}).reduce((s, c) => s + (c?.killed ?? 0), 0))} color="var(--t3)" />
           </div>
         </CardContent>
       </Card>

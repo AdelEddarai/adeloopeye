@@ -129,6 +129,52 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       <div style="color:var(--info);font-size:10px;margin-bottom:2px">BOT VOLUME: ${d.botVolume || 0}</div>
       <div style="color:${color};font-size:10px">DOMINANT: ${dominant}</div>
     `;
+  } else if (layerId === 'flights-icons' || layerId === 'flights-labels') {
+    const d = object as Asset;
+    const isMilitary = d.name && (d.name.includes('PYTHON') || d.name.includes('REAPER') || d.name.includes('SENTRY') || d.name.includes('IAF') || d.name.includes('CNA'));
+    const badgeColor = isMilitary ? 'var(--danger)' : 'var(--info)';
+    html = `
+      <div style="font-weight:700;font-size:12px;color:${badgeColor};margin-bottom:4px">✈ ${d.name}</div>
+      <div style="color:${badgeColor};font-size:9px;font-weight:700;margin-bottom:4px">${isMilitary ? 'MILITARY AIRCRAFT' : 'LIVE FLIGHT'} · 60 FPS REAL-TIME</div>
+      ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.4">${d.description}</div>` : ''}
+    `;
+  } else if (layerId === 'maritime-vessels') {
+    const d = object as any;
+    const sog = d.sog != null ? `${Number(d.sog).toFixed(1)} kn` : '—';
+    const cog = d.cog != null ? `${Math.round(d.cog)}°` : '—';
+    const isMilitary = ['CARRIER', 'DESTROYER', 'FRIGATE', 'SUBMARINE', 'MILITARY'].includes(d.category || '');
+    const titleColor = isMilitary ? 'var(--blue-l)' : d.category === 'TANKER' ? 'var(--warning)' : 'var(--teal)';
+    const categoryLabel = d.category ? d.category.replace(/_/g, ' ') : 'VESSEL';
+
+    html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-weight:800;font-size:12px;color:${titleColor}">⚓ ${d.name}</div>
+        <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;background:rgba(255,255,255,0.08);color:${titleColor};border:1px solid ${titleColor}40">
+          ${categoryLabel}
+        </span>
+      </div>
+      ${d.militaryClass ? `<div style="font-size:10px;color:var(--t1);font-weight:600;margin-bottom:4px">${d.militaryClass}</div>` : ''}
+      ${d.timestamp ? `<div style="font-size:9px;color:var(--t4);font-family:monospace;margin-bottom:6px">⏱ AIS FIX: ${d.timestamp.slice(11, 19)} UTC</div>` : ''}
+      
+      <div style="margin-bottom:6px;display:flex;gap:4px;flex-wrap:wrap">
+        <span style="border:1px solid var(--info);color:var(--info);font-size:8px;padding:1px 5px;border-radius:2px">${d.source || 'LIVE AIS'}</span>
+        ${d.shipType ? `<span style="border:1px solid ${titleColor};color:${titleColor};font-size:8px;padding:1px 5px;border-radius:2px">${d.shipType}</span>` : ''}
+        ${d.flag ? `<span style="border:1px solid var(--t3);color:var(--t2);font-size:8px;padding:1px 5px;border-radius:2px">🚩 ${d.flag}</span>` : ''}
+      </div>
+
+      <div style="background:var(--bg-2);border:1px solid var(--bd);padding:6px 8px;margin-bottom:6px;border-radius:3px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">
+        <div style="color:var(--t3);font-size:10px">SPEED: <strong style="color:var(--t1);font-family:monospace">${sog}</strong></div>
+        <div style="color:var(--t3);font-size:10px">COURSE: <strong style="color:var(--t1);font-family:monospace">${cog}</strong></div>
+        ${d.callsign ? `<div style="color:var(--t3);font-size:10px">CALL: <strong style="color:var(--t1);font-family:monospace">${d.callsign}</strong></div>` : ''}
+        ${d.mmsi ? `<div style="color:var(--t3);font-size:10px">MMSI: <strong style="color:var(--t1);font-family:monospace">${d.mmsi}</strong></div>` : ''}
+        ${d.length ? `<div style="color:var(--t3);font-size:10px">LEN: <strong style="color:var(--t1);font-family:monospace">${d.length}m</strong></div>` : ''}
+        ${d.draft ? `<div style="color:var(--t3);font-size:10px">DRAFT: <strong style="color:var(--t1);font-family:monospace">${d.draft}m</strong></div>` : ''}
+      </div>
+
+      ${d.destination ? `<div style="font-size:10px;color:var(--t2);margin-bottom:3px"><strong>DEST:</strong> ${d.destination}</div>` : ''}
+      ${d.status ? `<div style="font-size:9px;color:var(--warning);font-weight:600;margin-bottom:3px">STATUS: ${d.status}</div>` : ''}
+      <div style="color:var(--t4);font-size:9px;margin-top:4px;border-top:1px solid var(--bd);padding-top:3px">Real-time AIS Telemetry & Dead Reckoning</div>
+    `;
   } else if (layerId.includes('morocco') || (object as any).severity || (object as any).location) {
     const d = object as any;
     const sevColor = d.severity === 'CRITICAL' ? 'var(--danger)' : d.severity === 'HIGH' ? 'var(--warning)' : d.severity === 'MEDIUM' ? 'var(--blue-l)' : 'var(--teal)';

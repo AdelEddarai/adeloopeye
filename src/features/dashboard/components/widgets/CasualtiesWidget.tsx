@@ -10,12 +10,12 @@ export function CasualtiesWidget() {
   const { day, snapshots } = useContext(DashCtx);
   const snap = getConflictForDay(snapshots, day);
   if (!snap) return null;
-  const cas = snap.casualties;
+  const cas = snap.casualties || {} as any;
   const rows = [
-    { label: 'US KIA',            val: cas.us.kia,          sub: `${cas.us.wounded} wounded`,       color: 'var(--blue)' },
-    { label: 'US Civilians',      val: cas.us.civilians,    sub: 'civilian deaths',                 color: 'var(--t3)' },
-    { label: 'Israeli Civilians', val: cas.israel.civilians, sub: `${cas.israel.injured}+ injured`, color: 'var(--warning)' },
-    { label: 'Iran Killed',       val: cas.iran.killed,     sub: `${snap.dayLabel} cumulative`,     color: 'var(--danger)' },
+    { label: 'US KIA',            val: cas.us?.kia ?? 0,          sub: `${cas.us?.wounded ?? 0} wounded`,       color: 'var(--blue)' },
+    { label: 'US Civilians',      val: cas.us?.civilians ?? 0,    sub: 'civilian deaths',                 color: 'var(--t3)' },
+    { label: 'Israeli Civilians', val: cas.israel?.civilians ?? 0, sub: `${cas.israel?.injured ?? 0}+ injured`, color: 'var(--warning)' },
+    { label: 'Iran Killed',       val: cas.iran?.killed ?? 0,     sub: `${snap.dayLabel || 'Day'} cumulative`,     color: 'var(--danger)' },
   ];
   return (
     <div className="h-full overflow-y-auto px-4 py-3">
@@ -31,7 +31,7 @@ export function CasualtiesWidget() {
         ))}
       </div>
       <div className="text-[length:var(--text-label)] text-[var(--t3)] leading-relaxed border-t border-[var(--bd)] pt-3">
-        {Object.entries(cas.regional).map(([k, v]) => `${k.toUpperCase()}: ${v.killed} killed, ${v.injured} injured`).join(' · ')}
+        {Object.entries(cas.regional || {}).map(([k, v]: [string, any]) => `${k.toUpperCase()}: ${v?.killed ?? 0} killed, ${v?.injured ?? 0} injured`).join(' · ')}
       </div>
     </div>
   );

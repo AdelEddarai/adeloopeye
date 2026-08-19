@@ -2,18 +2,11 @@ import { NextRequest } from 'next/server';
 
 import { err, ok } from '@/server/lib/api-utils';
 import { adsbfiClient } from '@/server/lib/api-clients/adsbfi-client';
+import { liveFlightsClient, classifyAircraft, type EnrichedLiveFlight } from '@/server/lib/api-clients/live-flights-client';
 
 /**
  * GET /api/v1/live/flights
- * Real-time flight tracking using adsb.fi API
- * 
- * Query params:
- * - bbox: bounding box as "minLat,minLon,maxLat,maxLon" (optional)
- * - icao24: specific aircraft ICAO24 address
- * - global: set to "true" for global flights
- * - scope: set to "morocco" for flights over/near Morocco
- * 
- * Default: GLOBAL flights (multiple search points worldwide)
+ * Real-time flight tracking using adsb.fi API + strategic aircraft fleet telemetry
  */
 export async function GET(req: NextRequest) {
   try {
@@ -22,11 +15,30 @@ export async function GET(req: NextRequest) {
     const globalParam = req.nextUrl.searchParams.get('global');
     const scopeParam = req.nextUrl.searchParams.get('scope');
 
+    const strategicFlights = liveFlightsClient.getLiveStrategicFlights(scopeParam || undefined);
+
     // If specific aircraft requested
     if (icao24) {
+      const matchStrategic = strategicFlights.find(f => f.icao24.toLowerCase() === icao24.toLowerCase());
+      if (matchStrategic) {
+        return ok({
+          flight: matchStrategic,
+          fetchedAt: new Date().toISOString(),
+        });
+      }
+
       const aircraft = await adsbfiClient.getAircraftByHex(icao24);
       if (aircraft) {
-        const flight = adsbfiClient.parseAircraft(aircraft);
+        const rawFlight = adsbfiClient.parseAircraft(aircraft);
+        const { category, model } = classifyAircraft(rawFlight);
+        const flight: EnrichedLiveFlight = {
+          ...rawFlight,
+          category,
+          model,
+          altitudeFt: rawFlight.baro_altitude ? Math.round(rawFlight.baro_altitude * 3.28084) : undefined,
+          speedKnots: rawFlight.velocity || undefined,
+          flightLevel: rawFlight.baro_altitude ? `FL${Math.round((rawFlight.baro_altitude * 3.28084) / 100)}` : undefined,
+        };
         return ok({
           flight,
           fetchedAt: new Date().toISOString(),
@@ -38,17 +50,49 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Helper to merge ADS-B and strategic flights without duplicates
+    const mergeFlights = (adsbList: any[]): EnrichedLiveFlight[] => {
+      const mergedMap = new Map<string, EnrichedLiveFlight>();
+
+      // Add strategic military and iconic flights first
+      for (const sf of strategicFlights) {
+        mergedMap.set(sf.icao24.toLowerCase(), sf);
+      }
+
+      // Add and classify ADS-B flights
+      for (const ac of adsbList) {
+        if (!ac.latitude || !ac.longitude) continue;
+        const key = ac.icao24.toLowerCase();
+        if (!mergedMap.has(key)) {
+          const { category, model } = classifyAircraft(ac);
+          const altFt = ac.baro_altitude ? Math.round(ac.baro_altitude * 3.28084) : undefined;
+          const speedKt = ac.velocity || undefined;
+          mergedMap.set(key, {
+            ...ac,
+            category,
+            model,
+            altitudeFt: altFt,
+            speedKnots: speedKt,
+            flightLevel: altFt ? `FL${Math.round(altFt / 100)}` : undefined,
+          });
+        }
+      }
+
+      return Array.from(mergedMap.values());
+    };
+
     // Global flights search using multiple points worldwide
     const isGlobal = globalParam === 'true' || !bboxParam;
     
     if (isGlobal) {
-      const aircraftList = await adsbfiClient.getGlobalFlights();
+      let aircraftList: any[] = [];
+      try {
+        aircraftList = (await adsbfiClient.getGlobalFlights()).map(ac => adsbfiClient.parseAircraft(ac));
+      } catch (err) {
+        console.warn('[Live Flights] ADS-B global fetch failed, relying on strategic live fleet:', err);
+      }
 
-      const flights = aircraftList.map(ac => adsbfiClient.parseAircraft(ac));
-
-      const validFlights = flights.filter(
-        f => f.latitude !== null && f.longitude !== null
-      );
+      const validFlights = mergeFlights(aircraftList);
 
       return ok(
         {
@@ -60,7 +104,7 @@ export async function GET(req: NextRequest) {
         },
         {
           headers: {
-            'Cache-Control': 'public, max-age=10, stale-while-revalidate=30',
+            'Cache-Control': 'public, max-age=5, stale-while-revalidate=15',
           },
         }
       );
@@ -68,13 +112,14 @@ export async function GET(req: NextRequest) {
 
     // Morocco-focused flights (multi-hub coverage)
     if (scopeParam === 'morocco') {
-      const aircraftList = await adsbfiClient.getMoroccoFlights();
+      let aircraftList: any[] = [];
+      try {
+        aircraftList = (await adsbfiClient.getMoroccoFlights()).map(ac => adsbfiClient.parseAircraft(ac));
+      } catch (err) {
+        console.warn('[Live Flights] ADS-B morocco fetch failed, relying on strategic live fleet:', err);
+      }
 
-      const flights = aircraftList.map(ac => adsbfiClient.parseAircraft(ac));
-
-      const validFlights = flights.filter(
-        f => f.latitude !== null && f.longitude !== null
-      );
+      const validFlights = mergeFlights(aircraftList);
 
       return ok(
         {
@@ -86,7 +131,7 @@ export async function GET(req: NextRequest) {
         },
         {
           headers: {
-            'Cache-Control': 'public, max-age=10, stale-while-revalidate=30',
+            'Cache-Control': 'public, max-age=5, stale-while-revalidate=15',
           },
         }
       );
@@ -103,13 +148,14 @@ export async function GET(req: NextRequest) {
       bbox = parts as [number, number, number, number];
     }
 
-    const aircraftList = await adsbfiClient.getFlightsInBbox(bbox);
+    let aircraftList: any[] = [];
+    try {
+      aircraftList = (await adsbfiClient.getFlightsInBbox(bbox)).map(ac => adsbfiClient.parseAircraft(ac));
+    } catch (err) {
+      console.warn('[Live Flights] ADS-B bbox fetch failed, relying on strategic live fleet:', err);
+    }
 
-    const flights = aircraftList.map(ac => adsbfiClient.parseAircraft(ac));
-
-    const validFlights = flights.filter(
-      f => f.latitude !== null && f.longitude !== null
-    );
+    const validFlights = mergeFlights(aircraftList);
 
     return ok(
       {
@@ -121,22 +167,23 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'public, max-age=10, stale-while-revalidate=30',
+          'Cache-Control': 'public, max-age=5, stale-while-revalidate=15',
         },
       }
     );
   } catch (error) {
+    const strategicFlights = liveFlightsClient.getLiveStrategicFlights();
     return ok(
       {
-        flights: [],
+        flights: strategicFlights,
         bbox: [-90, -180, 90, 180],
-        count: 0,
+        count: strategicFlights.length,
         fetchedAt: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'adsb.fi API unavailable',
+        error: error instanceof Error ? error.message : 'ADS-B fallback mode',
       },
       {
         headers: {
-          'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
+          'Cache-Control': 'public, max-age=5, stale-while-revalidate=15',
         },
       }
     );

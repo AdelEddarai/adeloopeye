@@ -154,12 +154,12 @@ const EMPTY_FILTERS: SerializableFilterState = {
 const INITIAL_VIEW: MapViewState = { longitude: 0, latitude: 22, zoom: 1.5, pitch: 0, bearing: 0 };
 
 const DEFAULT_DATA_LAYERS: MapState['dataLayers'] = {
-  flights: false,
+  flights: true,
   routes: false,
   weather: false,
   fires: false,
   infrastructure: false,
-  maritime: false,
+  maritime: true,
 };
 
 function buildInitialState(): MapState {

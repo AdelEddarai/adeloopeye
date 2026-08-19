@@ -35,7 +35,7 @@ export function IntuitiveSankey({ data, onNavigate, onLocationSelect, selectedLo
       const severity =
         event.severity === 'CRITICAL' ? '🔴 Critical' : event.severity === 'HIGH' ? '🟠 High' : '🔵 Standard';
       const location = event.location || 'Unknown';
-      const eventType = event.type.replace(/_/g, ' ').slice(0, 20); // Shorten type names
+      const eventType = (event.type || 'UNKNOWN').replace(/_/g, ' ').slice(0, 20); // Shorten type names
 
       // Count frequencies
       locationCounts.set(location, (locationCounts.get(location) || 0) + 1);

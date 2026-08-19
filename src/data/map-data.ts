@@ -168,16 +168,28 @@ export type MaritimeLane = {
   path: [number, number][];
 };
 
-/** Live-ish AIS snapshot (optional Datalastic or future providers). */
+/** Live-ish AIS snapshot with modern military and commercial vessel tracking. */
 export type MaritimeVessel = {
   id: string;
   mmsi?:     string;
+  imo?:      string;
+  callsign?: string;
   name:      string;
   position:  [number, number];
-  cog?:      number;
-  sog?:      number;
+  cog?:      number; // Course over ground (degrees)
+  sog?:      number; // Speed over ground (knots)
+  heading?:  number;
   shipType?: string;
+  category?: 'MILITARY' | 'CARRIER' | 'DESTROYER' | 'SUBMARINE' | 'FRIGATE' | 'TANKER' | 'CONTAINER' | 'CARGO' | 'PATROL' | 'OTHER';
+  militaryClass?: string; // e.g. 'Arleigh Burke Flight IIA', 'Nimitz Class CVN', 'FREMM'
   flag?:     string;
+  flagCode?: string;
+  destination?: string;
+  eta?:      string;
+  draft?:    number;
+  length?:   number;
+  width?:    number;
+  status?:   string;
   timestamp: string;
-  source:    'DATALASTIC' | 'UNKNOWN';
+  source:    'LIVE_AIS' | 'DATALASTIC' | 'SATELLITE_SYNTHETIC' | 'UNKNOWN';
 };

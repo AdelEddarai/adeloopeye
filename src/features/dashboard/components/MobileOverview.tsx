@@ -32,9 +32,9 @@ import { useAnalyticsLayoutMode } from '@/shared/hooks/use-analytics-layout-mode
 
 export function MobileOverview() {
   const dispatch = useAppDispatch();
-  const { columns } = useAppSelector(s => s.workspace);
-  const usedWidgets = columns.flatMap(c => c.widgets);
-  const targetColId = columns[0]?.id || 'col-a';
+  const { columns = [] } = useAppSelector(s => s.workspace) || {};
+  const usedWidgets = (columns || []).flatMap(c => c?.widgets || []);
+  const targetColId = columns?.[0]?.id || 'col-a';
 
   // Default mobile widgets that are always visible (not toggleable)
   const CORE_MOBILE_WIDGETS: WidgetKey[] = ['latest', 'map', 'signals'];
@@ -44,7 +44,7 @@ export function MobileOverview() {
   // Initialize default mobile widgets on first load ONLY if workspace is completely empty
   useEffect(() => {
     // Only initialize if there are NO widgets at all (first time user)
-    if (usedWidgets.length === 0 && columns.length > 0) {
+    if (usedWidgets.length === 0 && (columns || []).length > 0) {
       console.log('[MobileOverview] First time user - initializing default mobile widgets');
       DEFAULT_MOBILE_CUSTOM_WIDGETS.forEach(widget => {
         dispatch(addWidget({ colId: targetColId, widget }));
@@ -80,7 +80,7 @@ export function MobileOverview() {
 
   const allDays = useMemo(() => bootstrap?.days ?? [], [bootstrap]);
   const latestDay = allDays[allDays.length - 1] ?? '';
-  const snap = snapshots ? getConflictForDay(snapshots, latestDay) : null;
+  const snap = snapshots && snapshots.length > 0 ? getConflictForDay(snapshots, latestDay) : null;
 
   const recentEvents = useMemo(() => {
     if (!allEvents) return [];
@@ -129,32 +129,36 @@ export function MobileOverview() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="mono text-[10px] font-bold text-muted-foreground tracking-widest uppercase">
-                {snap.dayLabel} — SITUATION
+                {snap.dayLabel || 'DAY'} — SITUATION
               </span>
               <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
             </div>
-            <p
-              className={`text-sm text-foreground leading-relaxed cursor-pointer ${expandedSummary ? '' : 'line-clamp-3'}`}
-              onClick={() => setExpandedSummary(p => !p)}
-            >
-              {snap.summary}
-            </p>
+            {snap.summary && (
+              <p
+                className={`text-sm text-foreground leading-relaxed cursor-pointer ${expandedSummary ? '' : 'line-clamp-3'}`}
+                onClick={() => setExpandedSummary(p => !p)}
+              >
+                {snap.summary}
+              </p>
+            )}
 
             {/* Escalation */}
             <div className="flex items-center gap-3 mt-4">
               <span className="mono text-[10px] font-semibold text-muted-foreground">ESCALATION</span>
               <div className="flex-1 h-1.5 bg-accent rounded-full overflow-hidden">
-                <div className="h-full bg-destructive rounded-full" style={{ width: `${snap.escalation}%` }} />
+                <div className="h-full bg-destructive rounded-full" style={{ width: `${snap.escalation ?? 0}%` }} />
               </div>
-              <span className="mono text-xs font-bold text-destructive">{snap.escalation}</span>
+              <span className="mono text-xs font-bold text-destructive">{snap.escalation ?? 0}</span>
             </div>
 
             {/* Casualty chips */}
-            <div className="flex gap-2 mt-4 flex-wrap">
-              <CasChip label="US KIA" val={String(snap.casualties.us.kia)} color="var(--danger)" />
-              <CasChip label="IL Civ" val={String(snap.casualties.israel.civilians)} color="var(--warning)" />
-              <CasChip label="IR Killed" val={String(snap.casualties.iran.killed)} color="var(--t2)" />
-            </div>
+            {snap.casualties && (
+              <div className="flex gap-2 mt-4 flex-wrap">
+                <CasChip label="US KIA" val={String(snap.casualties?.us?.kia ?? 0)} color="var(--danger)" />
+                <CasChip label="IL Civ" val={String(snap.casualties?.israel?.civilians ?? 0)} color="var(--warning)" />
+                <CasChip label="IR Killed" val={String(snap.casualties?.iran?.killed ?? 0)} color="var(--t2)" />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -159,7 +159,7 @@ export function AITechWidget() {
 
                     <div className="flex items-center justify-between pt-1.5">
                       <div className="flex gap-1.5 flex-wrap">
-                        {item.tags.slice(0, 3).map((tag, idx) => (
+                        {(item.tags || []).slice(0, 3).map((tag, idx) => (
                           <span key={idx} className="text-[9px] text-zinc-500/80 font-mono bg-black/40 px-1.5 py-0.5 rounded border border-white/5 hover:text-zinc-300 hover:border-white/10 transition-colors">
                             #{tag.toLowerCase()}
                           </span>

@@ -58,7 +58,7 @@ export function LiveCryptoWidget() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
-        {data?.quotes.map((quote) => {
+        {(data?.quotes || []).map((quote) => {
           const isPositive = quote.changePercent24h >= 0;
           return (
             <div

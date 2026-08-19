@@ -70,10 +70,10 @@ export function EventsTimeline({ data }: EventsTimelineProps) {
           shadowColor: 'rgba(239, 68, 68, 0.6)',
         },
         itemStyle: { color: '#ef4444', borderWidth: 2, borderColor: '#18181b' },
-        markPoint: {
+        markPoint: data.length > 0 ? {
           data: [
             {
-              coord: [data.length - 1, data[data.length - 1].critical],
+              coord: [data.length - 1, data[data.length - 1]?.critical ?? 0],
               symbol: 'circle',
               symbolSize: 14,
               itemStyle: {
@@ -85,7 +85,7 @@ export function EventsTimeline({ data }: EventsTimelineProps) {
             }
           ],
           animation: true,
-        }
+        } : undefined
       },
     ],
   };

@@ -64,7 +64,12 @@ export function MoroccoKPIDashboard() {
   const dispatch = useDispatch();
 
   // Get event selection state for bidirectional sync
-  const eventSelection = useSelector((state: RootState) => state.eventSelection);
+  const eventSelection = useSelector((state: RootState) => state?.eventSelection) || {
+    selectedEventId: null,
+    selectedLocation: null,
+    highlightedEvents: [],
+    followSelection: false,
+  };
 
   // Helper to open map widget (Redux now handles duplicates)
   const openMapWidget = (location: string) => {
@@ -246,7 +251,15 @@ export function MoroccoKPIDashboard() {
     );
   }
 
-  const latest = historicalData[historicalData.length - 1];
+  const latest = historicalData[historicalData.length - 1] || {
+    events: 0,
+    critical: 0,
+    fires: 0,
+    traffic: 0,
+    weather: 0,
+    connections: 0,
+    infrastructure: 0,
+  };
 
   return (
     <div className="h-full overflow-y-auto bg-zinc-950/10">

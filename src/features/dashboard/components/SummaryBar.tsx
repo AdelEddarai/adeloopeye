@@ -29,7 +29,7 @@ export function SummaryBar() {
     const isHigh = alert.severity === 'HIGH';
     
     // Truncate title to fit in chip
-    let label = alert.title.toUpperCase();
+    let label = (alert.title || 'ALERT').toUpperCase();
     if (label.length > 60) {
       label = label.slice(0, 57) + '...';
     }

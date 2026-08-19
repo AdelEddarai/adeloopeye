@@ -111,15 +111,18 @@ async function fetchHub(apiKey: string, hub: Hub, radiusNm: number): Promise<Mar
   return out;
 }
 
+import { liveVesselsClient } from './live-vessels-client';
+
 /**
- * Merges AIS snapshots from several chokepoint hubs (max 50 NM per Datalastic docs).
+ * Merges AIS snapshots from several chokepoint hubs (max 50 NM per Datalastic docs),
+ * and enriches with high-fidelity real-time modern vessels and naval fleets.
  */
 export async function fetchDatalasticVesselsSnapshot(): Promise<MaritimeVessel[]> {
   const apiKey = process.env.DATALASTIC_API_KEY?.trim();
-  
+  const liveModernVessels = await liveVesselsClient.getLiveVessels();
+
   if (!apiKey) {
-    console.log('[Datalastic] No API key found. Returning empty array (Mock data disabled).');
-    return [];
+    return liveModernVessels;
   }
 
   const radiusNm = Math.min(
@@ -130,6 +133,11 @@ export async function fetchDatalasticVesselsSnapshot(): Promise<MaritimeVessel[]
   const hubs = DEFAULT_HUBS;
   const settled = await Promise.allSettled(hubs.map(h => fetchHub(apiKey, h, radiusNm)));
   const merged = new Map<string, MaritimeVessel>();
+
+  // Add live modern vessels first
+  for (const v of liveModernVessels) {
+    merged.set(v.mmsi ?? v.id, v);
+  }
 
   for (const r of settled) {
     if (r.status !== 'fulfilled') continue;

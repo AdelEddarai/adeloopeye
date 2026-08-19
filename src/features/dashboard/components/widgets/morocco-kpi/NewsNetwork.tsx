@@ -44,8 +44,8 @@ export function NewsNetwork({ data, onNavigate }: NewsNetworkProps) {
     data.events.slice(0, 30).forEach((event: any, idx: number) => {
       const nodeId = event.id || `event-${idx}`;
       const categoryIdx = event.severity === 'CRITICAL' ? 0 : event.severity === 'HIGH' ? 1 : 2;
-      const fullTitle = event.title;
-      const shortTitle = event.title.slice(0, 30) + (event.title.length > 30 ? '...' : '');
+      const fullTitle = event.title || 'Untitled Event';
+      const shortTitle = (event.title || 'Untitled Event').slice(0, 30) + ((event.title?.length || 0) > 30 ? '...' : '');
 
       nodes.push({
         id: nodeId,

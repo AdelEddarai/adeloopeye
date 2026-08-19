@@ -28,8 +28,13 @@ export function MoroccoWidget() {
     );
   }
 
-  const { news, keyLocations, economicIndicators, securityAlerts } = data;
-  const criticalAlerts = securityAlerts.filter(a => a.severity === 'CRITICAL' || a.severity === 'HIGH');
+  const {
+    news = [],
+    keyLocations = [],
+    economicIndicators = {} as any,
+    securityAlerts = [],
+  } = data || {};
+  const criticalAlerts = (securityAlerts || []).filter(a => a.severity === 'CRITICAL' || a.severity === 'HIGH');
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--bg-1)]">

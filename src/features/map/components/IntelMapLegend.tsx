@@ -10,6 +10,7 @@ const LEGEND_ITEMS = [
   { color: 'var(--blue)', shape: 'circle', label: 'US ASSET' },
   { color: 'var(--teal)', shape: 'circle', label: 'IDF ASSET' },
   { color: 'var(--purple)', shape: 'airplane', label: 'LIVE FLIGHTS' },
+  { color: 'var(--teal)', shape: 'ship', label: 'LIVE VESSELS / WARSHIPS' },
   { color: 'var(--danger)', shape: 'zone', label: 'CLOSURE ZONE' },
   { color: 'var(--warning)', shape: 'zone', label: 'PATROL ZONE' },
   { color: 'var(--warning)', shape: 'arc', label: 'REPORTED DISINFO CAMPAIGN' },
@@ -53,6 +54,12 @@ export function IntelMapLegend() {
             <div style={{ width: 10, height: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="10" height="10" viewBox="0 0 24 24" style={{ fill: color }}>
                 <path d="M21,16v-2l-8-5V3.5c0-0.83-0.67-1.5-1.5-1.5S10,2.67,10,3.5V9l-8,5v2l8-2.5V19l-2,1.5V22l3.5-1l3.5,1v-1.5L13,19v-5.5L21,16z" />
+              </svg>
+            </div>
+          ) : shape === 'ship' ? (
+            <div style={{ width: 10, height: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" style={{ fill: color }}>
+                <path d="M12 2L4 7v10l8 4 8-4V7l-8-5zm0 2.2L18 8v7.6l-6 3-6-3V8l6-3.8z" />
               </svg>
             </div>
           ) : (
