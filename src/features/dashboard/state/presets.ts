@@ -1,10 +1,10 @@
 // Widget & layout types
 
 export type WidgetKey =
-  | 'latest' | 'actors' | 'signals' | 'map'
+  | 'latest' | 'signals' | 'map'
   | 'commanders' | 'predictions' | 'brief'
   | 'livenews' | 'liveflights' | 'livethreats' | 'livecrypto' | 'cyberthreats'
-  | 'commodities' | 'aitech' | 'morocco' | 'moroccokpi' | 'intelanalytics'
+  | 'commodities' | 'aitech' | 'morocco' | 'moroccokpi'
   | 'markets' | 'moroccomap' | 'disinformation' | 'conflictnews';
 
 export type Column = {
@@ -13,10 +13,10 @@ export type Column = {
 };
 
 export const ALL_WIDGET_KEYS: WidgetKey[] = [
-  'latest', 'actors', 'signals', 'map',
+  'latest', 'signals', 'map',
   'commanders', 'predictions', 'brief',
   'livenews', 'liveflights', 'livethreats', 'livecrypto', 'cyberthreats',
-  'commodities', 'aitech', 'morocco', 'moroccokpi', 'intelanalytics',
+  'commodities', 'aitech', 'morocco', 'moroccokpi',
   'markets', 'moroccomap', 'disinformation', 'conflictnews'
 ];
 
@@ -28,7 +28,6 @@ export const SELECTABLE_WIDGET_KEYS: WidgetKey[] = ALL_WIDGET_KEYS.filter(
 
 export const WIDGET_LABELS: Record<WidgetKey, string> = {
   latest:      'Latest Events',
-  actors:      'Actor Positions',
   signals:     'Field Signals',
   map:         'Intel Map',
   commanders:  'Commanders',
@@ -44,7 +43,6 @@ export const WIDGET_LABELS: Record<WidgetKey, string> = {
   aitech:      'AI & Tech News',
   morocco:     '🇲🇦 Morocco Intel',
   moroccokpi:  '🇲🇦 Morocco KPI Dashboard',
-  intelanalytics: 'Intelligence Analytics',
   moroccomap:  '🇲🇦 Morocco 3D Map',
   disinformation: 'Disinformation Radar',
   conflictnews: 'Conflict News + Timeline',
@@ -75,21 +73,21 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
   },
   commander: {
     label: 'PRESET 2',
-    description: 'Operational intelligence with analytics and live feeds',
+    description: 'Operational intelligence with conflict feeds and live data',
     columns: [
       { id: 'col-a', widgets: ['map'] },
-      { id: 'col-b', widgets: ['intelanalytics', 'liveflights'] },
+      { id: 'col-b', widgets: ['conflictnews', 'liveflights'] },
       { id: 'col-c', widgets: ['livenews', 'cyberthreats'] },
     ],
     columnSizes: { 'col-a': 40, 'col-b': 30, 'col-c': 30 },
   },
   executive: {
     label: 'PRESET 3',
-    description: 'Executive dashboard with analytics and intelligence',
+    description: 'Executive dashboard with conflict intelligence and live feeds',
     columns: [
       { id: 'col-a', widgets: ['brief', 'predictions'] },
-      { id: 'col-b', widgets: ['intelanalytics', 'livenews'] },
-      { id: 'col-c', widgets: ['latest', 'actors'] },
+      { id: 'col-b', widgets: ['conflictnews', 'livenews'] },
+      { id: 'col-c', widgets: ['latest', 'disinformation'] },
     ],
     columnSizes: { 'col-a': 33.3, 'col-b': 33.3, 'col-c': 33.4 },
   },

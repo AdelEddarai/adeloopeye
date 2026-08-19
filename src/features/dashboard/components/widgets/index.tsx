@@ -3,14 +3,12 @@ import type React from 'react';
 
 import type { WidgetKey } from '@/features/dashboard/state/presets';
 
-const ActorsWidget = dynamic(() => import('./ActorsWidget').then(m => m.ActorsWidget));
 const AITechWidget = dynamic(() => import('./AITechWidget').then(m => m.AITechWidget));
 const BriefWidget = dynamic(() => import('./BriefWidget').then(m => m.BriefWidget));
 const CommandersWidget = dynamic(() => import('./CommandersWidget').then(m => m.CommandersWidget));
 const CommodityPricesWidget = dynamic(() => import('./CommodityPricesWidget').then(m => m.CommodityPricesWidget));
 const CyberThreatsWidget = dynamic(() => import('./CyberThreatsWidget').then(m => m.CyberThreatsWidget));
 const DisinformationWidget = dynamic(() => import('./DisinformationWidget').then(m => m.DisinformationWidget));
-const IntelAnalyticsWidget = dynamic(() => import('./IntelAnalyticsWidget').then(m => m.IntelAnalyticsWidget));
 const LatestEventsWidget = dynamic(() => import('./LatestEventsWidget').then(m => m.LatestEventsWidget));
 const LiveCryptoWidget = dynamic(() => import('./LiveCryptoWidget').then(m => m.LiveCryptoWidget));
 const LiveFlightsWidget = dynamic(() => import('./LiveFlightsWidget').then(m => m.LiveFlightsWidget));
@@ -28,7 +26,6 @@ const ConflictNewsWidget = dynamic(() => import('./ConflictNewsWidget').then(m =
 export function widgetComponents(): Record<WidgetKey, () => React.ReactNode> {
   return {
     latest:      () => <LatestEventsWidget />,
-    actors:      () => <ActorsWidget />,
     signals:     () => <SignalsWidget />,
     map:         () => <MapWidget />,
     commanders:  () => <CommandersWidget />,
@@ -45,7 +42,6 @@ export function widgetComponents(): Record<WidgetKey, () => React.ReactNode> {
     morocco:     () => <MoroccoWidget />,
     moroccokpi:  () => <MoroccoKPIDashboard />,
     moroccomap:  () => <MoroccoMapWidget />,
-    intelanalytics: () => <IntelAnalyticsWidget />,
     disinformation: () => <DisinformationWidget />,
     conflictnews: () => <ConflictNewsWidget />,
   };
