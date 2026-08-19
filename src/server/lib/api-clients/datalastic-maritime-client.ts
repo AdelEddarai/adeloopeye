@@ -112,8 +112,6 @@ async function fetchHub(apiKey: string, hub: Hub, radiusNm: number): Promise<Mar
   return out;
 }
 
-import { liveVesselsClient } from './live-vessels-client';
-
 /**
  * Merges AIS snapshots from several chokepoint hubs (max 50 NM per Datalastic docs),
  * and enriches with high-fidelity real-time modern vessels and naval fleets.
