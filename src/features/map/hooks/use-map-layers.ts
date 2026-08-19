@@ -17,10 +17,9 @@ import { NAVAL_RGB, STATUS_META } from '@/data/map-tokens';
 import type { OpenSkyFlight } from '@/server/lib/api-clients/adsbfi-client';
 import type { MapStory } from '@/types/domain';
 
-import { useAppSelector } from '@/shared/state';
-
 import type { FilteredData } from './use-map-filters';
 import { useMoroccoLayer } from './use-morocco-layer';
+import { resolveFlightRoute } from '@/features/map/lib/flight-route-resolver';
 import type { MoroccoCommodity, MoroccoFire, MoroccoTraffic, MoroccoWeather } from '@/server/lib/api-clients/morocco-local-data';
 import type { MoroccoRoute } from '@/server/lib/api-clients/morocco-routes-client';
 import type { MoroccoConnection, MoroccoEvent, MoroccoInfrastructure } from '@/server/lib/morocco-intelligence-analyzer';
@@ -820,6 +819,60 @@ export function useMapLayers({
       },
     });
 
+    // ── Selected Flight Origin -> Plane -> Destination Flight Arc Corridor ──
+    const resolvedFlightInfo = showFlights && selectedAsset ? resolveFlightRoute(selectedAsset) : null;
+
+    const selectedFlightArcs = resolvedFlightInfo ? [
+      {
+        id: 'arc-origin-to-plane',
+        from: resolvedFlightInfo.origin.coordinates,
+        to: selectedAsset!.position,
+        colorFrom: [6, 182, 212, 200] as RGBA,
+        colorTo: [168, 85, 247, 240] as RGBA,
+      },
+      {
+        id: 'arc-plane-to-dest',
+        from: selectedAsset!.position,
+        to: resolvedFlightInfo.destination.coordinates,
+        colorFrom: [168, 85, 247, 240] as RGBA,
+        colorTo: [236, 72, 153, 180] as RGBA,
+      },
+    ] : [];
+
+    const selectedFlightRouteArcLayer = selectedFlightArcs.length > 0 && new ArcLayer({
+      id: 'selected-flight-route-arcs',
+      data: selectedFlightArcs,
+      getSourcePosition: (d: any) => d.from,
+      getTargetPosition: (d: any) => d.to,
+      getSourceColor: (d: any) => d.colorFrom,
+      getTargetColor: (d: any) => d.colorTo,
+      getWidth: 2.2,
+      getHeight: 0.25,
+      greatCircle: true,
+      widthUnits: 'pixels',
+      pickable: false,
+    });
+
+    const selectedFlightAirports = resolvedFlightInfo ? [
+      { id: 'origin', name: resolvedFlightInfo.origin.iata, city: resolvedFlightInfo.origin.city, pos: resolvedFlightInfo.origin.coordinates, type: 'ORIGIN' },
+      { id: 'dest', name: resolvedFlightInfo.destination.iata, city: resolvedFlightInfo.destination.city, pos: resolvedFlightInfo.destination.coordinates, type: 'DEST' },
+    ] : [];
+
+    const selectedFlightAirportLayer = selectedFlightAirports.length > 0 && new TextLayer({
+      id: 'selected-flight-airports',
+      data: selectedFlightAirports,
+      getPosition: (d: any) => d.pos,
+      getText: (d: any) => `[ ${d.type}: ${d.name} · ${d.city} ]`,
+      getSize: 9.5,
+      getColor: (d: any) => d.type === 'ORIGIN' ? [6, 182, 212, 255] : [236, 72, 153, 255],
+      fontFamily: 'SFMono-Regular, Menlo, monospace',
+      fontWeight: 700,
+      background: true,
+      getBackgroundColor: () => [15, 23, 42, 220],
+      backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
+      pickable: false,
+    });
+
     // Fire icons layer - show fires with fire icon
     const fireEvents = filtered.targets.filter(t => t.type === 'FIRE');
     const fireLayer = showEvents && fireEvents.length > 0 && new IconLayer<Target>({
@@ -1588,6 +1641,8 @@ export function useMapLayers({
       assetLayer,
       selectedFlightReticleLayer,
       selectedFlightProjectionLayer,
+      selectedFlightRouteArcLayer,
+      selectedFlightAirportLayer,
       cyberThreatPulseLayer,
       cyberThreatLayer,
       fireLayer,

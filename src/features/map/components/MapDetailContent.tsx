@@ -21,6 +21,7 @@ function statusMeta(status: string | null | undefined) {
 
 import { StoryIcon } from './StoryIcon';
 import type { SelectedItem } from './types';
+import { resolveFlightRoute } from '@/features/map/lib/flight-route-resolver';
 
 // Fallback for unknown actors
 
@@ -270,6 +271,8 @@ export function AssetContent({ d, onActivateStory }: {
   const { stories, actorMeta } = useMapCrossRefData();
   const m              = am(d.actor, actorMeta);
   const relatedStories = storiesFor([d.id], 'highlightAssetIds', stories);
+  const isFlight       = d.type === 'AIRCRAFT' || d.heading !== undefined;
+  const flightInfo     = isFlight ? resolveFlightRoute(d) : null;
 
   return (
     <>
@@ -279,12 +282,48 @@ export function AssetContent({ d, onActivateStory }: {
         <Badge label={d.type.replace('_', ' ')}   color="var(--t3)" />
         <Badge label={statusMeta(d.status).label} color={statusMeta(d.status).cssVar} />
         {d.type === 'CARRIER' && <Badge label="CARRIER STRIKE GROUP" color="var(--warning)" />}
+        {flightInfo && <Badge label={flightInfo.aircraftType} color="var(--info)" />}
       </div>
+
+      {flightInfo && (
+        <div className="p-2.5 rounded bg-zinc-900/60 border border-zinc-800/80 mb-3 space-y-2 font-mono">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <div>
+              <span className="text-cyan-400 text-sm block">{flightInfo.origin.iata}</span>
+              <span className="text-[9px] text-zinc-400">{flightInfo.origin.city}</span>
+            </div>
+            <div className="flex flex-col items-center flex-1 px-3">
+              <span className="text-[8px] text-purple-400">{flightInfo.progressPct}% EN ROUTE</span>
+              <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mt-0.5">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full" style={{ width: `${flightInfo.progressPct}%` }} />
+              </div>
+              <span className="text-[7.5px] text-zinc-500 mt-0.5">{flightInfo.distanceKm} km</span>
+            </div>
+            <div className="text-right">
+              <span className="text-purple-400 text-sm block">{flightInfo.destination.iata}</span>
+              <span className="text-[9px] text-zinc-400">{flightInfo.destination.city}</span>
+            </div>
+          </div>
+          <div className="text-[8px] text-zinc-500 border-t border-zinc-800/60 pt-1 flex justify-between">
+            <span>OPERATOR: {flightInfo.operator}</span>
+            <span>SQUAWK: {flightInfo.squawk}</span>
+          </div>
+        </div>
+      )}
+
       {d.description && (
         <p style={{ fontSize: 'var(--text-body)', color: 'var(--t2)', lineHeight: 1.6, marginBottom: 12 }}>{d.description}</p>
       )}
-      <Row label="COORDINATES"  value={`${d.position[1].toFixed(2)}°N, ${d.position[0].toFixed(2)}°E`} />
+      <Row label="COORDINATES"  value={`${d.position[1].toFixed(4)}°N, ${d.position[0].toFixed(4)}°E`} />
       <Row label="NATION/ACTOR" value={m.label} color={m.cssVar} />
+      {flightInfo && (
+        <>
+          <Row label="AIRFRAME" value={flightInfo.aircraftModel} />
+          <Row label="ALTITUDE" value={`${flightInfo.altitudeFt.toLocaleString()} ft (${flightInfo.altitudeFt > 0 ? `FL${Math.round(flightInfo.altitudeFt / 100)}` : 'GND'})`} color="var(--info)" />
+          <Row label="GROUNDSPEED" value={`${flightInfo.speedKnots} kn (${Math.round(flightInfo.speedKnots * 1.852)} km/h)`} />
+          <Row label="HEADING" value={`${flightInfo.headingDeg}°`} />
+        </>
+      )}
       <Row label="AFFILIATION"  value={m.affiliation} color="var(--success)" />
       <RelatedStories stories={relatedStories} onActivate={onActivateStory} />
     </>

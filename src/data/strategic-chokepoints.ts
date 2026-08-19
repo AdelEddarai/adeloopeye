@@ -18,6 +18,18 @@ export type WeeklyVesselTrend = {
   alertCount: number;
 };
 
+export type DailyVesselActivity = {
+  date: string;
+  dayLabel: string;
+  totalVessels: number;
+  tankers: number;
+  containers: number;
+  cargo: number;
+  military: number;
+  disruptionLevel: 'NORMAL' | 'ELEVATED' | 'HIGH_DISRUPTION';
+  note?: string;
+};
+
 export type StrategicChokepointData = {
   id: string;
   name: string;
@@ -31,6 +43,7 @@ export type StrategicChokepointData = {
   description: string;
   coordinates: [number, number];
   weeklyTrend: WeeklyVesselTrend[];
+  dailyActivity: DailyVesselActivity[];
   incidents: ChokepointIncident[];
 };
 
@@ -52,6 +65,22 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
       { week: 'W-2', totalVessels: 580, tankers: 285, containers: 175, cargo: 85, military: 35, alertCount: 14 },
       { week: 'W-1', totalVessels: 540, tankers: 260, containers: 165, cargo: 80, military: 35, alertCount: 19 },
       { week: 'CURRENT', totalVessels: 512, tankers: 242, containers: 158, cargo: 74, military: 38, alertCount: 26 },
+    ],
+    dailyActivity: [
+      { date: '08-06', dayLabel: 'Aug 6', totalVessels: 92, tankers: 46, containers: 26, cargo: 14, military: 6, disruptionLevel: 'NORMAL' },
+      { date: '08-07', dayLabel: 'Aug 7', totalVessels: 89, tankers: 44, containers: 25, cargo: 14, military: 6, disruptionLevel: 'NORMAL' },
+      { date: '08-08', dayLabel: 'Aug 8', totalVessels: 86, tankers: 42, containers: 24, cargo: 14, military: 6, disruptionLevel: 'NORMAL' },
+      { date: '08-09', dayLabel: 'Aug 9', totalVessels: 84, tankers: 41, containers: 24, cargo: 13, military: 6, disruptionLevel: 'NORMAL' },
+      { date: '08-10', dayLabel: 'Aug 10', totalVessels: 81, tankers: 39, containers: 23, cargo: 13, military: 6, disruptionLevel: 'NORMAL' },
+      { date: '08-11', dayLabel: 'Aug 11', totalVessels: 78, tankers: 38, containers: 22, cargo: 12, military: 6, disruptionLevel: 'NORMAL' },
+      { date: '08-12', dayLabel: 'Aug 12', totalVessels: 62, tankers: 28, containers: 18, cargo: 10, military: 6, disruptionLevel: 'HIGH_DISRUPTION', note: 'IRGC swarm exercise declared' },
+      { date: '08-13', dayLabel: 'Aug 13', totalVessels: 58, tankers: 24, containers: 18, cargo: 10, military: 6, disruptionLevel: 'HIGH_DISRUPTION', note: 'GPS jamming spike across TSS' },
+      { date: '08-14', dayLabel: 'Aug 14', totalVessels: 71, tankers: 34, containers: 21, cargo: 11, military: 5, disruptionLevel: 'ELEVATED' },
+      { date: '08-15', dayLabel: 'Aug 15', totalVessels: 76, tankers: 37, containers: 22, cargo: 12, military: 5, disruptionLevel: 'ELEVATED' },
+      { date: '08-16', dayLabel: 'Aug 16', totalVessels: 79, tankers: 39, containers: 23, cargo: 12, military: 5, disruptionLevel: 'NORMAL' },
+      { date: '08-17', dayLabel: 'Aug 17', totalVessels: 74, tankers: 36, containers: 22, cargo: 11, military: 5, disruptionLevel: 'ELEVATED', note: 'AIS spoofing surge' },
+      { date: '08-18', dayLabel: 'Aug 18', totalVessels: 68, tankers: 32, containers: 20, cargo: 11, military: 5, disruptionLevel: 'HIGH_DISRUPTION', note: 'Boarding attempt reported' },
+      { date: '08-19', dayLabel: 'TODAY', totalVessels: 84, tankers: 42, containers: 24, cargo: 12, military: 6, disruptionLevel: 'ELEVATED' },
     ],
     incidents: [
       {
@@ -81,15 +110,6 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
         type: 'COALITION DEFENSE',
         description: 'Arleigh Burke-class destroyer provided continuous maritime security escort for 4 high-value LNG tankers.',
       },
-      {
-        id: 'inc-h-04',
-        date: '2026-08-14',
-        timeAgo: '5d ago',
-        title: 'Commercial Insurance War-Risk Surcharge Hike',
-        severity: 'MED',
-        type: 'ECONOMIC IMPACT',
-        description: 'Lloyds Joint War Committee raised Persian Gulf transit premiums by +35% following drone telemetry reports.',
-      },
     ],
   },
   'sector-bab-el-mandeb': {
@@ -110,6 +130,22 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
       { week: 'W-1', totalVessels: 305, tankers: 110, containers: 120, cargo: 55, military: 20, alertCount: 38 },
       { week: 'CURRENT', totalVessels: 294, tankers: 104, containers: 112, cargo: 54, military: 24, alertCount: 42 },
     ],
+    dailyActivity: [
+      { date: '08-06', dayLabel: 'Aug 6', totalVessels: 52, tankers: 20, containers: 22, cargo: 7, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-07', dayLabel: 'Aug 7', totalVessels: 48, tankers: 18, containers: 20, cargo: 7, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-08', dayLabel: 'Aug 8', totalVessels: 44, tankers: 16, containers: 18, cargo: 7, military: 3, disruptionLevel: 'HIGH_DISRUPTION', note: 'Anti-ship ballistic missile launch' },
+      { date: '08-09', dayLabel: 'Aug 9', totalVessels: 38, tankers: 14, containers: 15, cargo: 6, military: 3, disruptionLevel: 'HIGH_DISRUPTION', note: 'Commercial liner diversion' },
+      { date: '08-10', dayLabel: 'Aug 10', totalVessels: 34, tankers: 12, containers: 14, cargo: 5, military: 3, disruptionLevel: 'HIGH_DISRUPTION', note: 'Drone swarm intercept' },
+      { date: '08-11', dayLabel: 'Aug 11', totalVessels: 41, tankers: 15, containers: 17, cargo: 6, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-12', dayLabel: 'Aug 12', totalVessels: 43, tankers: 16, containers: 18, cargo: 6, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-13', dayLabel: 'Aug 13', totalVessels: 45, tankers: 17, containers: 19, cargo: 6, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-14', dayLabel: 'Aug 14', totalVessels: 40, tankers: 14, containers: 17, cargo: 6, military: 3, disruptionLevel: 'HIGH_DISRUPTION', note: 'USV drone boat engagement' },
+      { date: '08-15', dayLabel: 'Aug 15', totalVessels: 36, tankers: 13, containers: 14, cargo: 6, military: 3, disruptionLevel: 'HIGH_DISRUPTION' },
+      { date: '08-16', dayLabel: 'Aug 16', totalVessels: 42, tankers: 16, containers: 17, cargo: 6, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-17', dayLabel: 'Aug 17', totalVessels: 41, tankers: 15, containers: 17, cargo: 6, military: 3, disruptionLevel: 'ELEVATED' },
+      { date: '08-18', dayLabel: 'Aug 18', totalVessels: 39, tankers: 14, containers: 16, cargo: 6, military: 3, disruptionLevel: 'HIGH_DISRUPTION', note: 'Missile splash in transit lane' },
+      { date: '08-19', dayLabel: 'TODAY', totalVessels: 42, tankers: 16, containers: 17, cargo: 6, military: 3, disruptionLevel: 'ELEVATED' },
+    ],
     incidents: [
       {
         id: 'inc-b-01',
@@ -128,15 +164,6 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
         severity: 'HIGH',
         type: 'NAVAL DRONE',
         description: 'Helicopter gunship neutralized uncrewed surface vessel approaching commercial bulk carrier.',
-      },
-      {
-        id: 'inc-b-03',
-        date: '2026-08-15',
-        timeAgo: '4d ago',
-        title: 'Container Carrier Fleet Cape of Good Hope Reroute',
-        severity: 'MED',
-        type: 'LOGISTICS DELAY',
-        description: 'Maersk and MSC confirmed 65% of Asia-to-Europe liner services continuing around Africa (+12-14 day delay).',
       },
     ],
   },
@@ -158,6 +185,22 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
       { week: 'W-1', totalVessels: 1960, tankers: 450, containers: 970, cargo: 495, military: 45, alertCount: 5 },
       { week: 'CURRENT', totalVessels: 2010, tankers: 468, containers: 1005, cargo: 490, military: 47, alertCount: 6 },
     ],
+    dailyActivity: [
+      { date: '08-06', dayLabel: 'Aug 6', totalVessels: 265, tankers: 60, containers: 130, cargo: 68, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-07', dayLabel: 'Aug 7', totalVessels: 270, tankers: 62, containers: 132, cargo: 69, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-08', dayLabel: 'Aug 8', totalVessels: 274, tankers: 63, containers: 135, cargo: 69, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-09', dayLabel: 'Aug 9', totalVessels: 278, tankers: 64, containers: 137, cargo: 70, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-10', dayLabel: 'Aug 10', totalVessels: 280, tankers: 65, containers: 138, cargo: 70, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-11', dayLabel: 'Aug 11', totalVessels: 282, tankers: 66, containers: 139, cargo: 70, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-12', dayLabel: 'Aug 12', totalVessels: 284, tankers: 66, containers: 140, cargo: 71, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-13', dayLabel: 'Aug 13', totalVessels: 286, tankers: 67, containers: 141, cargo: 71, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-14', dayLabel: 'Aug 14', totalVessels: 285, tankers: 67, containers: 140, cargo: 71, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-15', dayLabel: 'Aug 15', totalVessels: 288, tankers: 68, containers: 142, cargo: 71, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-16', dayLabel: 'Aug 16', totalVessels: 290, tankers: 69, containers: 143, cargo: 71, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-17', dayLabel: 'Aug 17', totalVessels: 285, tankers: 67, containers: 141, cargo: 70, military: 7, disruptionLevel: 'ELEVATED', note: 'Shadow tanker inspection' },
+      { date: '08-18', dayLabel: 'Aug 18', totalVessels: 282, tankers: 66, containers: 139, cargo: 70, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-19', dayLabel: 'TODAY', totalVessels: 288, tankers: 68, containers: 143, cargo: 70, military: 7, disruptionLevel: 'NORMAL' },
+    ],
     incidents: [
       {
         id: 'inc-g-01',
@@ -176,15 +219,6 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
         severity: 'HIGH',
         type: 'SANCTIONS MONITORING',
         description: 'Uninsured Aframax tanker performing ship-to-ship crude transfer tracked by Royal Navy and Marine Royale.',
-      },
-      {
-        id: 'inc-g-03',
-        date: '2026-08-15',
-        timeAgo: '4d ago',
-        title: 'NATO Maritime Group 1 Anti-Submarine Patrol',
-        severity: 'MED',
-        type: 'NAVAL SURVEILLANCE',
-        description: 'Frigate patrol conducted sonar sweeps across the eastern approach following sub-surface acoustic detection.',
       },
     ],
   },
@@ -206,6 +240,22 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
       { week: 'W-1', totalVessels: 1540, tankers: 340, containers: 810, cargo: 350, military: 40, alertCount: 25 },
       { week: 'CURRENT', totalVessels: 1480, tankers: 320, containers: 780, cargo: 340, military: 40, alertCount: 32 },
     ],
+    dailyActivity: [
+      { date: '08-06', dayLabel: 'Aug 6', totalVessels: 250, tankers: 55, containers: 130, cargo: 58, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-07', dayLabel: 'Aug 7', totalVessels: 245, tankers: 54, containers: 127, cargo: 57, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-08', dayLabel: 'Aug 8', totalVessels: 240, tankers: 53, containers: 125, cargo: 55, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-09', dayLabel: 'Aug 9', totalVessels: 236, tankers: 52, containers: 122, cargo: 55, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-10', dayLabel: 'Aug 10', totalVessels: 230, tankers: 50, containers: 120, cargo: 53, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-11', dayLabel: 'Aug 11', totalVessels: 224, tankers: 48, containers: 118, cargo: 51, military: 7, disruptionLevel: 'NORMAL' },
+      { date: '08-12', dayLabel: 'Aug 12', totalVessels: 198, tankers: 42, containers: 104, cargo: 45, military: 7, disruptionLevel: 'HIGH_DISRUPTION', note: 'Live-fire exclusion NOTAM active' },
+      { date: '08-13', dayLabel: 'Aug 13', totalVessels: 192, tankers: 40, containers: 102, cargo: 43, military: 7, disruptionLevel: 'HIGH_DISRUPTION', note: 'Naval combat patrol drills' },
+      { date: '08-14', dayLabel: 'Aug 14', totalVessels: 215, tankers: 46, containers: 112, cargo: 50, military: 7, disruptionLevel: 'ELEVATED' },
+      { date: '08-15', dayLabel: 'Aug 15', totalVessels: 220, tankers: 48, containers: 115, cargo: 50, military: 7, disruptionLevel: 'ELEVATED' },
+      { date: '08-16', dayLabel: 'Aug 16', totalVessels: 225, tankers: 49, containers: 118, cargo: 51, military: 7, disruptionLevel: 'ELEVATED' },
+      { date: '08-17', dayLabel: 'Aug 17', totalVessels: 210, tankers: 45, containers: 110, cargo: 48, military: 7, disruptionLevel: 'HIGH_DISRUPTION', note: 'Subsea cable telemetry alert' },
+      { date: '08-18', dayLabel: 'Aug 18', totalVessels: 222, tankers: 48, containers: 116, cargo: 51, military: 7, disruptionLevel: 'ELEVATED' },
+      { date: '08-19', dayLabel: 'TODAY', totalVessels: 235, tankers: 51, containers: 124, cargo: 53, military: 7, disruptionLevel: 'ELEVATED' },
+    ],
     incidents: [
       {
         id: 'inc-t-01',
@@ -215,15 +265,6 @@ export const STRATEGIC_CHOKEPOINTS: Record<string, StrategicChokepointData> = {
         severity: 'CRITICAL',
         type: 'MILITARY EXERCISE',
         description: '18 PLA fighter aircraft and 6 destroyers entered Taiwan ADIZ western sector; civil vessels rerouted 20NM east.',
-      },
-      {
-        id: 'inc-t-02',
-        date: '2026-08-17',
-        timeAgo: '2d ago',
-        title: 'Undersea Fiber Optic Cable Telemetry Ping',
-        severity: 'HIGH',
-        type: 'INFRASTRUCTURE RISK',
-        description: 'Coast Guard monitored sand dredger operating within 1.2km of Matsu-Taiwan subsea communications line.',
       },
     ],
   },
