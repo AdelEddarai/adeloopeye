@@ -228,7 +228,7 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
               />
             )}
             {/* Real-time Disinformation & Attack Activity HUD Banner */}
-            {(overlayVisibility.disinfo || dataLayers.disinfo) && (
+            {overlayVisibility.disinfo && (
               <div className="absolute top-3 left-3 z-30 flex items-center gap-2 px-3 py-1.5 rounded-sm bg-zinc-950/90 border border-amber-500/40 backdrop-blur-xl shadow-[0_0_16px_rgba(245,158,11,0.2)] font-mono text-[9px] text-zinc-200 pointer-events-auto">
                 <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                 <span className="font-bold text-amber-300 tracking-wider flex items-center gap-1 uppercase">

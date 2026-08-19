@@ -270,25 +270,34 @@ export function UnifiedMapControls({
                   { key: 'fires', label: 'THERMAL & WILDFIRES', icon: Flame, color: 'text-amber-400' },
                   { key: 'infrastructure', label: 'STRATEGIC GRID & HUBS', icon: Building2, color: 'text-emerald-400' },
                   { key: 'routes', label: 'CIVIL TRANSIT VECTORS', icon: Activity, color: 'text-blue-400' },
-                ].map(({ key, label, icon: Icon, color }) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between p-1.5 rounded bg-zinc-900/40 border border-zinc-800/50 hover:border-zinc-700/80 transition-colors"
-                  >
-                    <span className="text-[9px] font-mono text-zinc-200 uppercase font-medium flex items-center gap-1.5">
-                      <Icon size={11} className={color} /> {label}
-                    </span>
-                    <Switch
-                      checked={dataLayers[key as keyof IntelDataLayers] ?? (key === 'disinfo' ? visibility.disinfo : key === 'cyberThreats' ? visibility.cyberThreats : false)}
-                      onCheckedChange={() => {
-                        onDataLayerToggle(key as keyof IntelDataLayers);
-                        if (key === 'disinfo') onVisibilityToggle('disinfo');
-                        if (key === 'cyberThreats') onVisibilityToggle('cyberThreats');
-                      }}
-                      className="scale-75"
-                    />
-                  </div>
-                ))}
+                ].map(({ key, label, icon: Icon, color }) => {
+                  const isOverlayKey = key === 'disinfo' || key === 'cyberThreats';
+                  const isChecked = isOverlayKey
+                    ? !!visibility[key as keyof OverlayVisibility]
+                    : !!dataLayers[key as keyof IntelDataLayers];
+
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between p-1.5 rounded bg-zinc-900/40 border border-zinc-800/50 hover:border-zinc-700/80 transition-colors"
+                    >
+                      <span className="text-[9px] font-mono text-zinc-200 uppercase font-medium flex items-center gap-1.5">
+                        <Icon size={11} className={color} /> {label}
+                      </span>
+                      <Switch
+                        checked={isChecked}
+                        onCheckedChange={() => {
+                          if (isOverlayKey) {
+                            onVisibilityToggle(key as keyof OverlayVisibility);
+                          } else {
+                            onDataLayerToggle(key as keyof IntelDataLayers);
+                          }
+                        }}
+                        className="scale-75"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

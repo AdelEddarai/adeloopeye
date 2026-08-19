@@ -159,8 +159,8 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const { data: stories = [], isLoading: storiesLoading } = useMapStories(undefined, enableOtherAPIs);
 
   // Disinformation / bot network radar - enabled when layer toggled on
-  const isDisinfoActive = overlayVisibility.disinfo || dataLayers.disinfo;
-  const isCyberActive = overlayVisibility.cyberThreats || dataLayers.cyberThreats;
+  const isDisinfoActive = !!overlayVisibility.disinfo;
+  const isCyberActive = !!overlayVisibility.cyberThreats;
   const { data: disinfoData } = useLiveDisinformation(scope.world ? 'WLD' : 'MA', isDisinfoActive);
 
   // Dynamic Live Flights fetching based on Viewport

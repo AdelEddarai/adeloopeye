@@ -147,7 +147,16 @@ export function useMapLayers({
   showDisinfo = false,
   disinfo = null,
 }: Props): Layer[] {
-   const cyberThreats = (filtered as any).cyberThreats || [];
+   const rawCyberThreats = (filtered as any).cyberThreats || [];
+   const SEEDED_CYBER_THREATS: CyberThreat[] = [
+     { id: 'cy-apt28', type: 'INTRUSION', severity: 'HIGH', target: 'APT28 (Fancy Bear)', targetSector: 'Government / Defence', targetCountry: 'NATO members', source: 'Russia-linked', location: 'Moscow', position: [37.61, 55.75], timestamp: '', description: 'State-backed espionage network targeting European governments and defence bodies.' },
+     { id: 'cy-apt41', type: 'MALWARE', severity: 'HIGH', target: 'APT41 (Double Dragon)', targetSector: 'Technology / Telecom', targetCountry: 'Taiwan, SE Asia', source: 'China-linked', location: 'Beijing', position: [116.40, 39.90], timestamp: '', description: 'Dual espionage + cybercrime syndicate concentrated on SE Asian supply chains.' },
+     { id: 'cy-apt33', type: 'RANSOMWARE', severity: 'HIGH', target: 'APT33 (Elfin)', targetSector: 'Energy', targetCountry: 'Saudi Arabia, Gulf', source: 'Iran-linked', location: 'Tehran', position: [51.38, 35.68], timestamp: '', description: 'Destructive wipers targeting energy and industrial control systems.' },
+     { id: 'cy-lazarus', type: 'INTRUSION', severity: 'HIGH', target: 'Lazarus Group', targetSector: 'Finance / Crypto', targetCountry: 'Global', source: 'DPRK-linked', location: 'Pyongyang', position: [125.76, 39.03], timestamp: '', description: 'Cryptocurrency exchanges and financial institutions targeted for theft.' },
+     { id: 'cy-storm1376', type: 'DDOS', severity: 'CRITICAL', target: 'Storm-1376 / Cyber Avengence', targetSector: 'Critical Infrastructure & Port Authorities', targetCountry: 'Israel, US', source: 'Tehran Cluster', location: 'Tehran', position: [48.00, 32.00], timestamp: '', description: 'Coordinated high-volume DDoS and ICS wiper campaigns.' },
+     { id: 'cy-maghreb-bot', type: 'MALWARE', severity: 'HIGH', target: 'Tindouf Cyber Bot Array', targetSector: 'Maritime Transit & Port Networks', targetCountry: 'Morocco, Spain', source: 'State-Linked Array', location: 'Tindouf / Algiers', position: [3.05, 36.75], timestamp: '', description: 'Distributed botnet infrastructure targeting government web endpoints.' },
+   ];
+   const cyberThreats: CyberThreat[] = rawCyberThreats.length > 0 ? rawCyberThreats : SEEDED_CYBER_THREATS;
    const reduxNewsPulses = useAppSelector(s => s.newsPulses.pulses);
    const allNewsPulses = useMemo(() => {
      const server = (filtered as any).newsPulses || [];
@@ -753,13 +762,16 @@ export function useMapLayers({
       getPosition: (d: CyberThreat): [number, number] => d.position,
       getRadius: (): number => {
         const phase = (pulseTime * 0.7) % 1;
-        return 12000 + phase * 85000;
+        return 6 + phase * 10;
       },
+      radiusUnits: 'pixels',
+      radiusMinPixels: 4,
+      radiusMaxPixels: 18,
       getFillColor: [0, 0, 0, 0],
       stroked: true,
       getLineColor: (): RGBA => {
         const phase = (pulseTime * 0.7) % 1;
-        const alpha = Math.floor((1 - phase) * 190);
+        const alpha = Math.floor((1 - phase) * 200);
         return [0, 240, 255, alpha];
       },
       lineWidthMinPixels: 1.5,
@@ -1584,24 +1596,48 @@ export function useMapLayers({
     // DISINFORMATION & COGNITIVE WARFARE TELEMETRY LAYER
     // ═══════════════════════════════════════════════════════════
 
-    // 1. Sleek Laser Great-Circle Vector Arc (Small Width 1.2px - 1.6px)
+    const COUNTRY_COORDS: Record<string, [number, number]> = {
+      MA: [-7.09, 31.79],
+      DZ: [1.66, 28.03],
+      ES: [-3.75, 40.46],
+      FR: [2.21, 46.23],
+      RU: [37.61, 55.75],
+      IR: [51.38, 35.68],
+      IL: [34.78, 32.08],
+      CN: [116.40, 39.90],
+      TW: [121.56, 25.03],
+      UA: [30.52, 50.45],
+      US: [-77.03, 38.90],
+      SA: [46.67, 24.71],
+      YE: [44.20, 15.36],
+      ML: [-3.99, 17.57],
+      BF: [-1.56, 12.24],
+      DE: [10.45, 51.16],
+      GB: [-0.12, 51.50],
+    };
+
+    // 1. Sleek Laser Great-Circle Vector Arc (Small Width 1.5px)
     const disinfoLayer = showDisinfo && disinfo && disinfo.edges.length > 0 && new ArcLayer<DisinfoEdge>({
       id: 'disinfo-arcs',
       data: disinfo.edges,
       getSourcePosition: (d: DisinfoEdge): [number, number] => {
         const n = disinfo.nodes.find(x => x.code === d.source);
-        return n ? [n.lon, n.lat] : [0, 0];
+        if (n && n.lon != null && n.lat != null) return [n.lon, n.lat];
+        return COUNTRY_COORDS[d.source] || [0, 20];
       },
       getTargetPosition: (d: DisinfoEdge): [number, number] => {
         const n = disinfo.nodes.find(x => x.code === d.target);
-        return n ? [n.lon, n.lat] : [0, 0];
+        if (n && n.lon != null && n.lat != null) return [n.lon, n.lat];
+        return COUNTRY_COORDS[d.target] || [0, 20];
       },
       getSourceColor: (d: DisinfoEdge): RGBA =>
-        d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 230 : 200] : [239, 68, 68, isSatellite ? 230 : 190],
+        d.kind === 'CAMPAIGN' ? [251, 191, 36, isSatellite ? 240 : 210] : [239, 68, 68, isSatellite ? 240 : 200],
       getTargetColor: (): RGBA => [56, 189, 248, isSatellite ? 240 : 190],
-      getWidth: (d: DisinfoEdge): number => Math.min(1.2 + d.weight * 0.015, 1.8), // Small width clean laser line
-      getHeight: 0.22,
+      getWidth: 1.6,
       widthUnits: 'pixels',
+      widthMinPixels: 1.5,
+      widthMaxPixels: 3.5,
+      getHeight: 0.22,
       greatCircle: true,
       pickable: true,
       autoHighlight: true,
@@ -1611,7 +1647,7 @@ export function useMapLayers({
       },
     });
 
-    // 2. Animated Workflow Stream (Laser Comet with Head + Trailing Sub-Packets)
+    // 2. Animated Workflow Stream (Laser Comet with Head + Trailing Sub-Packets in PIXELS)
     const disinfoPulseParticles = useMemo(() => {
       if (!showDisinfo || !disinfo || !disinfo.edges.length) return [];
       const normalizedPhase = (pulseTime / (Math.PI * 2)); // 0 to 1
@@ -1621,7 +1657,7 @@ export function useMapLayers({
         position: [number, number];
         isHead: boolean;
         alpha: number;
-        radius: number;
+        radiusPx: number;
         kind: string;
         weight: number;
         edge: DisinfoEdge;
@@ -1630,30 +1666,31 @@ export function useMapLayers({
       disinfo.edges.forEach((edge, edgeIdx) => {
         const srcNode = disinfo.nodes.find(n => n.code === edge.source);
         const tgtNode = disinfo.nodes.find(n => n.code === edge.target);
-        if (!srcNode || !tgtNode) return;
+        const srcPos = srcNode ? [srcNode.lon, srcNode.lat] : COUNTRY_COORDS[edge.source] || [0, 20];
+        const tgtPos = tgtNode ? [tgtNode.lon, tgtNode.lat] : COUNTRY_COORDS[edge.target] || [0, 20];
 
         // Base progress for this edge
         const baseT = (normalizedPhase + (edgeIdx * 0.18)) % 1;
 
         // Generate 4 streak points (Head + 3 trailing tail dots)
-        const trailOffsets = [0, 0.04, 0.08, 0.12];
+        const trailOffsets = [0, 0.035, 0.07, 0.105];
         trailOffsets.forEach((offset, trailIdx) => {
           let t = (baseT - offset);
           if (t < 0) t += 1;
 
-          const lon = srcNode.lon + (tgtNode.lon - srcNode.lon) * t;
-          const lat = srcNode.lat + (tgtNode.lat - srcNode.lat) * t;
+          const lon = srcPos[0] + (tgtPos[0] - srcPos[0]) * t;
+          const lat = srcPos[1] + (tgtPos[1] - srcPos[1]) * t;
 
           const isHead = trailIdx === 0;
-          const alpha = isHead ? 255 : Math.round(200 - trailIdx * 50);
-          const radius = isHead ? 45000 : Math.max(18000, 42000 - trailIdx * 8000);
+          const alpha = isHead ? 255 : Math.round(210 - trailIdx * 55);
+          const radiusPx = isHead ? 4.5 : Math.max(2, 4.0 - trailIdx * 0.8);
 
           particles.push({
             id: `disinfo-streak-${edge.id}-${trailIdx}`,
-            position: [lon, lat],
+            position: [lon, lat] as [number, number],
             isHead,
             alpha,
-            radius,
+            radiusPx,
             kind: edge.kind,
             weight: edge.weight,
             edge,
@@ -1664,11 +1701,14 @@ export function useMapLayers({
       return particles;
     }, [showDisinfo, disinfo, pulseTime]);
 
-    const disinfoArcPulseLayer = disinfoPulseParticles.length > 0 && new ScatterplotLayer({
+    const disinfoArcPulseLayer = showDisinfo && disinfoPulseParticles.length > 0 && new ScatterplotLayer({
       id: 'disinfo-arc-pulses',
       data: disinfoPulseParticles,
       getPosition: (d: any) => d.position,
-      getRadius: (d: any) => d.radius,
+      getRadius: (d: any) => d.radiusPx,
+      radiusUnits: 'pixels',
+      radiusMinPixels: 2,
+      radiusMaxPixels: 6,
       getFillColor: (d: any): RGBA =>
         d.isHead
           ? [255, 255, 255, d.alpha]
@@ -1686,13 +1726,16 @@ export function useMapLayers({
       },
     });
 
-    // 3. Disinformation / bot network node volume
+    // 3. Disinformation / bot network node volume in PIXELS (never explodes on zoom out)
     const disinfoNodeLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
       id: 'disinfo-nodes',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
       getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
       getRadius: (d: DisinfoNode): number =>
-        25000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000),
+        Math.max(4, Math.min(11, 4 + Math.sqrt(d.campaignVolume + d.botVolume) * 0.6)),
+      radiusUnits: 'pixels',
+      radiusMinPixels: 3.5,
+      radiusMaxPixels: 12,
       getFillColor: (d: DisinfoNode): RGBA =>
         d.campaignVolume >= d.botVolume ? [245, 158, 11, 80] : [239, 68, 68, 80],
       stroked: true,
@@ -1707,16 +1750,19 @@ export function useMapLayers({
       },
     });
 
-    // 4. Expanding Radiating Radar Shockwave Rings around CIB Source Hubs
+    // 4. Expanding Radiating Radar Shockwave Rings in PIXELS
     const shockwavePhase = (Math.sin(pulseTime * 2) + 1) / 2; // 0 to 1
     const disinfoNodeShockwaveLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
       id: 'disinfo-nodes-shockwave',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
       getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
       getRadius: (d: DisinfoNode): number => {
-        const base = 30000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000);
-        return base * (1 + shockwavePhase * 0.75);
+        const basePx = Math.max(5, Math.min(12, 5 + Math.sqrt(d.campaignVolume + d.botVolume) * 0.6));
+        return basePx * (1 + shockwavePhase * 0.7);
       },
+      radiusUnits: 'pixels',
+      radiusMinPixels: 4,
+      radiusMaxPixels: 16,
       getFillColor: [0, 0, 0, 0],
       stroked: true,
       getLineColor: (d: DisinfoNode): RGBA => {
@@ -1731,23 +1777,27 @@ export function useMapLayers({
       },
     });
 
-    // 5. Tactical Disinfo Vector Midpoint Labels (Directly on Vector Curve)
+    // Zoom Threshold for Text: only show text if zoom >= 3.2 so global zoom out stays 100% clean
+    const showDisinfoText = showDisinfo && (viewState.zoom || 2) >= 3.2;
+
+    // 5. Tactical Disinfo Vector Midpoint Labels (Directly on Vector Curve - Zoom Gated)
     const disinfoMidpointLabels = useMemo(() => {
-      if (!showDisinfo || !disinfo || !disinfo.edges.length) return [];
+      if (!showDisinfoText || !disinfo || !disinfo.edges.length) return [];
       return disinfo.edges.map(edge => {
         const src = disinfo.nodes.find(n => n.code === edge.source);
         const tgt = disinfo.nodes.find(n => n.code === edge.target);
-        if (!src || !tgt) return null;
+        const srcPos = src ? [src.lon, src.lat] : COUNTRY_COORDS[edge.source] || [0, 20];
+        const tgtPos = tgt ? [tgt.lon, tgt.lat] : COUNTRY_COORDS[edge.target] || [0, 20];
         return {
           id: `disinfo-mid-${edge.id}`,
-          position: [(src.lon + tgt.lon) / 2, (src.lat + tgt.lat) / 2] as [number, number],
+          position: [(srcPos[0] + tgtPos[0]) / 2, (srcPos[1] + tgtPos[1]) / 2] as [number, number],
           text: `⚡ ${edge.source} ➔ ${edge.target} (${edge.weight} WT)`,
           edge,
         };
       }).filter(Boolean);
-    }, [showDisinfo, disinfo]);
+    }, [showDisinfoText, disinfo]);
 
-    const disinfoMidpointLabelLayer = disinfoMidpointLabels.length > 0 && new TextLayer({
+    const disinfoMidpointLabelLayer = showDisinfoText && disinfoMidpointLabels.length > 0 && new TextLayer({
       id: 'disinfo-mid-labels',
       data: disinfoMidpointLabels,
       getPosition: (d: any) => d.position,
@@ -1762,20 +1812,20 @@ export function useMapLayers({
       pickable: true,
     });
 
-    // 6. Tactical Disinfo Node Hub Badges
-    const disinfoLabelsLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new TextLayer<DisinfoNode>({
+    // 6. Tactical Disinfo Node Hub Badges (Zoom Gated)
+    const disinfoLabelsLayer = showDisinfoText && disinfo && disinfo.nodes.length > 0 && new TextLayer<DisinfoNode>({
       id: 'disinfo-node-labels',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
       getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
       getText: (d: DisinfoNode) => `⚠️ ${d.name} (${d.campaignVolume + d.botVolume} CIB)`,
-      getSize: 10,
+      getSize: 9.5,
       getColor: [255, 255, 255, 230],
-      getPixelOffset: [0, -18],
+      getPixelOffset: [0, -14],
       fontFamily: 'monospace',
       fontWeight: 700,
       background: true,
       getBackgroundColor: [15, 23, 42, 210],
-      backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
+      backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       pickable: true,
     });
 
@@ -1793,8 +1843,8 @@ export function useMapLayers({
       selectedFlightProjectionLayer,
       selectedFlightRouteArcLayer,
       selectedFlightAirportLayer,
-      cyberThreatPulseLayer,
-      cyberThreatLayer,
+      showCyberThreats && cyberThreatPulseLayer,
+      showCyberThreats && cyberThreatLayer,
       fireLayer,
       relationshipGlowLayer,
       relationshipLayer,
@@ -1813,12 +1863,12 @@ export function useMapLayers({
       maritimeRadarRings,
       maritimeVesselLayer,
       maritimeVesselLabels,
-      disinfoLayer,
-      disinfoArcPulseLayer,
-      disinfoNodeShockwaveLayer,
-      disinfoNodeLayer,
-      disinfoMidpointLabelLayer,
-      disinfoLabelsLayer,
+      showDisinfo && disinfoLayer,
+      showDisinfo && disinfoArcPulseLayer,
+      showDisinfo && disinfoNodeShockwaveLayer,
+      showDisinfo && disinfoNodeLayer,
+      showDisinfoText && disinfoMidpointLabelLayer,
+      showDisinfoText && disinfoLabelsLayer,
       ...(showMoroccoLayer ? moroccoLayers : []),
     ].filter(Boolean);
 

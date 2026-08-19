@@ -164,8 +164,8 @@ const DEFAULT_DATA_LAYERS: MapState['dataLayers'] = {
   fires: false,
   infrastructure: false,
   maritime: true,
-  disinfo: true,
-  cyberThreats: true,
+  disinfo: false,
+  cyberThreats: false,
 };
 
 function buildInitialState(): MapState {
