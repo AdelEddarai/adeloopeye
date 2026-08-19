@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 
 import Link from 'next/link';
 
-import { ArrowLeft, ArrowRight, Maximize2, Minimize2, Plus, X as XIcon, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Columns, Grid, Maximize2, Minimize2, Pin, PinOff, Plus, Rows, X as XIcon, ZoomIn, ZoomOut } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
@@ -12,15 +12,17 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { useActors } from '@/features/actors/queries';
 import { useBootstrap } from '@/features/dashboard/queries';
 import { useConflict, useConflictDays } from '@/features/dashboard/queries/conflicts';
-import { PRESETS, SELECTABLE_WIDGET_KEYS, WIDGET_LABELS, type WidgetKey } from '@/features/dashboard/state/presets';
+import { PRESETS, SELECTABLE_WIDGET_KEYS, WIDGET_LABELS, type WidgetKey, type LayoutFlow } from '@/features/dashboard/state/presets';
 import {
   addColumn as addColumnAction,
   addWidget as addWidgetAction,
   applyPreset,
   moveWidget as moveWidgetAction,
+  moveWidgetVertical as moveWidgetVerticalAction,
   removeWidget as removeWidgetAction,
   resetToPreset,
   setColumnSizes,
+  setLayoutFlow,
   setRowSizes,
   toggleEditing,
 } from '@/features/dashboard/state/workspace-slice';
@@ -50,10 +52,13 @@ const WIDGET_LINKS: Partial<Record<WidgetKey, { href: string; label: string; pre
 
 export function WorkspaceDashboard() {
   const dispatch = useAppDispatch();
-  const { columns, activePreset, editing, columnSizes, rowSizes } = useAppSelector(s => s.workspace);
+  const { columns, activePreset, layoutFlow = 'columns', editing, columnSizes, rowSizes } = useAppSelector(s => s.workspace);
   const isMobile = useIsMobile(1024);
   const isLandscapePhone = useIsLandscapePhone();
   const [selectedWidget, setSelectedWidget] = useState<WidgetKey | ''>('');
+
+  const [scrollMode, setScrollMode] = useState<'viewport' | 'scroll'>('viewport');
+  const [pinnedWidgets, setPinnedWidgets] = useState<Set<WidgetKey>>(new Set(['map']));
 
   const { data: bootstrap, isLoading: bootstrapLoading } = useBootstrap();
   const allDays = bootstrap?.days ?? [];
@@ -96,7 +101,9 @@ export function WorkspaceDashboard() {
 
   // Calculate dynamic minimum height to ensure widgets don't get squished and scrolling works
   const maxWidgetsInColumn = Math.max(...columns.map(c => c.widgets.length), 1);
-  const minGridHeight = Math.max(100, maxWidgetsInColumn * 450); // Minimum 450px height per widget
+  const minGridHeight = layoutFlow === 'rows'
+    ? Math.max(100, columns.length * 380)
+    : Math.max(100, maxWidgetsInColumn * 450);
 
   const dashData: DashData = {
     day: effectiveDashDay,
@@ -119,6 +126,8 @@ export function WorkspaceDashboard() {
 
   if (isDashboardLoading) return <OverviewScreenSkeleton />;
 
+  const isRowFlow = layoutFlow === 'rows';
+
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-[var(--bg-1)] overflow-hidden">
       {/* ── toolbar ── */}
@@ -138,9 +147,57 @@ export function WorkspaceDashboard() {
           {editing ? '✦ EDITING' : 'EDIT LAYOUT'}
         </Button>
 
+        {/* Layout Orientation Switcher */}
+        <div className="flex items-center gap-0.5 bg-zinc-950 p-0.5 rounded border border-zinc-800">
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => dispatch(setLayoutFlow('columns'))}
+            className={`h-6 text-[9px] font-mono px-2 gap-1 rounded-xs transition-all ${
+              !isRowFlow
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+            title="Vertical Columns (Side-by-Side)"
+          >
+            <Columns size={11} />
+            <span>COLUMNS</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => dispatch(setLayoutFlow('rows'))}
+            className={`h-6 text-[9px] font-mono px-2 gap-1 rounded-xs transition-all ${
+              isRowFlow
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+            title="Horizontal Rows (Stacked Top-to-Bottom)"
+          >
+            <Rows size={11} />
+            <span>HORIZONTAL ROWS</span>
+          </Button>
+        </div>
+
+        {/* Sticky Map / Viewport Mode Switcher */}
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={() => setScrollMode(m => m === 'viewport' ? 'scroll' : 'viewport')}
+          className={`h-6 text-[9px] font-mono px-2 gap-1 rounded-xs transition-all ${
+            scrollMode === 'viewport'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.2)]'
+              : 'text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+          }`}
+          title={scrollMode === 'viewport' ? "Pinned Viewport: Top Map is Sticky/Fixed, only bottom widgets scroll internally" : "Page Scroll: Entire page scrolls vertically"}
+        >
+          <Pin size={11} className={scrollMode === 'viewport' ? 'text-cyan-400 fill-cyan-400' : ''} />
+          <span>{scrollMode === 'viewport' ? '📌 STICKY MAP' : '📜 PAGE SCROLL'}</span>
+        </Button>
+
         {/* preset selector */}
-        <div className="flex items-center gap-0.5 ml-2">
-          {(['analyst', 'commander', 'executive', 'live'] as const).map(id => (
+        <div className="flex items-center gap-0.5 ml-1">
+          {(['analyst', 'command', 'mosaic', 'commander', 'executive', 'live'] as const).map(id => (
             <Button
               key={id}
               variant={activePreset === id ? 'outline' : 'ghost'}
@@ -193,7 +250,7 @@ export function WorkspaceDashboard() {
         {editing && (
           <>
             {availableWidgets.length > 0 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 ml-2">
                 <select
                   id="add-widget-select"
                   className="text-[length:var(--text-label)] px-2 py-1 border border-[var(--bd)] bg-[var(--bg-3)] text-[var(--t2)]"
@@ -205,7 +262,7 @@ export function WorkspaceDashboard() {
                     <option key={k} value={k}>{WIDGET_LABELS[k]}</option>
                   ))}
                 </select>
-                <span className="text-[length:var(--text-caption)] text-[var(--t4)]">→ col:</span>
+                <span className="text-[length:var(--text-caption)] text-[var(--t4)]">→ {isRowFlow ? 'row:' : 'col:'}</span>
                 {columns.map((col, ci) => (
                   <Button
                     key={col.id}
@@ -218,7 +275,7 @@ export function WorkspaceDashboard() {
                         return;
                       }
                       dispatch(addWidgetAction({ colId: col.id, widget: selectedWidget }));
-                      setSelectedWidget(''); // Reset after adding
+                      setSelectedWidget('');
                     }}
                   >
                     {ci + 1}
@@ -237,7 +294,7 @@ export function WorkspaceDashboard() {
                   }}
                 >
                   <Plus size={9} strokeWidth={2.5} />
-                  col
+                  {isRowFlow ? 'row' : 'col'}
                 </Button>
               </div>
             )}
@@ -266,19 +323,24 @@ export function WorkspaceDashboard() {
         )}
       </div>
 
-      {/* ── RESIZABLE HYBRID LAYOUT ── */}
+      {/* ── RESIZABLE DYNAMIC LAYOUT (COLUMNS OR HORIZONTAL ROWS) ── */}
       <DashCtx.Provider value={dashData}>
-        <div className="flex-1 overflow-y-auto bg-background p-2 md:p-4 custom-scrollbar">
-          <div style={{ zoom: `${zoomLevel}%`, minHeight: `${minGridHeight}px`, height: '100%' }}>
+        <div className={`flex-1 ${scrollMode === 'viewport' ? 'overflow-hidden' : 'overflow-y-auto'} bg-background p-2 md:p-3 custom-scrollbar`}>
+          <div style={{ zoom: `${zoomLevel}%`, minHeight: scrollMode === 'viewport' ? '100%' : `${minGridHeight}px`, height: '100%' }}>
             <ResizablePanelGroup
-              orientation="horizontal"
-              id="workspace-cols"
+              key={`${layoutFlow}-${scrollMode}`}
+              orientation={isRowFlow ? 'vertical' : 'horizontal'}
+              id="workspace-primary-group"
               className="flex-1 rounded-md overflow-hidden bg-background shadow-none"
               onLayoutChanged={(layout) => { dispatch(setColumnSizes(layout)); }}
             >
             {columns.map((col, ci) => (
               <React.Fragment key={col.id}>
-                {ci > 0 && <ResizableHandle className="w-[4px] bg-transparent transition-colors hover:bg-foreground/10" />}
+                {ci > 0 && (
+                  <ResizableHandle
+                    className={`${isRowFlow ? 'h-[4px]' : 'w-[4px]'} bg-transparent transition-colors hover:bg-foreground/10`}
+                  />
+                )}
                 <ResizablePanel
                   id={col.id}
                   defaultSize={columnSizes[col.id] != null ? `${columnSizes[col.id]}%` : colSize}
@@ -286,42 +348,72 @@ export function WorkspaceDashboard() {
                   className="flex flex-col min-h-0 min-w-0 overflow-hidden"
                 >
                   <ResizablePanelGroup
-                    orientation="vertical"
-                    id={`rows-${col.id}`}
-                    className="flex-1 min-h-0"
+                    key={`${layoutFlow}-${col.id}-${scrollMode}`}
+                    orientation={isRowFlow ? 'horizontal' : 'vertical'}
+                    id={`inner-${col.id}`}
+                    className="flex-1 min-h-0 min-w-0"
                     onLayoutChanged={(layout) => { dispatch(setRowSizes({ colId: col.id, layout })); }}
                   >
                     {col.widgets.map((widget, wi) => (
                       <React.Fragment key={`${col.id}-${widget}`}>
-                        {wi > 0 && <ResizableHandle className="h-[4px] bg-transparent transition-colors hover:bg-foreground/10" />}
+                        {wi > 0 && (
+                          <ResizableHandle
+                            className={`${isRowFlow ? 'w-[4px]' : 'h-[4px]'} bg-transparent transition-colors hover:bg-foreground/10`}
+                          />
+                        )}
                         <ResizablePanel
                           id={`${col.id}-${widget}`}
                           defaultSize={rowSizes[col.id]?.[`${col.id}-${widget}`] != null ? `${rowSizes[col.id][`${col.id}-${widget}`]}%` : `${(100 / col.widgets.length).toFixed(1)}%`}
                           minSize="15%"
-                          className="flex flex-col min-h-0 overflow-hidden bg-card text-card-foreground group hover:bg-accent/5 transition-colors duration-200"
+                          className={`flex flex-col min-h-0 min-w-0 overflow-hidden bg-card text-card-foreground group hover:bg-accent/5 transition-colors duration-200 ${
+                            pinnedWidgets.has(widget) ? 'border border-cyan-500/30' : ''
+                          }`}
                         >
-                          <div className="flex flex-col h-full min-h-0 overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-2 bg-card shrink-0">
-                              <span className="font-semibold text-xs tracking-wider text-muted-foreground uppercase group-hover:text-foreground transition-colors">
-                                {WIDGET_LABELS[widget]}
-                              </span>
+                          <div className="flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-1.5 bg-card shrink-0 border-b border-border/40">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {pinnedWidgets.has(widget) && (
+                                  <Pin size={10} className="text-cyan-400 fill-cyan-400 shrink-0" />
+                                )}
+                                <span className="font-semibold text-xs tracking-wider text-muted-foreground uppercase group-hover:text-foreground transition-colors truncate">
+                                  {WIDGET_LABELS[widget]}
+                                </span>
+                              </div>
 
                               {editing && (
                                 <div className="ml-auto flex items-center gap-1 opacity-100">
+                                  {/* Up / Down movements */}
+                                  {wi > 0 && (
+                                    <Button variant="ghost" size="icon-sm" title={isRowFlow ? "Move left in row" : "Move up"} className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                      onClick={() => dispatch(moveWidgetVerticalAction({ colId: col.id, widget, direction: 'up' }))}
+                                    >
+                                      {isRowFlow ? <ArrowLeft size={10} strokeWidth={2} /> : <ArrowUp size={10} strokeWidth={2} />}
+                                    </Button>
+                                  )}
+                                  {wi < col.widgets.length - 1 && (
+                                    <Button variant="ghost" size="icon-sm" title={isRowFlow ? "Move right in row" : "Move down"} className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                      onClick={() => dispatch(moveWidgetVerticalAction({ colId: col.id, widget, direction: 'down' }))}
+                                    >
+                                      {isRowFlow ? <ArrowRight size={10} strokeWidth={2} /> : <ArrowDown size={10} strokeWidth={2} />}
+                                    </Button>
+                                  )}
+
+                                  {/* Container-to-container movements */}
                                   {ci > 0 && (
-                                    <Button variant="ghost" size="icon-sm" title="Move left" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                    <Button variant="ghost" size="icon-sm" title={isRowFlow ? "Move to row above" : "Move to left column"} className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent"
                                       onClick={() => dispatch(moveWidgetAction({ colId: col.id, widget, direction: 'left' }))}
                                     >
-                                      <ArrowLeft size={10} strokeWidth={2} />
+                                      {isRowFlow ? <ArrowUp size={10} strokeWidth={2} /> : <ArrowLeft size={10} strokeWidth={2} />}
                                     </Button>
                                   )}
                                   {ci < columns.length - 1 && (
-                                    <Button variant="ghost" size="icon-sm" title="Move right" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                    <Button variant="ghost" size="icon-sm" title={isRowFlow ? "Move to row below" : "Move to right column"} className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent"
                                       onClick={() => dispatch(moveWidgetAction({ colId: col.id, widget, direction: 'right' }))}
                                     >
-                                      <ArrowRight size={10} strokeWidth={2} />
+                                      {isRowFlow ? <ArrowDown size={10} strokeWidth={2} /> : <ArrowRight size={10} strokeWidth={2} />}
                                     </Button>
                                   )}
+
                                   <Button variant="ghost" size="icon-sm" title="Remove widget" className="h-6 w-6 text-destructive/70 hover:text-destructive hover:bg-destructive/10 ml-1"
                                     onClick={() => dispatch(removeWidgetAction({ colId: col.id, widget }))}
                                   >
@@ -331,7 +423,29 @@ export function WorkspaceDashboard() {
                               )}
 
                               {!editing && (
-                                <div className="ml-auto flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
+                                <div className="ml-auto flex items-center gap-1 opacity-80 hover:opacity-100 transition-opacity">
+                                  {/* Pin / Stick Toggle */}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    title={pinnedWidgets.has(widget) ? "Unpin widget" : "Pin/Stick widget in place"}
+                                    className={`h-6 w-6 rounded-xs transition-colors ${
+                                      pinnedWidgets.has(widget)
+                                        ? 'text-cyan-400 bg-cyan-500/15'
+                                        : 'text-muted-foreground hover:text-cyan-300 hover:bg-accent/60'
+                                    }`}
+                                    onClick={() => {
+                                      setPinnedWidgets(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(widget)) next.delete(widget);
+                                        else next.add(widget);
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    <Pin size={11} className={pinnedWidgets.has(widget) ? 'fill-cyan-400 text-cyan-400' : ''} />
+                                  </Button>
+
                                   <Button
                                     variant="ghost"
                                     size="icon-sm"

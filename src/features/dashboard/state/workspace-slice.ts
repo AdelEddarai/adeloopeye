@@ -1,12 +1,13 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { type Column, type PresetId, PRESETS, type WidgetKey } from './presets';
+import { type Column, type PresetId, PRESETS, type WidgetKey, type LayoutFlow } from './presets';
 
 // State
 
 export type WorkspaceState = {
   columns: Column[];
   activePreset: PresetId | 'custom';
+  layoutFlow: LayoutFlow;
   editing: boolean;
   /** Column panel sizes: { [panelId]: percentage } */
   columnSizes: Record<string, number>;
@@ -21,6 +22,7 @@ function newColId() {
 const initialState: WorkspaceState = {
   columns: PRESETS.analyst.columns,
   activePreset: 'analyst',
+  layoutFlow: 'columns',
   editing: false,
   columnSizes: { ...PRESETS.analyst.columnSizes },
   rowSizes: {},
@@ -36,7 +38,15 @@ const workspaceSlice = createSlice({
       const preset = PRESETS[action.payload];
       state.columns = preset.columns;
       state.activePreset = action.payload;
+      state.layoutFlow = preset.layoutFlow || 'columns';
       state.columnSizes = { ...preset.columnSizes };
+      state.rowSizes = {};
+    },
+
+    setLayoutFlow(state, action: PayloadAction<LayoutFlow>) {
+      state.layoutFlow = action.payload;
+      state.activePreset = 'custom';
+      state.columnSizes = {};
       state.rowSizes = {};
     },
 
@@ -50,15 +60,10 @@ const workspaceSlice = createSlice({
     addWidget(state, action: PayloadAction<{ colId: string; widget: WidgetKey }>) {
       const col = state.columns.find(c => c.id === action.payload.colId);
       if (col) {
-        // Check if widget already exists in this column
         if (!col.widgets.includes(action.payload.widget)) {
           col.widgets.push(action.payload.widget);
           state.activePreset = 'custom';
-          // Clear row sizes for the affected column (new widget added)
           delete state.rowSizes[action.payload.colId];
-          console.log(`✅ Added widget '${action.payload.widget}' to column '${action.payload.colId}'`);
-        } else {
-          console.log(`⚠️ Widget '${action.payload.widget}' already exists in column '${action.payload.colId}' - skipping`);
         }
       }
     },
@@ -70,7 +75,6 @@ const workspaceSlice = createSlice({
       }
       state.columns = state.columns.filter(c => c.widgets.length > 0);
       state.activePreset = 'custom';
-      // Clear all sizes — column count may have changed
       state.columnSizes = {};
       state.rowSizes = {};
     },
@@ -91,6 +95,23 @@ const workspaceSlice = createSlice({
       state.rowSizes = {};
     },
 
+    moveWidgetVertical(state, action: PayloadAction<{ colId: string; widget: WidgetKey; direction: 'up' | 'down' }>) {
+      const { colId, widget, direction } = action.payload;
+      const col = state.columns.find(c => c.id === colId);
+      if (!col) return;
+      const wi = col.widgets.indexOf(widget);
+      if (wi === -1) return;
+      const targetIndex = direction === 'up' ? wi - 1 : wi + 1;
+      if (targetIndex < 0 || targetIndex >= col.widgets.length) return;
+
+      const nextWidgets = [...col.widgets];
+      const [moved] = nextWidgets.splice(wi, 1);
+      nextWidgets.splice(targetIndex, 0, moved);
+      col.widgets = nextWidgets;
+      state.activePreset = 'custom';
+      delete state.rowSizes[colId];
+    },
+
     addColumn(state, action: PayloadAction<WidgetKey>) {
       state.columns.push({ id: newColId(), widgets: [action.payload] });
       state.activePreset = 'custom';
@@ -106,6 +127,7 @@ const workspaceSlice = createSlice({
       const preset = PRESETS.analyst;
       state.columns = preset.columns;
       state.activePreset = 'analyst';
+      state.layoutFlow = 'columns';
       state.columnSizes = { ...preset.columnSizes };
       state.rowSizes = {};
     },
@@ -122,10 +144,12 @@ const workspaceSlice = createSlice({
 
 export const {
   applyPreset,
+  setLayoutFlow,
   setColumns,
   addWidget,
   removeWidget,
   moveWidget,
+  moveWidgetVertical,
   addColumn,
   toggleEditing,
   resetToPreset,

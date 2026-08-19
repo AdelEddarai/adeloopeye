@@ -50,30 +50,55 @@ export const WIDGET_LABELS: Record<WidgetKey, string> = {
 
 // Presets
 
-export type PresetId = 'analyst' | 'commander' | 'executive' | 'live';
+export type LayoutFlow = 'columns' | 'rows' | 'grid';
 
-export type WorkspaceLayout = { columns: Column[] };
+export type PresetId = 'analyst' | 'command' | 'mosaic' | 'commander' | 'executive' | 'live';
 
-type PresetDefinition = {
+export type WorkspaceLayout = { columns: Column[]; layoutFlow?: LayoutFlow };
+
+export type PresetDefinition = {
   label: string;
   description: string;
+  layoutFlow: LayoutFlow;
   columns: Column[];
   columnSizes: Record<string, number>;
 };
 
 export const PRESETS: Record<PresetId, PresetDefinition> = {
   analyst: {
-    label: 'DEFAULT',
+    label: 'DEFAULT (SPLIT)',
     description: 'Intelligence map with conflict news and Morocco KPI dashboard',
+    layoutFlow: 'columns',
     columns: [
       { id: 'col-a', widgets: ['map'] },
       { id: 'col-b', widgets: ['conflictnews', 'moroccokpi'] },
     ],
     columnSizes: { 'col-a': 50, 'col-b': 50 },
   },
+  command: {
+    label: '〓 HORIZONTAL (C2)',
+    description: 'Top panoramic intel map with horizontal bottom tactical stream',
+    layoutFlow: 'rows',
+    columns: [
+      { id: 'row-top', widgets: ['map'] },
+      { id: 'row-bottom', widgets: ['conflictnews', 'moroccokpi', 'liveflights'] },
+    ],
+    columnSizes: { 'row-top': 55, 'row-bottom': 45 },
+  },
+  mosaic: {
+    label: '☲ MOSAIC (2x2)',
+    description: 'Balanced 2x2 grid matrix with map, conflict, KPI, and cyber',
+    layoutFlow: 'rows',
+    columns: [
+      { id: 'row-1', widgets: ['map', 'conflictnews'] },
+      { id: 'row-2', widgets: ['moroccokpi', 'cyberthreats'] },
+    ],
+    columnSizes: { 'row-1': 50, 'row-2': 50 },
+  },
   commander: {
     label: 'PRESET 2',
     description: 'Operational intelligence with conflict feeds and live data',
+    layoutFlow: 'columns',
     columns: [
       { id: 'col-a', widgets: ['map'] },
       { id: 'col-b', widgets: ['conflictnews', 'liveflights'] },
@@ -84,6 +109,7 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
   executive: {
     label: 'PRESET 3',
     description: 'Executive dashboard with conflict intelligence and live feeds',
+    layoutFlow: 'columns',
     columns: [
       { id: 'col-a', widgets: ['brief', 'predictions'] },
       { id: 'col-b', widgets: ['conflictnews', 'livenews'] },
@@ -94,6 +120,7 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
   live: {
     label: 'LIVE DATA',
     description: 'Real-time streaming data from external APIs',
+    layoutFlow: 'columns',
     columns: [
       { id: 'col-a', widgets: ['livenews', 'liveflights'] },
       { id: 'col-b', widgets: ['livethreats', 'cyberthreats'] },
