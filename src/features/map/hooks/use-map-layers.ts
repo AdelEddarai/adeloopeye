@@ -365,6 +365,28 @@ export function useMapLayers({
       },
     });
 
+    // Target labels
+    const targetLabels = showAllLabels && !isMobile && filtered.targets.length > 0 && new TextLayer<Target>({
+      id: 'target-labels',
+      data: filtered.targets,
+      getPosition: (d: Target): [number, number] => d.position,
+      getText: (d: Target): string => d.name,
+      getSize: isSatellite ? baseLabelSize + 1 : baseLabelSize,
+      getColor: (d: Target): RGBA => {
+        const c = actorColor(d.actor);
+        return [c[0], c[1], c[2], 255];
+      },
+      getPixelOffset: (): [number, number] => [0, 16],
+      fontFamily: 'SFMono-Regular, Menlo, monospace',
+      fontWeight: 600,
+      background: true,
+      getBackgroundColor: (): RGBA => labelBg,
+      backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+      pickable: true,
+      autoHighlight: true,
+      updateTriggers: { getColor: [isSatellite], getBackgroundColor: [isSatellite] },
+    });
+
     // Transform OpenSkyFlights / InterpolatedFlights into rich Asset format on the fly
     const flightAssets: (Asset & { contrailPath?: [number, number][]; category?: string; speedKnots?: number; flightLevel?: string })[] = globalFlights.map((f: any) => {
       let actor = 'unknown';

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 
 import Link from 'next/link';
 
-import { ArrowLeft, ArrowRight, Plus, X as XIcon, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Maximize2, Minimize2, Plus, X as XIcon, ZoomIn, ZoomOut } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
@@ -59,6 +59,19 @@ export function WorkspaceDashboard() {
   const allDays = bootstrap?.days ?? [];
   const [dashDay, setDashDay] = useState<string>('');
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [fullscreenWidget, setFullscreenWidget] = useState<{ key: WidgetKey; label: string } | null>(null);
+
+  // Close fullscreen on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && fullscreenWidget) {
+        setFullscreenWidget(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreenWidget]);
+
   const effectiveDashDay = dashDay || allDays[allDays.length - 1] || '';
   const widgetLinks = Object.fromEntries(
     Object.entries(WIDGET_LINKS).map(([key, value]) => {
@@ -317,22 +330,36 @@ export function WorkspaceDashboard() {
                                 </div>
                               )}
 
-                              {!editing && widgetLinks[widget] && (
-                                <Link
-                                  href={widgetLinks[widget]!.href}
-                                  className="no-underline ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => trackNavigationClicked({
-                                    component: 'widget_link',
-                                    destination_path: widgetLinks[widget]!.href,
-                                    layout_mode: layoutMode,
-                                    pathname: '/dashboard',
-                                    surface: 'dashboard_overview',
-                                    widget_key: widget,
-                                  })}
-                                >
-                                  <span className="text-[10px] text-foreground font-semibold uppercase tracking-wider">OPEN</span>
-                                  <ArrowRight size={10} strokeWidth={2} className="text-foreground" />
-                                </Link>
+                              {!editing && (
+                                <div className="ml-auto flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    title="Fullscreen Mode"
+                                    className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                                    onClick={() => setFullscreenWidget({ key: widget, label: WIDGET_LABELS[widget] })}
+                                  >
+                                    <Maximize2 size={11} strokeWidth={2} />
+                                  </Button>
+
+                                  {widgetLinks[widget] && (
+                                    <Link
+                                      href={widgetLinks[widget]!.href}
+                                      className="no-underline flex items-center gap-0.5 px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
+                                      onClick={() => trackNavigationClicked({
+                                        component: 'widget_link',
+                                        destination_path: widgetLinks[widget]!.href,
+                                        layout_mode: layoutMode,
+                                        pathname: '/dashboard',
+                                        surface: 'dashboard_overview',
+                                        widget_key: widget,
+                                      })}
+                                    >
+                                      <span className="text-[9px] font-semibold font-mono uppercase tracking-wider">OPEN</span>
+                                      <ArrowRight size={9} strokeWidth={2} />
+                                    </Link>
+                                  )}
+                                </div>
                               )}
                             </div>
 
@@ -350,6 +377,49 @@ export function WorkspaceDashboard() {
           </ResizablePanelGroup>
           </div>
         </div>
+
+        {/* ── High-Tech Fullscreen Widget Modal ── */}
+        {fullscreenWidget && (
+          <div className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
+            {/* Modal Header */}
+            <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-border/80 bg-card/90">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground px-1.5 py-0.5 rounded bg-muted border border-border">
+                  FULLSCREEN INTEL
+                </span>
+                <h2 className="font-mono text-sm font-bold text-foreground tracking-wider uppercase">
+                  {fullscreenWidget.label}
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {widgetLinks[fullscreenWidget.key] && (
+                  <Link
+                    href={widgetLinks[fullscreenWidget.key]!.href}
+                    className="no-underline flex items-center gap-1 px-2.5 py-1 rounded bg-accent/50 text-foreground hover:bg-accent text-xs font-mono font-semibold"
+                  >
+                    <span>DEDICATED PAGE</span>
+                    <ArrowRight size={12} />
+                  </Link>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFullscreenWidget(null)}
+                  className="h-7 px-2.5 font-mono text-xs gap-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                >
+                  <Minimize2 size={13} />
+                  <span>CLOSE (ESC)</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-background">
+              {widgetComponents()[fullscreenWidget.key]?.()}
+            </div>
+          </div>
+        )}
       </DashCtx.Provider>
     </div>
   );
