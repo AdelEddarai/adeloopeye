@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 
 import { AssetContent, MissileContent, StrikeContent, TargetContent, ZoneContent } from '@/features/map/components/MapDetailContent';
+import { ChokepointContent } from '@/features/map/components/ChokepointContent';
 import { CountryIntelligencePanel } from '@/features/map/components/CountryIntelligencePanel';
 import type { SelectedItem } from '@/features/map/components/types';
 import { WeatherPopup } from '@/features/map/components/WeatherPopup';
@@ -17,6 +18,7 @@ const PANEL_LABEL: Record<SelectedItem['type'], string> = {
   zone:    'THREAT ZONE',
   city:    'CITY WEATHER',
   country: 'COUNTRY INTELLIGENCE',
+  chokepoint: 'MARITIME CHOKEPOINT · OSINT',
 };
 
 const PANEL_ACCENT: Record<SelectedItem['type'], string> = {
@@ -27,10 +29,11 @@ const PANEL_ACCENT: Record<SelectedItem['type'], string> = {
   zone:    'var(--warning)',
   city:    'var(--blue-l)',
   country: 'var(--info)',
+  chokepoint: '#06b6d4',
 };
 
 function getTitle(item: SelectedItem): string {
-  if (item.type === 'country') return item.data.name;
+  if (item.type === 'country' || item.type === 'chokepoint') return item.data.name;
   if (item.type === 'city') return item.data.name;
   return 'label' in item.data ? item.data.label : item.data.name;
 }
@@ -80,6 +83,7 @@ export function MobileDetailPanel({ item, onClose, onSelectItem, onActivateStory
         {item.type === 'zone'    && <ZoneContent    d={item.data} />}
         {item.type === 'city'    && <WeatherPopup cityName={item.data.name} lat={item.data.position[1]} lon={item.data.position[0]} />}
         {item.type === 'country' && <CountryIntelligencePanel countryCode={item.data.code} countryName={item.data.name} />}
+        {item.type === 'chokepoint' && <ChokepointContent data={item.data} />}
       </div>
 
       {/* Footer */}

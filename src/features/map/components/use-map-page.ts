@@ -37,9 +37,8 @@ import {
 } from '@/features/map/state/map-slice';
 import { selectEvent, selectLocation, flyToCoordinates } from '@/shared/state/event-selection-slice';
 
-import { track } from '@/shared/lib/analytics';
-
 import type { Asset, CityMarker, MissileTrack, StrikeArc, Target, ThreatZone } from '@/data/map-data';
+import { STRATEGIC_CHOKEPOINTS } from '@/data/strategic-chokepoints';
 
 import { useAppDispatch, useAppSelector } from '@/shared/state';
 
@@ -367,6 +366,21 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
           callsign: asset.name
         });
       }
+    }
+    else if (id === 'strategic-hotspot-polygons' || id === 'strategic-hotspot-labels') {
+      const sector = object as any;
+      const chokepoint = STRATEGIC_CHOKEPOINTS[sector.id] || STRATEGIC_CHOKEPOINTS['sector-hormuz'];
+      next = { type: 'chokepoint', data: chokepoint };
+    }
+    else if (id === 'maritime-lanes' || id === 'maritime-lanes-glow') {
+      const lane = object as any;
+      const laneId = (lane.id || lane.name || '').toLowerCase();
+      let matchedKey = 'sector-hormuz';
+      if (laneId.includes('hormuz') || laneId.includes('persian') || laneId.includes('oman')) matchedKey = 'sector-hormuz';
+      else if (laneId.includes('mandeb') || laneId.includes('aden') || laneId.includes('suez') || laneId.includes('red sea')) matchedKey = 'sector-bab-el-mandeb';
+      else if (laneId.includes('gibraltar') || laneId.includes('med') || laneId.includes('tanger') || laneId.includes('atlantic')) matchedKey = 'sector-gibraltar';
+      else if (laneId.includes('taiwan') || laneId.includes('bashi') || laneId.includes('pacific') || laneId.includes('china')) matchedKey = 'sector-taiwan-strait';
+      next = { type: 'chokepoint', data: STRATEGIC_CHOKEPOINTS[matchedKey] };
     }
     else if (id === 'zones') next = { type: 'zone', data: object as ThreatZone };
     else if (id === 'cities' || id === 'city-labels') next = { type: 'city', data: object as CityMarker };

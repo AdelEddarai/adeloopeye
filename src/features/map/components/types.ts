@@ -1,4 +1,5 @@
 import type { Asset, CityMarker, MissileTrack, StrikeArc, Target, ThreatZone } from '@/data/map-data';
+import type { StrategicChokepointData } from '@/data/strategic-chokepoints';
 
 export type SelectedItem =
   | { type: 'strike'; data: StrikeArc }
@@ -7,4 +8,5 @@ export type SelectedItem =
   | { type: 'asset'; data: Asset }
   | { type: 'zone'; data: ThreatZone }
   | { type: 'city'; data: CityMarker }
-  | { type: 'country'; data: { code: string; name: string; coordinates?: [number, number] } };
+  | { type: 'country'; data: { code: string; name: string; coordinates?: [number, number] } }
+  | { type: 'chokepoint'; data: StrategicChokepointData };
