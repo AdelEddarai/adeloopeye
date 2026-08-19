@@ -424,11 +424,110 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
     }
     else if (id === 'zones') next = { type: 'zone', data: object as ThreatZone };
     else if (id === 'cities' || id === 'city-labels') next = { type: 'city', data: object as CityMarker };
+    else if (id === 'disinfo-arcs' || id === 'disinfo-arc-pulses' || id === 'disinfo-nodes' || id === 'disinfo-node-labels' || id === 'disinfo-mid-labels') {
+      const edge = (object as any).edge || ((object as any).source ? (object as any) : disinfoData?.edges.find(e => e.source === (object as any).code || e.target === (object as any).code)) || {
+        id: 'cib-generic',
+        source: (object as any).code || 'RU',
+        target: 'MA',
+        weight: (object as any).campaignVolume || 65,
+        kind: 'CAMPAIGN',
+        subKind: 'INFLUENCE_OP',
+        sources: [],
+        lastSeen: new Date().toISOString(),
+      };
+
+      const srcNode = disinfoData?.nodes.find(n => n.code === edge.source);
+      const tgtNode = disinfoData?.nodes.find(n => n.code === edge.target);
+
+      const CAMPAIGN_DOSSIERS: Record<string, any> = {
+        'cib-ru-fr-01': {
+          campaignName: 'OPERATION DOPPELGÄNGER (RUSSIAN FEDERATION ➔ FRANCE)',
+          threatActor: 'Social Design Agency (SDA) / Structura Group (APT-GRU)',
+          confidenceScore: 96,
+          disarmTactics: ['T0012 Persona Creation', 'T0043 LLM Fake Memos', 'T0029 Swarm Amplification', 'T0038 Micro-Targeting'],
+          targetedSectors: ['Ministry of Europe & Foreign Affairs', 'Critical Infrastructure', 'EU Defense Initiatives'],
+          narrativeObjective: 'Amplification of cloned media outlets (Le Point, Le Figaro, Ministry Portals) to seed manufactured diplomatic panic, weaponize migration narratives, and undermine Western defense cooperation.',
+          botnetVolume: 185,
+        },
+        'cib-dz-ma-01': {
+          campaignName: 'MAGHREB COGNITIVE WARFARE & DISINFO ARRAY (ALGERIA ➔ MOROCCO)',
+          threatActor: 'Tindouf Automated Telegram Arrays / State-Linked Cyber Botnets',
+          confidenceScore: 92,
+          disarmTactics: ['T0023 AI Deepfake Generation', 'T0029 Telegram Swarms', 'T0041 SMS Spoofing', 'T0015 Botnet Flooding'],
+          targetedSectors: ['Sovereignty & Territorial Integrity', 'Tanger Med Port Logistics', 'Diplomatic Normalization Accords'],
+          narrativeObjective: 'Coordinated dissemination of forged military skirmish casualties, AI-generated synthetic protest video footage, and cyber influence operations targeting Moroccan foreign trade routes and national defense morale.',
+          botnetVolume: 142,
+        },
+        'cib-ir-il-01': {
+          campaignName: 'STORM-1376 / CYBER AVENGENCE (IRAN ➔ ISRAEL)',
+          threatActor: 'IRGC Electronic Warfare & Cognitive Operations Directorate',
+          confidenceScore: 94,
+          disarmTactics: ['T0031 Critical Alert Hijack', 'T0012 Sockpuppet Personas', 'T0044 SMS Blast Spoofing'],
+          targetedSectors: ['Civil Defense Siren Infrastructure', 'Port of Haifa Logistics', 'Civilian Defense Confidence'],
+          narrativeObjective: 'Mass automated distribution of fabricated missile impact damage, spoofed home front command sirens, and cognitive warfare intended to induce civilian shelter panic.',
+          botnetVolume: 210,
+        },
+        'cib-cn-tw-01': {
+          campaignName: 'SPAMOUFLAGE / DRAGONBRIDGE (CHINA ➔ TAIWAN)',
+          threatActor: 'PLA Strategic Support Force (SSF) / Network Systems Dept',
+          confidenceScore: 98,
+          disarmTactics: ['T0043 Multilingual LLM Agents', 'T0029 High-Frequency Flooding', 'T0038 Microelectronics Panic'],
+          targetedSectors: ['Taiwan Strait ADIZ & Maritime Lane', 'Semiconductor Supply Logistics', 'Civil Maritime Transit'],
+          narrativeObjective: 'Multi-platform synchronized narrative injection asserting immediate naval blockade execution and fabricated semiconductor factory sabotage.',
+          botnetVolume: 340,
+        },
+        'cib-ru-ua-01': {
+          campaignName: 'PRAVDA MULTI-PORTAL BOTNET (RUSSIA ➔ UKRAINE/EU)',
+          threatActor: 'Sandworm / APT28 (GRU Unit 26165)',
+          confidenceScore: 95,
+          disarmTactics: ['T0015 High-Volume Botnet Flooding', 'T0043 Forged Orders', 'T0029 Cross-Network Amplification'],
+          targetedSectors: ['Power Grid & Energy Infrastructure', 'Frontline Communications', 'EU Logistics Corridors'],
+          narrativeObjective: 'Continuous DDoS coordinated with fabricated military retreat memos and cyber sabotage claims.',
+          botnetVolume: 290,
+        },
+        'cib-ye-sa-01': {
+          campaignName: 'RED SEA MARITIME COGNITIVE OP (HOUTHI/YEMEN ➔ RED SEA)',
+          threatActor: 'Houthi Ansar Allah Information Directorate',
+          confidenceScore: 89,
+          disarmTactics: ['T0029 Social Amplification', 'T0043 Fabricated Carrier Strikes', 'T0038 Shipping Insurance Panic'],
+          targetedSectors: ['Bab-el-Mandeb Shipping', 'Commercial Tanker Operators', 'Lloyds Maritime Risk Desk'],
+          narrativeObjective: 'Fabricated assertions of aircraft carrier strikes and false sinking claims targeting commercial maritime insurance rates and freight rerouting.',
+          botnetVolume: 96,
+        },
+      };
+
+      const dossier = CAMPAIGN_DOSSIERS[edge.id] || {
+        campaignName: `${edge.source} ➔ ${edge.target} COGNITIVE INFLUENCE VECTOR`,
+        threatActor: 'Advanced Persistent Threat (APT) / State-Backed CIB Cluster',
+        confidenceScore: 88,
+        disarmTactics: ['T0012 Inauthentic Personas', 'T0029 Swarm Amplification', 'T0038 Cognitive Micro-Targeting'],
+        targetedSectors: ['Government Portals', 'Strategic Transportation Hubs', 'Civilian Communications'],
+        narrativeObjective: 'Coordinated inauthentic behavior operation deploying automated sockpuppet swarms to inject polarization and manipulate diplomatic decision-making.',
+        botnetVolume: 80 + (edge.weight || 20) * 2,
+      };
+
+      next = {
+        type: 'disinfo',
+        data: {
+          edge,
+          sourceNode: srcNode,
+          targetNode: tgtNode,
+          campaignName: dossier.campaignName,
+          threatActor: dossier.threatActor,
+          confidenceScore: dossier.confidenceScore,
+          disarmTactics: dossier.disarmTactics,
+          targetedSectors: dossier.targetedSectors,
+          narrativeObjective: dossier.narrativeObjective,
+          botnetVolume: dossier.botnetVolume,
+          sources: edge.sources || [],
+        },
+      };
+    }
 
     dispatch(setSelectedItemAction(next));
     if (next) track('map_object_clicked', { type: next.type });
     return next;
-  }, [dispatch, moroccoData?.events, viewState]);
+  }, [dispatch, moroccoData?.events, viewState, disinfoData]);
 
   const showTimeline = overlayVisibility.timeline && !(isMobile && !!selectedItem);
   const isLoading = f.isLoading;

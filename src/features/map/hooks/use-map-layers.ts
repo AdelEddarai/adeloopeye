@@ -1584,7 +1584,7 @@ export function useMapLayers({
     // DISINFORMATION & COGNITIVE WARFARE TELEMETRY LAYER
     // ═══════════════════════════════════════════════════════════
 
-    // Base Great-Circle Arcs
+    // 1. Sleek Laser Great-Circle Vector Arc (Small Width 1.2px - 1.6px)
     const disinfoLayer = showDisinfo && disinfo && disinfo.edges.length > 0 && new ArcLayer<DisinfoEdge>({
       id: 'disinfo-arcs',
       data: disinfo.edges,
@@ -1597,10 +1597,10 @@ export function useMapLayers({
         return n ? [n.lon, n.lat] : [0, 0];
       },
       getSourceColor: (d: DisinfoEdge): RGBA =>
-        d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 250 : 220] : [239, 68, 68, isSatellite ? 240 : 210],
-      getTargetColor: (): RGBA => [56, 189, 248, isSatellite ? 240 : 200],
-      getWidth: (d: DisinfoEdge): number => Math.min(1.4 + d.weight * 0.35, 3.2),
-      getHeight: 0.18,
+        d.kind === 'CAMPAIGN' ? [245, 158, 11, isSatellite ? 230 : 200] : [239, 68, 68, isSatellite ? 230 : 190],
+      getTargetColor: (): RGBA => [56, 189, 248, isSatellite ? 240 : 190],
+      getWidth: (d: DisinfoEdge): number => Math.min(1.2 + d.weight * 0.015, 1.8), // Small width clean laser line
+      getHeight: 0.22,
       widthUnits: 'pixels',
       greatCircle: true,
       pickable: true,
@@ -1611,58 +1611,93 @@ export function useMapLayers({
       },
     });
 
-    // Real-Time Animated Disinformation Pulse Particles (moving packets along arcs)
+    // 2. Animated Workflow Stream (Laser Comet with Head + Trailing Sub-Packets)
     const disinfoPulseParticles = useMemo(() => {
       if (!showDisinfo || !disinfo || !disinfo.edges.length) return [];
       const normalizedPhase = (pulseTime / (Math.PI * 2)); // 0 to 1
 
-      return disinfo.edges.map(edge => {
+      const particles: Array<{
+        id: string;
+        position: [number, number];
+        isHead: boolean;
+        alpha: number;
+        radius: number;
+        kind: string;
+        weight: number;
+        edge: DisinfoEdge;
+      }> = [];
+
+      disinfo.edges.forEach((edge, edgeIdx) => {
         const srcNode = disinfo.nodes.find(n => n.code === edge.source);
         const tgtNode = disinfo.nodes.find(n => n.code === edge.target);
-        if (!srcNode || !tgtNode) return null;
+        if (!srcNode || !tgtNode) return;
 
-        // Linear interpolation with slight arch curvature simulation
-        const t = (normalizedPhase + (edge.weight % 10) * 0.1) % 1;
-        const lon = srcNode.lon + (tgtNode.lon - srcNode.lon) * t;
-        const lat = srcNode.lat + (tgtNode.lat - srcNode.lat) * t;
+        // Base progress for this edge
+        const baseT = (normalizedPhase + (edgeIdx * 0.18)) % 1;
 
-        return {
-          id: `disinfo-pulse-${edge.id}`,
-          position: [lon, lat] as [number, number],
-          kind: edge.kind,
-          weight: edge.weight,
-        };
-      }).filter(Boolean);
+        // Generate 4 streak points (Head + 3 trailing tail dots)
+        const trailOffsets = [0, 0.04, 0.08, 0.12];
+        trailOffsets.forEach((offset, trailIdx) => {
+          let t = (baseT - offset);
+          if (t < 0) t += 1;
+
+          const lon = srcNode.lon + (tgtNode.lon - srcNode.lon) * t;
+          const lat = srcNode.lat + (tgtNode.lat - srcNode.lat) * t;
+
+          const isHead = trailIdx === 0;
+          const alpha = isHead ? 255 : Math.round(200 - trailIdx * 50);
+          const radius = isHead ? 45000 : Math.max(18000, 42000 - trailIdx * 8000);
+
+          particles.push({
+            id: `disinfo-streak-${edge.id}-${trailIdx}`,
+            position: [lon, lat],
+            isHead,
+            alpha,
+            radius,
+            kind: edge.kind,
+            weight: edge.weight,
+            edge,
+          });
+        });
+      });
+
+      return particles;
     }, [showDisinfo, disinfo, pulseTime]);
 
     const disinfoArcPulseLayer = disinfoPulseParticles.length > 0 && new ScatterplotLayer({
       id: 'disinfo-arc-pulses',
       data: disinfoPulseParticles,
       getPosition: (d: any) => d.position,
-      getRadius: (d: any) => 35000 + Math.min(50000, d.weight * 800),
+      getRadius: (d: any) => d.radius,
       getFillColor: (d: any): RGBA =>
-        d.kind === 'CAMPAIGN' ? [251, 191, 36, 240] : [248, 113, 113, 240],
-      getLineColor: [255, 255, 255, 220],
-      stroked: true,
-      lineWidthMinPixels: 1.5,
-      pickable: false,
+        d.isHead
+          ? [255, 255, 255, d.alpha]
+          : d.kind === 'CAMPAIGN'
+          ? [251, 191, 36, d.alpha]
+          : [248, 113, 113, d.alpha],
+      getLineColor: [255, 255, 255, 200],
+      stroked: (d: any) => d.isHead,
+      lineWidthMinPixels: 1,
+      pickable: true,
       updateTriggers: {
         getPosition: [pulseTime],
+        getFillColor: [pulseTime],
+        getRadius: [pulseTime],
       },
     });
 
-    // Disinformation / bot network node volume
+    // 3. Disinformation / bot network node volume
     const disinfoNodeLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
       id: 'disinfo-nodes',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
       getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
       getRadius: (d: DisinfoNode): number =>
-        25000 + Math.min(240000, Math.sqrt(d.campaignVolume + d.botVolume) * 95000),
+        25000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000),
       getFillColor: (d: DisinfoNode): RGBA =>
-        d.campaignVolume >= d.botVolume ? [245, 158, 11, 75] : [239, 68, 68, 75],
+        d.campaignVolume >= d.botVolume ? [245, 158, 11, 80] : [239, 68, 68, 80],
       stroked: true,
       getLineColor: (d: DisinfoNode): RGBA =>
-        d.campaignVolume >= d.botVolume ? [251, 191, 36, 220] : [248, 113, 113, 220],
+        d.campaignVolume >= d.botVolume ? [251, 191, 36, 230] : [248, 113, 113, 230],
       lineWidthMinPixels: 1.5,
       pickable: true,
       autoHighlight: true,
@@ -1672,15 +1707,15 @@ export function useMapLayers({
       },
     });
 
-    // Expanding Radiating Radar Shockwave Rings around CIB Source Hubs
+    // 4. Expanding Radiating Radar Shockwave Rings around CIB Source Hubs
     const shockwavePhase = (Math.sin(pulseTime * 2) + 1) / 2; // 0 to 1
     const disinfoNodeShockwaveLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new ScatterplotLayer<DisinfoNode>({
       id: 'disinfo-nodes-shockwave',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
       getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
       getRadius: (d: DisinfoNode): number => {
-        const base = 30000 + Math.min(240000, Math.sqrt(d.campaignVolume + d.botVolume) * 95000);
-        return base * (1 + shockwavePhase * 0.7);
+        const base = 30000 + Math.min(220000, Math.sqrt(d.campaignVolume + d.botVolume) * 90000);
+        return base * (1 + shockwavePhase * 0.75);
       },
       getFillColor: [0, 0, 0, 0],
       stroked: true,
@@ -1696,7 +1731,38 @@ export function useMapLayers({
       },
     });
 
-    // Tactical Disinfo Node Text Badges
+    // 5. Tactical Disinfo Vector Midpoint Labels (Directly on Vector Curve)
+    const disinfoMidpointLabels = useMemo(() => {
+      if (!showDisinfo || !disinfo || !disinfo.edges.length) return [];
+      return disinfo.edges.map(edge => {
+        const src = disinfo.nodes.find(n => n.code === edge.source);
+        const tgt = disinfo.nodes.find(n => n.code === edge.target);
+        if (!src || !tgt) return null;
+        return {
+          id: `disinfo-mid-${edge.id}`,
+          position: [(src.lon + tgt.lon) / 2, (src.lat + tgt.lat) / 2] as [number, number],
+          text: `⚡ ${edge.source} ➔ ${edge.target} (${edge.weight} WT)`,
+          edge,
+        };
+      }).filter(Boolean);
+    }, [showDisinfo, disinfo]);
+
+    const disinfoMidpointLabelLayer = disinfoMidpointLabels.length > 0 && new TextLayer({
+      id: 'disinfo-mid-labels',
+      data: disinfoMidpointLabels,
+      getPosition: (d: any) => d.position,
+      getText: (d: any) => d.text,
+      getSize: 9,
+      getColor: [251, 191, 36, 230],
+      fontFamily: 'monospace',
+      fontWeight: 700,
+      background: true,
+      getBackgroundColor: [10, 15, 26, 210],
+      backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
+      pickable: true,
+    });
+
+    // 6. Tactical Disinfo Node Hub Badges
     const disinfoLabelsLayer = showDisinfo && disinfo && disinfo.nodes.length > 0 && new TextLayer<DisinfoNode>({
       id: 'disinfo-node-labels',
       data: disinfo.nodes.filter(n => n.campaignVolume + n.botVolume > 0),
@@ -1704,13 +1770,13 @@ export function useMapLayers({
       getText: (d: DisinfoNode) => `⚠️ ${d.name} (${d.campaignVolume + d.botVolume} CIB)`,
       getSize: 10,
       getColor: [255, 255, 255, 230],
-      getPixelOffset: [0, -16],
+      getPixelOffset: [0, -18],
       fontFamily: 'monospace',
       fontWeight: 700,
       background: true,
       getBackgroundColor: [15, 23, 42, 210],
       backgroundPadding: [4, 2, 4, 2] as [number, number, number, number],
-      pickable: false,
+      pickable: true,
     });
 
     const layers = [
@@ -1751,6 +1817,7 @@ export function useMapLayers({
       disinfoArcPulseLayer,
       disinfoNodeShockwaveLayer,
       disinfoNodeLayer,
+      disinfoMidpointLabelLayer,
       disinfoLabelsLayer,
       ...(showMoroccoLayer ? moroccoLayers : []),
     ].filter(Boolean);

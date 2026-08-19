@@ -193,6 +193,25 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.4;margin-bottom:4px">${d.description}</div>` : ''}
       ${d.impact ? `<div style="color:var(--warning);font-size:9px;margin-top:4px;font-weight:600">IMPACT: ${d.impact}</div>` : ''}
     `;
+  } else if (layerId === 'disinfo-arcs' || layerId === 'disinfo-arc-pulses' || layerId === 'disinfo-nodes') {
+    const d = object as any;
+    const isNode = layerId === 'disinfo-nodes' || d.code !== undefined;
+    if (isNode) {
+      html = `
+        <div style="font-weight:700;font-size:11px;color:#f59e0b;margin-bottom:4px">⚠️ CIB NODE: ${d.name || d.code}</div>
+        <div style="color:var(--t3);font-size:9px;margin-bottom:2px">BOTNET VOLUME: <strong style="color:#38bdf8">${d.botVolume || 12} IPs</strong></div>
+        <div style="color:var(--t3);font-size:9px">CAMPAIGN INTEL: <strong style="color:#f59e0b">${d.campaignVolume || d.weight || 45} OPS</strong></div>
+        <div style="color:var(--cyan);font-size:8px;margin-top:6px;font-weight:700">CLICK TO OPEN FORENSIC DOSSIER ↗</div>
+      `;
+    } else {
+      html = `
+        <div style="font-weight:700;font-size:11px;color:#f59e0b;margin-bottom:4px">⚡ DISINFO ATTACK VECTOR</div>
+        <div style="color:var(--t1);font-size:10px;font-weight:700;margin-bottom:3px">${d.source} ➔ ${d.target}</div>
+        <div style="color:var(--t3);font-size:9px;margin-bottom:2px">TYPE: <strong style="color:#38bdf8">${d.subKind || d.kind || 'INFLUENCE_OP'}</strong></div>
+        <div style="color:var(--t3);font-size:9px">IMPACT WEIGHT: <strong style="color:#ef4444">${d.weight || 50}/100</strong></div>
+        <div style="color:var(--cyan);font-size:8px;margin-top:6px;font-weight:700">CLICK TO OPEN FORENSIC DOSSIER ↗</div>
+      `;
+    }
   } else {
     const obj = object as unknown as Record<string, unknown>;
     const hasContent = obj.label || obj.name;

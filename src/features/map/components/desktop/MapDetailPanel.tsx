@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AssetContent, MissileContent, StrikeContent, TargetContent, ZoneContent } from '@/features/map/components/MapDetailContent';
 import { ChokepointContent } from '@/features/map/components/ChokepointContent';
 import { CountryIntelligencePanel } from '@/features/map/components/CountryIntelligencePanel';
+import { DisinfoContent } from '@/features/map/components/DisinfoContent';
 import type { SelectedItem } from '@/features/map/components/types';
 import { WeatherPopup } from '@/features/map/components/WeatherPopup';
 
@@ -19,6 +20,7 @@ const PANEL_LABEL: Record<SelectedItem['type'], string> = {
   city:    'CITY WEATHER',
   country: 'COUNTRY INTELLIGENCE',
   chokepoint: 'MARITIME CHOKEPOINT · OSINT',
+  disinfo: 'DISINFORMATION & CIB DOSSIER',
 };
 
 const PANEL_ACCENT: Record<SelectedItem['type'], string> = {
@@ -30,10 +32,12 @@ const PANEL_ACCENT: Record<SelectedItem['type'], string> = {
   city:    'var(--blue-l)',
   country: 'var(--info)',
   chokepoint: '#06b6d4',
+  disinfo: '#f59e0b',
 };
 
 function getTitle(item: SelectedItem): string {
   if (item.type === 'country' || item.type === 'chokepoint') return item.data.name;
+  if (item.type === 'disinfo') return item.data.campaignName;
   return 'label' in item.data ? item.data.label : item.data.name;
 }
 
@@ -92,6 +96,7 @@ export function DesktopDetailPanel({ item, onClose, onSelectItem, onActivateStor
             {item.type === 'city'    && <WeatherPopup cityName={item.data.name} lat={item.data.position[1]} lon={item.data.position[0]} />}
             {item.type === 'country' && <CountryIntelligencePanel countryCode={item.data.code} countryName={item.data.name} />}
             {item.type === 'chokepoint' && <ChokepointContent data={item.data} />}
+            {item.type === 'disinfo' && <DisinfoContent data={item.data} />}
           </div>
 
           {/* Footer */}
