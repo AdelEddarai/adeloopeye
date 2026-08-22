@@ -170,12 +170,12 @@ export function useMapPage({ isMobile }: { isMobile: boolean }) {
   const lonDiff = 360 / Math.pow(2, viewState.zoom);
   const flightBbox = useMemo<[number, number, number, number] | undefined>(() => {
     if (isGlobalFlights) return undefined;
-    return [
-      Math.max(-90, viewState.latitude - latDiff / 2),
-      Math.min(180, viewState.longitude - lonDiff / 2),
-      Math.min(90, viewState.latitude + latDiff / 2),
-      Math.max(-180, viewState.longitude + lonDiff / 2),
-    ];
+    // Quantize bounding box to 0.5-degree grid steps to avoid thrashing React Query keys during panning
+    const minLat = Math.max(-90, Math.floor((viewState.latitude - latDiff / 2) * 2) / 2);
+    const minLon = Math.min(180, Math.floor((viewState.longitude - lonDiff / 2) * 2) / 2);
+    const maxLat = Math.min(90, Math.ceil((viewState.latitude + latDiff / 2) * 2) / 2);
+    const maxLon = Math.max(-180, Math.ceil((viewState.longitude + lonDiff / 2) * 2) / 2);
+    return [minLat, minLon, maxLat, maxLon];
   }, [viewState.latitude, viewState.longitude, viewState.zoom, isGlobalFlights, latDiff, lonDiff]);
 
   const { data: liveFlightsResp, isLoading: flightsLoading } = useLiveFlights(

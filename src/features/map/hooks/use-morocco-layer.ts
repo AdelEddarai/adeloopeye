@@ -617,8 +617,6 @@ export function useMoroccoLayer({
     // EVENT MICRO-ICONS - Sleek micro icons at all monitoring zoom levels
     // ═══════════════════════════════════════════════════════════
     if (visibleEvents.length > 0 && zoom >= 6) {
-      const iconAtlas = createEventIconAtlas();
-      
       const eventIconLayer = new IconLayer<typeof visibleEvents[0]>({
         id: 'morocco-event-icons',
         data: visibleEvents,
@@ -628,8 +626,8 @@ export function useMoroccoLayer({
           return d.severity === 'CRITICAL' ? 12 : d.severity === 'HIGH' ? 11 : 10;
         },
         getColor: (d): RGBA => getEventColor(d.type, d.severity),
-        iconAtlas,
-        iconMapping: createEventIconMapping(),
+        iconAtlas: EVENT_ICON_ATLAS_SVG,
+        iconMapping: EVENT_ICON_MAPPING,
         pickable: true,
         autoHighlight: true,
       });
@@ -800,9 +798,6 @@ export function useMoroccoLayer({
     // WEATHER MARKERS - Current weather in major cities
     // ═══════════════════════════════════════════════════════════
     if (weather.length > 0) {
-      const weatherAtlas = createWeatherIconAtlas();
-      const weatherMapping = createWeatherIconMapping();
-
       const weatherIconKey = (d: MoroccoWeather): string => {
         const code = String(d.icon || '');
         if (code.startsWith('11')) return 'storm';
@@ -826,8 +821,8 @@ export function useMoroccoLayer({
           if (d.alert) return [255, 220, 120, 255];
           return [160, 210, 255, 240];
         },
-        iconAtlas: weatherAtlas,
-        iconMapping: weatherMapping,
+        iconAtlas: WEATHER_ICON_ATLAS_SVG,
+        iconMapping: WEATHER_ICON_MAPPING,
         pickable: true,
         autoHighlight: true,
         sizeUnits: 'pixels',
@@ -1489,3 +1484,8 @@ function createEventIconMapping(): Record<string, { x: number; y: number; width:
   
   return mapping;
 }
+
+export const WEATHER_ICON_ATLAS_SVG = createWeatherIconAtlas();
+export const WEATHER_ICON_MAPPING = createWeatherIconMapping();
+export const EVENT_ICON_ATLAS_SVG = createEventIconAtlas();
+export const EVENT_ICON_MAPPING = createEventIconMapping();

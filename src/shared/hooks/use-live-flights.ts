@@ -27,16 +27,25 @@ export function useLiveFlights(bbox?: [number, number, number, number], enabled:
         params.set('scope', scope);
       }
 
-      const res = await fetch(`/api/v1/live/flights?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch flights');
+      try {
+        const res = await fetch(`/api/v1/live/flights?${params}`);
+        if (!res.ok) {
+          return { flights: [], count: 0, fetchedAt: new Date().toISOString(), bbox: bbox || [0, 0, 0, 0] } as FlightsResponse;
+        }
 
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error?.message || 'API error');
+        const json = await res.json();
+        if (!json.ok || !json.data) {
+          return { flights: [], count: 0, fetchedAt: new Date().toISOString(), bbox: bbox || [0, 0, 0, 0] } as FlightsResponse;
+        }
 
-      return json.data as FlightsResponse;
+        return json.data as FlightsResponse;
+      } catch {
+        return { flights: [], count: 0, fetchedAt: new Date().toISOString(), bbox: bbox || [0, 0, 0, 0] } as FlightsResponse;
+      }
     },
     enabled, // Only fetch when enabled
-    refetchInterval: enabled ? 10_000 : false, // Only refetch when enabled
-    staleTime: 5_000, // Consider stale after 5 seconds
+    refetchInterval: enabled ? 15_000 : false, // Refetch every 15s when enabled
+    staleTime: 10_000,
+    retry: 1,
   });
 }

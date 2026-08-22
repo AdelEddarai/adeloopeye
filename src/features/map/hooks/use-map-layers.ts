@@ -123,9 +123,206 @@ function stringPhase(value: string): number {
   return Math.abs(hash % 360) * (Math.PI / 180);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TOP-LEVEL PRE-ALLOCATED STATIC SVG ATLASES (Singletons to prevent WebGL leaks)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AIRCRAFT_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
+    <g id="airliner" transform="translate(0, 0)">
+      <path d="M64 12 L70 42 L112 70 L112 78 L70 66 L70 102 L86 114 L86 120 L64 116 L42 120 L42 114 L58 102 L58 66 L16 78 L16 70 L58 42 Z" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+      <rect x="78" y="62" width="5" height="12" rx="2" fill="#333"/>
+      <rect x="45" y="62" width="5" height="12" rx="2" fill="#333"/>
+    </g>
+    <g id="fighter" transform="translate(128, 0)">
+      <path d="M64 10 L70 38 L98 78 L98 86 L74 76 L74 106 L86 116 L86 122 L64 116 L42 122 L42 116 L54 106 L54 76 L30 86 L30 78 L58 38 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <polygon points="64,30 67,48 61,48" fill="#333"/>
+      <circle cx="64" cy="116" r="3" fill="#ff4400"/>
+    </g>
+    <g id="heavy" transform="translate(256, 0)">
+      <path d="M64 10 L72 36 L118 64 L118 74 L72 66 L72 104 L88 114 L88 122 L64 116 L40 122 L40 114 L56 104 L56 66 L10 74 L10 64 L56 36 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <rect x="82" y="58" width="4" height="10" rx="1" fill="#333"/>
+      <rect x="96" y="62" width="4" height="10" rx="1" fill="#333"/>
+      <rect x="42" y="58" width="4" height="10" rx="1" fill="#333"/>
+      <rect x="28" y="62" width="4" height="10" rx="1" fill="#333"/>
+    </g>
+    <g id="uav" transform="translate(384, 0)">
+      <path d="M64 18 L68 46 L122 52 L122 56 L68 56 L68 108 L78 118 L78 122 L64 116 L50 122 L50 118 L60 108 L60 56 L6 56 L6 52 L60 46 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="1.8"/>
+      <circle cx="64" cy="18" r="4" fill="#00e5ff"/>
+      <line x1="58" y1="116" x2="70" y2="116" stroke="#ff8800" stroke-width="2"/>
+    </g>
+    <g id="carrier" transform="translate(0, 128)">
+      <rect x="52" y="16" width="24" height="96" rx="3" fill="#444" stroke="white" stroke-width="2"/>
+      <rect x="56" y="20" width="16" height="88" fill="#333"/>
+      <line x1="70" y1="24" x2="56" y2="96" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-dasharray="3,3"/>
+    </g>
+    <g id="helicopter" transform="translate(128, 128)">
+      <ellipse cx="64" cy="54" rx="12" ry="24" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+      <line x1="64" y1="78" x2="64" y2="118" stroke="white" stroke-width="3"/>
+      <line x1="58" y1="116" x2="70" y2="116" stroke="white" stroke-width="2"/>
+      <line x1="16" y1="54" x2="112" y2="54" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
+      <line x1="64" y1="6" x2="64" y2="102" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
+      <circle cx="64" cy="54" r="3" fill="#222"/>
+    </g>
+    <g id="airplane" transform="translate(256, 128)">
+      <path d="M64 20 L68 50 L88 64 L88 70 L68 62 L68 96 L76 106 L76 110 L64 106 L52 110 L52 106 L60 96 L60 62 L40 70 L40 64 L60 50 Z" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+    </g>
+  </svg>
+`);
+
+const AIRCRAFT_ICON_MAPPING = {
+  airliner:   { x: 0,   y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  fighter:    { x: 128, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  heavy:      { x: 256, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  uav:        { x: 384, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  carrier:    { x: 0,   y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  helicopter: { x: 128, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  airplane:   { x: 256, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
+const CYBER_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <g id="cyber">
+      <path d="M64 10 L100 25 L100 60 C100 85, 85 100, 64 110 C43 100, 28 85, 28 60 L28 25 Z" fill="currentColor" opacity="0.3" stroke="currentColor" stroke-width="3"/>
+      <path d="M64 45 L75 65 L53 65 Z" fill="currentColor"/>
+      <rect x="62" y="50" width="4" height="8" fill="white"/>
+      <rect x="62" y="60" width="4" height="3" fill="white"/>
+    </g>
+  </svg>
+`);
+
+const CYBER_ICON_MAPPING = {
+  cyber: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
+const FIRE_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <g id="fire">
+      <path d="M64 10 C64 10, 50 30, 50 50 C50 65, 55 75, 64 85 C73 75, 78 65, 78 50 C78 30, 64 10, 64 10 Z" fill="#FF4500" stroke="#FF8C00" stroke-width="2"/>
+      <path d="M64 30 C64 30, 56 42, 56 52 C56 60, 59 65, 64 70 C69 65, 72 60, 72 52 C72 42, 64 30, 64 30 Z" fill="#FFA500"/>
+      <path d="M64 45 C64 45, 60 50, 60 55 C60 59, 62 62, 64 65 C66 62, 68 59, 68 55 C68 50, 64 45, 64 45 Z" fill="#FFD700"/>
+    </g>
+  </svg>
+`);
+
+const FIRE_ICON_MAPPING = {
+  fire: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
+const LOGISTICS_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <g id="crisis">
+      <path d="M64 10 L118 108 L10 108 Z" fill="currentColor" opacity="0.35" stroke="currentColor" stroke-width="3"/>
+      <path d="M64 45 L72 85 L56 85 Z" fill="currentColor"/>
+      <rect x="61" y="52" width="6" height="20" fill="white"/>
+      <rect x="61" y="76" width="6" height="4" fill="white"/>
+    </g>
+  </svg>
+`);
+
+const LOGISTICS_ICON_MAPPING = {
+  crisis: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
+const INVEST_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <g id="invest">
+      <path d="M64 18 L96 52 L78 52 L78 96 L50 96 L50 52 L32 52 Z" fill="currentColor" opacity="0.85"/>
+      <rect x="42" y="20" width="44" height="6" rx="3" fill="white"/>
+    </g>
+  </svg>
+`);
+
+const INVEST_ICON_MAPPING = {
+  invest: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
+const NEWS_PULSE_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <g id="pulse">
+      <circle cx="64" cy="64" r="30" fill="currentColor" opacity="0.9"/>
+      <circle cx="64" cy="64" r="18" fill="white" opacity="0.7"/>
+      <path d="M64 20 L64 108 M20 64 L108 64" stroke="currentColor" stroke-width="3" opacity="0.5"/>
+    </g>
+  </svg>
+`);
+
+const NEWS_PULSE_ICON_MAPPING = {
+  pulse: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
+const VESSEL_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
+  <svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
+    <g id="carrier" transform="translate(0, 0)">
+      <path d="M48 10 L80 10 L88 28 L86 118 L42 118 L40 28 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <path d="M72 16 L48 112" stroke="rgba(0,0,0,0.4)" stroke-width="2.5" stroke-dasharray="4,3"/>
+      <path d="M64 12 L64 116" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+      <rect x="76" y="52" width="8" height="24" rx="2" fill="#222" stroke="white" stroke-width="1"/>
+      <line x1="56" y1="12" x2="56" y2="40" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+    </g>
+    <g id="destroyer" transform="translate(128, 0)">
+      <path d="M64 14 L76 42 L74 112 L54 112 L52 42 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <circle cx="64" cy="36" r="4.5" fill="#333" stroke="white" stroke-width="1"/>
+      <line x1="64" y1="36" x2="64" y2="25" stroke="#222" stroke-width="2"/>
+      <polygon points="64,48 71,58 57,58" fill="#333"/>
+      <rect x="59" y="66" width="10" height="16" fill="#555" rx="1"/>
+      <circle cx="64" cy="98" r="6" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="64" y="101" font-size="7" font-weight="bold" text-anchor="middle" fill="rgba(0,0,0,0.6)">H</text>
+    </g>
+    <g id="submarine" transform="translate(256, 0)">
+      <path d="M64 16 C74 26 74 100 64 114 C54 100 54 26 64 16 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <rect x="61" y="46" width="6" height="24" rx="3" fill="#222" stroke="white" stroke-width="1"/>
+      <line x1="50" y1="58" x2="78" y2="58" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      <line x1="52" y1="108" x2="76" y2="108" stroke="white" stroke-width="2"/>
+    </g>
+    <g id="container" transform="translate(384, 0)">
+      <path d="M64 12 L82 32 L82 114 L46 114 L46 32 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <rect x="50" y="32" width="28" height="12" fill="#3b82f6" stroke="rgba(0,0,0,0.4)"/>
+      <rect x="50" y="46" width="28" height="12" fill="#ef4444" stroke="rgba(0,0,0,0.4)"/>
+      <rect x="50" y="60" width="28" height="12" fill="#10b981" stroke="rgba(0,0,0,0.4)"/>
+      <rect x="50" y="74" width="28" height="12" fill="#f59e0b" stroke="rgba(0,0,0,0.4)"/>
+      <rect x="48" y="90" width="32" height="10" rx="1" fill="#1e293b" stroke="white" stroke-width="1"/>
+    </g>
+    <g id="tanker" transform="translate(0, 128)">
+      <path d="M64 12 C78 20 80 34 80 114 L48 114 C48 34 50 20 64 12 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <circle cx="64" cy="36" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
+      <circle cx="64" cy="56" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
+      <circle cx="64" cy="76" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
+      <line x1="64" y1="26" x2="64" y2="86" stroke="#222" stroke-width="1.5"/>
+      <rect x="52" y="96" width="24" height="10" rx="1" fill="#1e293b" stroke="white" stroke-width="1"/>
+    </g>
+    <g id="frigate" transform="translate(128, 128)">
+      <path d="M64 16 L74 38 L72 112 L56 112 L54 38 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <circle cx="64" cy="34" r="3.5" fill="#333" stroke="white" stroke-width="1"/>
+      <polygon points="64,46 70,54 58,54" fill="#333"/>
+      <circle cx="64" cy="98" r="5" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.2"/>
+    </g>
+    <g id="patrol" transform="translate(256, 128)">
+      <path d="M64 20 L74 44 L70 108 L58 108 L54 44 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <circle cx="64" cy="40" r="3" fill="#333"/>
+      <rect x="60" y="52" width="8" height="16" rx="2" fill="#222"/>
+    </g>
+    <g id="ship" transform="translate(384, 128)">
+      <path d="M64 18 L84 48 L80 110 L48 110 L44 48 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
+      <path d="M54 50 L74 50 L64 28 Z" fill="rgba(0,0,0,0.2)"/>
+      <rect x="52" y="78" width="24" height="16" rx="2" fill="#333"/>
+    </g>
+  </svg>
+`);
+
+const VESSEL_ICON_MAPPING = {
+  carrier:   { x: 0,   y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  destroyer: { x: 128, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  submarine: { x: 256, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  container: { x: 384, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  tanker:    { x: 0,   y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  frigate:   { x: 128, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  patrol:    { x: 256, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+  ship:      { x: 384, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
+};
+
 // Hook
 
- 
 export function useMapLayers({
   filtered,
   actorMeta,
@@ -192,8 +389,8 @@ export function useMapLayers({
   useEffect(() => {
     if (!needsPulseAnimation) return;
     const interval = setInterval(() => {
-      setPulseTime(t => (t + 0.045) % (Math.PI * 2));
-    }, 50);
+      setPulseTime(t => (t + 0.08) % (Math.PI * 2));
+    }, 100);
     return () => clearInterval(interval);
   }, [needsPulseAnimation]);
 
@@ -520,73 +717,6 @@ export function useMapLayers({
     // Combine any non-flight assets from the map engine with live flights
     const allAssets = [...filtered.assets, ...flightAssets];
 
-    // High-tech Aircraft Icon Atlas (512x256)
-    const AIRCRAFT_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
-      <svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
-        <!-- AIRLINER (0, 0) -->
-        <g id="airliner" transform="translate(0, 0)">
-          <!-- Swept-wing Commercial Jet -->
-          <path d="M64 12 L70 42 L112 70 L112 78 L70 66 L70 102 L86 114 L86 120 L64 116 L42 120 L42 114 L58 102 L58 66 L16 78 L16 70 L58 42 Z" 
-                fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
-          <!-- Engines -->
-          <rect x="78" y="62" width="5" height="12" rx="2" fill="#333"/>
-          <rect x="45" y="62" width="5" height="12" rx="2" fill="#333"/>
-        </g>
-        <!-- FIGHTER (128, 0) -->
-        <g id="fighter" transform="translate(128, 0)">
-          <!-- Stealth Fighter / Interceptor -->
-          <path d="M64 10 L70 38 L98 78 L98 86 L74 76 L74 106 L86 116 L86 122 L64 116 L42 122 L42 116 L54 106 L54 76 L30 86 L30 78 L58 38 Z" 
-                fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <!-- Twin Tail Fins -->
-          <polygon points="64,30 67,48 61,48" fill="#333"/>
-          <!-- Afterburner Glow -->
-          <circle cx="64" cy="116" r="3" fill="#ff4400"/>
-        </g>
-        <!-- HEAVY TRANSPORT / TANKER (256, 0) -->
-        <g id="heavy" transform="translate(256, 0)">
-          <!-- High-Wing Strategic Transport (C-17 / Tanker) -->
-          <path d="M64 10 L72 36 L118 64 L118 74 L72 66 L72 104 L88 114 L88 122 L64 116 L40 122 L40 114 L56 104 L56 66 L10 74 L10 64 L56 36 Z" 
-                fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <!-- 4 Turbofan Engines -->
-          <rect x="82" y="58" width="4" height="10" rx="1" fill="#333"/>
-          <rect x="96" y="62" width="4" height="10" rx="1" fill="#333"/>
-          <rect x="42" y="58" width="4" height="10" rx="1" fill="#333"/>
-          <rect x="28" y="62" width="4" height="10" rx="1" fill="#333"/>
-        </g>
-        <!-- UAV / REAPER DRONE (384, 0) -->
-        <g id="uav" transform="translate(384, 0)">
-          <!-- High-Aspect Glider Wing Drone -->
-          <path d="M64 18 L68 46 L122 52 L122 56 L68 56 L68 108 L78 118 L78 122 L64 116 L50 122 L50 118 L60 108 L60 56 L6 56 L6 52 L60 46 Z" 
-                fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="1.8"/>
-          <!-- Sensor Ball Turret Nose -->
-          <circle cx="64" cy="18" r="4" fill="#00e5ff"/>
-          <!-- Pusher Propeller -->
-          <line x1="58" y1="116" x2="70" y2="116" stroke="#ff8800" stroke-width="2"/>
-        </g>
-        <!-- CARRIER (0, 128) -->
-        <g id="carrier" transform="translate(0, 128)">
-          <rect x="52" y="16" width="24" height="96" rx="3" fill="#444" stroke="white" stroke-width="2"/>
-          <rect x="56" y="20" width="16" height="88" fill="#333"/>
-          <line x1="70" y1="24" x2="56" y2="96" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-dasharray="3,3"/>
-        </g>
-        <!-- HELICOPTER (128, 128) -->
-        <g id="helicopter" transform="translate(128, 128)">
-          <ellipse cx="64" cy="54" rx="12" ry="24" fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
-          <line x1="64" y1="78" x2="64" y2="118" stroke="white" stroke-width="3"/>
-          <line x1="58" y1="116" x2="70" y2="116" stroke="white" stroke-width="2"/>
-          <!-- Rotor Blades -->
-          <line x1="16" y1="54" x2="112" y2="54" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
-          <line x1="64" y1="6" x2="64" y2="102" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
-          <circle cx="64" cy="54" r="3" fill="#222"/>
-        </g>
-        <!-- AIRPLANE DEFAULT (256, 128) -->
-        <g id="airplane" transform="translate(256, 128)">
-          <path d="M64 20 L68 50 L88 64 L88 70 L68 62 L68 96 L76 106 L76 110 L64 106 L52 110 L52 106 L60 96 L60 62 L40 70 L40 64 L60 50 Z" 
-                fill="white" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
-        </g>
-      </svg>
-    `);
-
     const getAircraftIconName = (d: Asset): string => {
       if (d.type === 'CARRIER') return 'carrier';
       const name = (d.name || '').toUpperCase();
@@ -660,15 +790,7 @@ export function useMapLayers({
         return getAircraftColor(d);
       },
       iconAtlas: AIRCRAFT_ATLAS_SVG,
-      iconMapping: {
-        airliner:   { x: 0,   y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        fighter:    { x: 128, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        heavy:      { x: 256, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        uav:        { x: 384, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        carrier:    { x: 0,   y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        helicopter: { x: 128, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        airplane:   { x: 256, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-      },
+      iconMapping: AIRCRAFT_ICON_MAPPING,
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
@@ -731,23 +853,8 @@ export function useMapLayers({
             return [150, 150, 150, 255]; // Gray
         }
       },
-      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="cyber">
-            <!-- Shield with warning symbol -->
-            <path d="M64 10 L100 25 L100 60 C100 85, 85 100, 64 110 C43 100, 28 85, 28 60 L28 25 Z" 
-                  fill="currentColor" opacity="0.3" stroke="currentColor" stroke-width="3"/>
-            <!-- Warning triangle -->
-            <path d="M64 45 L75 65 L53 65 Z" fill="currentColor"/>
-            <!-- Exclamation mark -->
-            <rect x="62" y="50" width="4" height="8" fill="white"/>
-            <rect x="62" y="60" width="4" height="3" fill="white"/>
-          </g>
-        </svg>
-      `),
-      iconMapping: {
-        cyber: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-      },
+      iconAtlas: CYBER_ATLAS_SVG,
+      iconMapping: CYBER_ICON_MAPPING,
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
@@ -890,6 +997,7 @@ export function useMapLayers({
     });
 
     // Fire icons layer - show fires with fire icon
+    // Fire icons layer - show fires with fire icon
     const fireEvents = filtered.targets.filter(t => t.type === 'FIRE');
     const fireLayer = showEvents && fireEvents.length > 0 && new IconLayer<Target>({
       id: 'fire-icons',
@@ -898,18 +1006,8 @@ export function useMapLayers({
       getIcon: () => 'fire',
       getSize: 48,
       getColor: [255, 140, 0, 255], // Orange
-      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="fire">
-            <path d="M64 10 C64 10, 50 30, 50 50 C50 65, 55 75, 64 85 C73 75, 78 65, 78 50 C78 30, 64 10, 64 10 Z" fill="#FF4500" stroke="#FF8C00" stroke-width="2"/>
-            <path d="M64 30 C64 30, 56 42, 56 52 C56 60, 59 65, 64 70 C69 65, 72 60, 72 52 C72 42, 64 30, 64 30 Z" fill="#FFA500"/>
-            <path d="M64 45 C64 45, 60 50, 60 55 C60 59, 62 62, 64 65 C66 62, 68 59, 68 55 C68 50, 64 45, 64 45 Z" fill="#FFD700"/>
-          </g>
-        </svg>
-      `),
-      iconMapping: {
-        fire: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-      },
+      iconAtlas: FIRE_ATLAS_SVG,
+      iconMapping: FIRE_ICON_MAPPING,
       pickable: true,
       autoHighlight: true,
     });
@@ -1157,19 +1255,8 @@ export function useMapLayers({
         }
         return [255, 160, 60, 210];
       },
-      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="crisis">
-            <path d="M64 10 L118 108 L10 108 Z" fill="currentColor" opacity="0.35" stroke="currentColor" stroke-width="3"/>
-            <path d="M64 45 L72 85 L56 85 Z" fill="currentColor"/>
-            <rect x="61" y="52" width="6" height="20" fill="white"/>
-            <rect x="61" y="76" width="6" height="4" fill="white"/>
-          </g>
-        </svg>
-      `),
-      iconMapping: {
-        crisis: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-      },
+      iconAtlas: LOGISTICS_ATLAS_SVG,
+      iconMapping: LOGISTICS_ICON_MAPPING,
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
@@ -1191,17 +1278,8 @@ export function useMapLayers({
         if (d.type === 'TRADE_DEAL') return [80, 200, 120, 230];
         return [40, 160, 120, 210];
       },
-      iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-          <g id="invest">
-            <path d="M64 18 L96 52 L78 52 L78 96 L50 96 L50 52 L32 52 Z" fill="currentColor" opacity="0.85"/>
-            <rect x="42" y="20" width="44" height="6" rx="3" fill="white"/>
-          </g>
-        </svg>
-      `),
-      iconMapping: {
-        invest: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-      },
+      iconAtlas: INVEST_ATLAS_SVG,
+      iconMapping: INVEST_ICON_MAPPING,
       pickable: true,
       autoHighlight: true,
       updateTriggers: {
@@ -1222,18 +1300,8 @@ export function useMapLayers({
          if (!pos) return [255, 60, 60, 200];
          return [255, 50, 50, 230];
        },
-       iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-         <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-           <g id="pulse">
-             <circle cx="64" cy="64" r="30" fill="currentColor" opacity="0.9"/>
-             <circle cx="64" cy="64" r="18" fill="white" opacity="0.7"/>
-             <path d="M64 20 L64 108 M20 64 L108 64" stroke="currentColor" stroke-width="3" opacity="0.5"/>
-           </g>
-         </svg>
-       `),
-       iconMapping: {
-         pulse: { x: 0, y: 0, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-       },
+       iconAtlas: NEWS_PULSE_ATLAS_SVG,
+       iconMapping: NEWS_PULSE_ICON_MAPPING,
        pickable: true,
        autoHighlight: true,
        updateTriggers: {
@@ -1394,74 +1462,6 @@ export function useMapLayers({
       },
     });
 
-    // Modern vessel icon atlas with high-fidelity naval warships, carriers, submarines, mega-containers, supertankers, and frigates
-    const VESSEL_ATLAS_SVG = 'data:image/svg+xml;base64,' + btoa(`
-      <svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
-        <!-- CARRIER (0, 0) -->
-        <g id="carrier" transform="translate(0, 0)">
-          <path d="M48 10 L80 10 L88 28 L86 118 L42 118 L40 28 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <path d="M72 16 L48 112" stroke="rgba(0,0,0,0.4)" stroke-width="2.5" stroke-dasharray="4,3"/>
-          <path d="M64 12 L64 116" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
-          <rect x="76" y="52" width="8" height="24" rx="2" fill="#222" stroke="white" stroke-width="1"/>
-          <line x1="56" y1="12" x2="56" y2="40" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
-        </g>
-        <!-- DESTROYER (128, 0) -->
-        <g id="destroyer" transform="translate(128, 0)">
-          <path d="M64 14 L76 42 L74 112 L54 112 L52 42 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <circle cx="64" cy="36" r="4.5" fill="#333" stroke="white" stroke-width="1"/>
-          <line x1="64" y1="36" x2="64" y2="25" stroke="#222" stroke-width="2"/>
-          <polygon points="64,48 71,58 57,58" fill="#333"/>
-          <rect x="59" y="66" width="10" height="16" fill="#555" rx="1"/>
-          <circle cx="64" cy="98" r="6" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
-          <text x="64" y="101" font-size="7" font-weight="bold" text-anchor="middle" fill="rgba(0,0,0,0.6)">H</text>
-        </g>
-        <!-- SUBMARINE (256, 0) -->
-        <g id="submarine" transform="translate(256, 0)">
-          <path d="M64 16 C74 26 74 100 64 114 C54 100 54 26 64 16 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <rect x="61" y="46" width="6" height="24" rx="3" fill="#222" stroke="white" stroke-width="1"/>
-          <line x1="50" y1="58" x2="78" y2="58" stroke="white" stroke-width="3" stroke-linecap="round"/>
-          <line x1="52" y1="108" x2="76" y2="108" stroke="white" stroke-width="2"/>
-        </g>
-        <!-- CONTAINER (384, 0) -->
-        <g id="container" transform="translate(384, 0)">
-          <path d="M64 12 L82 32 L82 114 L46 114 L46 32 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <rect x="50" y="32" width="28" height="12" fill="#3b82f6" stroke="rgba(0,0,0,0.4)"/>
-          <rect x="50" y="46" width="28" height="12" fill="#ef4444" stroke="rgba(0,0,0,0.4)"/>
-          <rect x="50" y="60" width="28" height="12" fill="#10b981" stroke="rgba(0,0,0,0.4)"/>
-          <rect x="50" y="74" width="28" height="12" fill="#f59e0b" stroke="rgba(0,0,0,0.4)"/>
-          <rect x="48" y="90" width="32" height="10" rx="1" fill="#1e293b" stroke="white" stroke-width="1"/>
-        </g>
-        <!-- TANKER / LNG (0, 128) -->
-        <g id="tanker" transform="translate(0, 128)">
-          <path d="M64 12 C78 20 80 34 80 114 L48 114 C48 34 50 20 64 12 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <circle cx="64" cy="36" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
-          <circle cx="64" cy="56" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
-          <circle cx="64" cy="76" r="8" fill="#f97316" stroke="white" stroke-width="1"/>
-          <line x1="64" y1="26" x2="64" y2="86" stroke="#222" stroke-width="1.5"/>
-          <rect x="52" y="96" width="24" height="10" rx="1" fill="#1e293b" stroke="white" stroke-width="1"/>
-        </g>
-        <!-- FRIGATE (128, 128) -->
-        <g id="frigate" transform="translate(128, 128)">
-          <path d="M64 16 L74 38 L72 112 L56 112 L54 38 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <circle cx="64" cy="34" r="3.5" fill="#333" stroke="white" stroke-width="1"/>
-          <polygon points="64,46 70,54 58,54" fill="#333"/>
-          <circle cx="64" cy="98" r="5" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="1.2"/>
-        </g>
-        <!-- PATROL (256, 128) -->
-        <g id="patrol" transform="translate(256, 128)">
-          <path d="M64 20 L74 44 L70 108 L58 108 L54 44 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <circle cx="64" cy="40" r="3" fill="#333"/>
-          <rect x="60" y="52" width="8" height="16" rx="2" fill="#222"/>
-        </g>
-        <!-- SHIP / GENERAL (384, 128) -->
-        <g id="ship" transform="translate(384, 128)">
-          <path d="M64 18 L84 48 L80 110 L48 110 L44 48 Z" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="2"/>
-          <path d="M54 50 L74 50 L64 28 Z" fill="rgba(0,0,0,0.2)"/>
-          <rect x="52" y="78" width="24" height="16" rx="2" fill="#333"/>
-        </g>
-      </svg>
-    `);
-
     const getVesselIcon = (d: MaritimeVessel): string => {
       const cat = d.category;
       if (cat === 'CARRIER') return 'carrier';
@@ -1515,16 +1515,7 @@ export function useMapLayers({
       getAngle: (d: MaritimeVessel) => -(d.cog ?? 0),
       getColor: (d: MaritimeVessel): RGBA => getVesselColor(d),
       iconAtlas: VESSEL_ATLAS_SVG,
-      iconMapping: {
-        carrier:   { x: 0,   y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        destroyer: { x: 128, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        submarine: { x: 256, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        container: { x: 384, y: 0,   width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        tanker:    { x: 0,   y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        frigate:   { x: 128, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        patrol:    { x: 256, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-        ship:      { x: 384, y: 128, width: 128, height: 128, anchorY: 64, anchorX: 64 },
-      },
+      iconMapping: VESSEL_ICON_MAPPING,
       pickable: true,
       autoHighlight: true,
       updateTriggers: {

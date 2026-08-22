@@ -1,14 +1,48 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Target, ExternalLink } from 'lucide-react';
+import {
+  Box,
+  Target,
+  ExternalLink,
+  Search,
+  Filter,
+  Maximize2,
+  Minimize2,
+  Route,
+  Zap,
+  Shield,
+  Layers,
+  MapPin,
+  RefreshCw,
+  Eye,
+  Crosshair,
+  Sparkles,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { selectEvent, clearSelection } from '@/shared/state/event-selection-slice';
+import { Input } from '@/components/ui/input';
+import {
+  selectEvent,
+  selectLocation,
+  flyToCoordinates,
+  clearSelection,
+} from '@/shared/state/event-selection-slice';
 import type { RootState } from '@/shared/state';
+import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
+import {
+  buildEnhancedIntelligenceGraph,
+  findShortestPath,
+  extractNHopNeighborhood,
+  DOMAIN_CONFIG,
+  type EntityDomain,
+  type IntelligenceEntity,
+  type IntelligenceEdge,
+} from '@/features/dashboard/lib/entity-intelligence-graph';
+import { EntityDossierInspector } from './EntityDossierInspector';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
@@ -22,368 +56,617 @@ export function NewsNetwork({ data, onNavigate }: NewsNetworkProps) {
   const selection = useSelector((state: RootState) => state.eventSelection);
   const chartRef = useRef<any>(null);
 
-  // Build network graph from events
-  const networkData = useMemo(() => {
-    if (!data || !data.events || data.events.length === 0) {
-      return { nodes: [], links: [], categories: [] };
+  // Live Disinformation Feed Integration
+  const { data: disinfoData } = useLiveDisinformation('MA', true);
+
+  // State
+  const [selectedDomain, setSelectedDomain] = useState<EntityDomain | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeInspectorEntity, setActiveInspectorEntity] = useState<IntelligenceEntity | null>(null);
+  const [layoutMode, setLayoutMode] = useState<'force' | 'circular'>('force');
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Pathfinding Mode state
+  const [isPathMode, setIsPathMode] = useState(false);
+  const [pathSourceId, setPathSourceId] = useState<string>('actor-tindouf-cluster');
+  const [pathTargetId, setPathTargetId] = useState<string>('target-tanger-med');
+
+  // Multi-hop expansion state
+  const [focusedHopNodeId, setFocusedHopNodeId] = useState<string | null>(null);
+  const [hopDistance, setHopDistance] = useState<number>(1);
+
+  // Build Full Unified Graph
+  const rawGraph = useMemo(() => {
+    return buildEnhancedIntelligenceGraph(data?.events || [], disinfoData);
+  }, [data?.events, disinfoData]);
+
+  // Compute Path if in Path Mode
+  const activePath = useMemo(() => {
+    if (!isPathMode || !pathSourceId || !pathTargetId) return null;
+    return findShortestPath(pathSourceId, pathTargetId, rawGraph.edges);
+  }, [isPathMode, pathSourceId, pathTargetId, rawGraph.edges]);
+
+  // Compute N-hop neighborhood if active
+  const hopSubGraph = useMemo(() => {
+    if (!focusedHopNodeId) return null;
+    return extractNHopNeighborhood(focusedHopNodeId, hopDistance, rawGraph.edges);
+  }, [focusedHopNodeId, hopDistance, rawGraph.edges]);
+
+  // Filter Entities & Edges
+  const filteredGraph = useMemo(() => {
+    let entities = rawGraph.entities;
+    let edges = rawGraph.edges;
+
+    // 1. Path Mode Isolation
+    if (activePath) {
+      const pathNodesSet = new Set(activePath.pathNodeIds);
+      const pathEdgesSet = new Set(activePath.pathEdgeIds);
+      entities = entities.filter((e) => pathNodesSet.has(e.id));
+      edges = edges.filter((e) => pathEdgesSet.has(e.id));
+      return { entities, edges };
     }
 
-    const nodes: any[] = [];
-    const links: any[] = [];
-    const nodeMap = new Map<string, { idx: number; title: string; location?: string }>();
+    // 2. N-Hop Subgraph Isolation
+    if (hopSubGraph) {
+      entities = entities.filter((e) => hopSubGraph.nodeIds.has(e.id));
+      edges = edges.filter((e) => hopSubGraph.edgeIds.has(e.id));
+      return { entities, edges };
+    }
 
-    // Define categories
-    const categories = [
-      { name: 'Critical', itemStyle: { color: '#ef4444' } },
-      { name: 'High', itemStyle: { color: '#f59e0b' } },
-      { name: 'Standard', itemStyle: { color: '#3b82f6' } },
-      { name: 'Location', itemStyle: { color: '#10b981' } },
-    ];
+    // 3. Domain Filter
+    if (selectedDomain !== 'ALL') {
+      const matchingDomainNodeIds = new Set(
+        entities.filter((e) => e.domain === selectedDomain).map((e) => e.id)
+      );
 
-    // Create nodes from events (limit to 30 for performance)
-    data.events.slice(0, 30).forEach((event: any, idx: number) => {
-      const nodeId = event.id || `event-${idx}`;
-      const categoryIdx = event.severity === 'CRITICAL' ? 0 : event.severity === 'HIGH' ? 1 : 2;
-      const fullTitle = event.title || 'Untitled Event';
-      const shortTitle = (event.title || 'Untitled Event').slice(0, 30) + ((event.title?.length || 0) > 30 ? '...' : '');
+      // Keep matching nodes + direct neighbors for context
+      const relevantNodeIds = new Set<string>(matchingDomainNodeIds);
+      const relevantEdges: IntelligenceEdge[] = [];
 
-      nodes.push({
-        id: nodeId,
-        name: shortTitle,
-        fullTitle: fullTitle,
-        location: event.location, // Store location for click handler
-        value: event.severity === 'CRITICAL' ? 30 : event.severity === 'HIGH' ? 20 : 10,
-        category: categoryIdx,
-        symbolSize: event.severity === 'CRITICAL' ? 28 : event.severity === 'HIGH' ? 20 : 14,
-        label: {
-          show: event.severity === 'CRITICAL',
-          fontSize: 8,
-          color: '#e4e4e7',
-          fontWeight: 'bold',
-        },
-        itemStyle: {
-          borderWidth: 2,
-          borderColor:
-            event.severity === 'CRITICAL' ? '#ef4444' : event.severity === 'HIGH' ? '#f59e0b' : '#3b82f6',
-          shadowBlur: event.severity === 'CRITICAL' ? 10 : 5,
-          shadowColor:
-            event.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.5)' : 'rgba(59, 130, 246, 0.3)',
-        },
-      });
-
-      nodeMap.set(nodeId, { idx: nodes.length - 1, title: fullTitle, location: event.location });
-
-      // Create location nodes
-      if (event.location) {
-        const locId = `loc-${event.location}`;
-        if (!nodeMap.has(locId)) {
-          nodes.push({
-            id: locId,
-            name: event.location,
-            fullTitle: `Location: ${event.location}`,
-            location: event.location, // Store for click handler
-            value: 15,
-            category: 3,
-            symbolSize: 18,
-            symbol: 'diamond',
-            label: {
-              show: true,
-              fontSize: 9,
-              color: '#10b981',
-              fontWeight: 'bold',
-            },
-            itemStyle: {
-              borderWidth: 2,
-              borderColor: '#10b981',
-              shadowBlur: 8,
-              shadowColor: 'rgba(16, 185, 129, 0.4)',
-            },
-          });
-          nodeMap.set(locId, {
-            idx: nodes.length - 1,
-            title: `Location: ${event.location}`,
-            location: event.location,
-          });
+      for (const edge of edges) {
+        if (matchingDomainNodeIds.has(edge.source) || matchingDomainNodeIds.has(edge.target)) {
+          relevantNodeIds.add(edge.source);
+          relevantNodeIds.add(edge.target);
+          relevantEdges.push(edge);
         }
-
-        // Link event to location
-        links.push({
-          source: nodeId,
-          target: locId,
-          value: 1,
-          lineStyle: {
-            opacity: 0.2,
-            width: 1.5,
-          },
-        });
       }
-    });
 
-    // Create links between events of same type
-    const slicedEvents = data.events.slice(0, 30);
-    slicedEvents.forEach((event: any, idx: number) => {
-      const nodeId = event.id || `event-${idx}`;
+      entities = entities.filter((e) => relevantNodeIds.has(e.id));
+      edges = relevantEdges;
+    }
 
-      // Find related events (same type or location)
-      slicedEvents.slice(idx + 1, Math.min(idx + 5, 30)).forEach((otherEvent: any, relIdx: number) => {
-        const otherNodeId = otherEvent.id || `event-${idx + relIdx + 1}`;
+    // 4. Text Search Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const searchMatches = new Set(
+        entities
+          .filter(
+            (e) =>
+              e.name.toLowerCase().includes(q) ||
+              e.summary.toLowerCase().includes(q) ||
+              e.locationName?.toLowerCase().includes(q) ||
+              e.aliases?.some((a) => a.toLowerCase().includes(q))
+          )
+          .map((e) => e.id)
+      );
 
-        if (event.type === otherEvent.type || event.location === otherEvent.location) {
-          links.push({
-            source: nodeId,
-            target: otherNodeId,
-            value: event.type === otherEvent.type ? 2 : 1,
-            lineStyle: {
-              opacity: event.type === otherEvent.type ? 0.15 : 0.08,
-              curveness: 0.2,
-              width: event.type === otherEvent.type ? 1.5 : 1,
-            },
-          });
+      const relevantNodeIds = new Set<string>(searchMatches);
+      const relevantEdges: IntelligenceEdge[] = [];
+
+      for (const edge of edges) {
+        if (searchMatches.has(edge.source) || searchMatches.has(edge.target)) {
+          relevantNodeIds.add(edge.source);
+          relevantNodeIds.add(edge.target);
+          relevantEdges.push(edge);
         }
-      });
-    });
+      }
 
-    return { nodes, links, categories };
-  }, [data]);
+      entities = entities.filter((e) => relevantNodeIds.has(e.id));
+      edges = relevantEdges;
+    }
 
-  const handleNodeClick = (params: any) => {
-    if (params.dataType === 'node') {
-      const nodeData = params.data;
+    return { entities, edges };
+  }, [rawGraph, activePath, hopSubGraph, selectedDomain, searchQuery]);
 
-      // Dispatch selection to Redux for coordinated highlighting
-      if (nodeData.id?.startsWith('loc-')) {
-        const eventIdsAtLocation = networkData.nodes
-          .filter((node: any) => !node.id.startsWith('loc-') && node.location === nodeData.location)
-          .map((node: any) => node.id);
+  // Handle locating entity on Intel Map
+  const handleLocateOnMap = useCallback(
+    (entity: IntelligenceEntity) => {
+      if (entity.coordinates) {
+        // 1. Dispatch coordinate flight
         dispatch(
-          selectEvent({
-            eventId: eventIdsAtLocation[0] || nodeData.id,
-            location: nodeData.location,
+          flyToCoordinates({
+            coordinates: [entity.coordinates[0], entity.coordinates[1]],
+            zoom: entity.domain === 'GEO' ? 7 : 11,
           })
         );
-      } else if (nodeData.location) {
+
+        // 2. Select location if available
+        if (entity.locationName) {
+          dispatch(
+            selectLocation({
+              location: entity.locationName,
+              eventIds: [entity.id],
+            })
+          );
+        }
+
+        // 3. Trigger map opening/navigation
+        onNavigate(entity.locationName || entity.name);
+      } else if (entity.locationName) {
         dispatch(
-          selectEvent({
-            eventId: nodeData.id,
-            location: nodeData.location,
+          selectLocation({
+            location: entity.locationName,
+            eventIds: [entity.id],
           })
         );
+        onNavigate(entity.locationName);
       }
-    }
-  };
+    },
+    [dispatch, onNavigate]
+  );
 
-  // Handle double-click for map navigation
-  const handleNodeDblClick = (params: any) => {
-    if (params.dataType === 'node') {
-      const nodeData = params.data;
+  // Handle Node Click
+  const handleNodeClick = useCallback(
+    (params: any) => {
+      if (params.dataType === 'node') {
+        const entityId = params.data.id;
+        const clickedEntity = rawGraph.entities.find((e) => e.id === entityId);
 
-      // Navigate on double-click
-      if (nodeData.location) {
-        onNavigate(nodeData.location);
-        console.log('🗺️ Double-click: Opening map for location:', nodeData.location);
+        if (clickedEntity) {
+          setActiveInspectorEntity(clickedEntity);
+
+          // Dispatch selection to Redux for coordinated cross-widget highlight
+          if (clickedEntity.coordinates) {
+            dispatch(
+              flyToCoordinates({
+                coordinates: [clickedEntity.coordinates[0], clickedEntity.coordinates[1]],
+                zoom: 11,
+              })
+            );
+          }
+
+          if (clickedEntity.locationName) {
+            dispatch(
+              selectLocation({
+                location: clickedEntity.locationName,
+                eventIds: [clickedEntity.id],
+              })
+            );
+          } else {
+            dispatch(
+              selectEvent({
+                eventId: clickedEntity.id,
+                location: clickedEntity.locationName,
+              })
+            );
+          }
+        }
       }
-    }
-  };
+    },
+    [rawGraph.entities, dispatch]
+  );
 
-  // Update graph options based on selection state
-  const neighborIds = useMemo(() => {
-    if (!selection.selectedEventId) return [];
-    const adjacent = new Set<string>([selection.selectedEventId]);
-    for (const link of networkData.links as any[]) {
-      const source = String(link.source);
-      const target = String(link.target);
-      if (source === selection.selectedEventId) adjacent.add(target);
-      if (target === selection.selectedEventId) adjacent.add(source);
-    }
-    return Array.from(adjacent);
-  }, [networkData.links, selection.selectedEventId]);
+  // Handle Double-Click (Fast Map Navigation)
+  const handleNodeDblClick = useCallback(
+    (params: any) => {
+      if (params.dataType === 'node') {
+        const entityId = params.data.id;
+        const clickedEntity = rawGraph.entities.find((e) => e.id === entityId);
+        if (clickedEntity) {
+          handleLocateOnMap(clickedEntity);
+        }
+      }
+    },
+    [rawGraph.entities, handleLocateOnMap]
+  );
 
-  useEffect(() => {
-    if (!selection.selectedEventId || !chartRef.current || !selection.followSelection) return;
-    const chart = chartRef.current.getEchartsInstance?.();
-    if (!chart) return;
-    const nodeIndex = networkData.nodes.findIndex((n: any) => n.id === selection.selectedEventId);
-    if (nodeIndex < 0) return;
-    chart.dispatchAction({ type: 'focusNodeAdjacency', seriesIndex: 0, dataIndex: nodeIndex });
-    chart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: nodeIndex });
-  }, [networkData.nodes, selection.followSelection, selection.selectedEventId, selection.timestamp]);
+  // Format Categories for Legend
+  const categories = useMemo(() => {
+    return Object.entries(DOMAIN_CONFIG).map(([domainKey, cfg]) => ({
+      name: cfg.label,
+      itemStyle: { color: cfg.color },
+    }));
+  }, []);
 
+  // Construct ECharts Options
   const option = useMemo(() => {
+    const nodes = filteredGraph.entities.map((entity) => {
+      const domainMeta = DOMAIN_CONFIG[entity.domain] || DOMAIN_CONFIG.ACTOR;
+      const isCritical = entity.riskLevel === 'CRITICAL';
+      const isHigh = entity.riskLevel === 'HIGH';
+      const isSelected =
+        activeInspectorEntity?.id === entity.id ||
+        selection.selectedEventId === entity.id ||
+        selection.highlightedEvents.includes(entity.id);
+
+      const symbolSize = isSelected
+        ? 34
+        : isCritical
+          ? 28
+          : isHigh
+            ? 22
+            : entity.domain === 'GEO'
+              ? 24
+              : 16;
+
+      return {
+        id: entity.id,
+        name: entity.name,
+        domain: entity.domain,
+        riskLevel: entity.riskLevel,
+        value: entity.degree || 1,
+        category: Object.keys(DOMAIN_CONFIG).indexOf(entity.domain),
+        symbol: domainMeta.symbol,
+        symbolSize: symbolSize,
+        itemStyle: {
+          color: domainMeta.color,
+          borderColor: isSelected ? '#ffffff' : domainMeta.color,
+          borderWidth: isSelected ? 3 : isCritical ? 2 : 1,
+          shadowBlur: isSelected ? 25 : isCritical ? 15 : 6,
+          shadowColor: isSelected ? '#38bdf8' : domainMeta.glow,
+        },
+        label: {
+          show: isSelected || isCritical || entity.domain === 'GEO' || (entity.degree || 0) > 2,
+          position: 'right',
+          fontSize: 9,
+          color: '#e4e4e7',
+          fontFamily: 'monospace',
+          fontWeight: isCritical || isSelected ? 'bold' : 'normal',
+          formatter: `{b}`,
+        },
+      };
+    });
+
+    const links = filteredGraph.edges.map((edge) => {
+      const isPathEdge = activePath?.pathEdgeIds.includes(edge.id);
+      return {
+        source: edge.source,
+        target: edge.target,
+        value: edge.weight,
+        label: {
+          show: isPathEdge || edge.weight >= 8,
+          formatter: edge.label || edge.relation,
+          fontSize: 8,
+          color: isPathEdge ? '#f43f5e' : '#a1a1aa',
+          fontFamily: 'monospace',
+        },
+        lineStyle: {
+          color: isPathEdge ? '#f43f5e' : '#52525b',
+          width: isPathEdge ? 3.5 : Math.max(1, edge.weight / 3),
+          type: isPathEdge ? 'solid' : 'dashed',
+          curveness: 0.15,
+          opacity: isPathEdge ? 0.9 : 0.35,
+        },
+      };
+    });
+
     return {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item',
-        backgroundColor: 'rgba(24, 24, 27, 0.98)',
-        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        borderColor: '#0284c7',
         borderWidth: 1,
-        textStyle: { color: '#e4e4e7', fontSize: 11 },
+        textStyle: { color: '#f8fafc', fontSize: 11 },
         padding: [8, 12],
         confine: true,
-        enterable: false,
-        hideDelay: 200,
         formatter: (params: any) => {
           if (params.dataType === 'node') {
-            const fullTitle = params.data.fullTitle || params.data.name;
-            const location = params.data.location;
-            const category =
-              params.data.category === 0
-                ? 'CRITICAL'
-                : params.data.category === 1
-                  ? 'HIGH'
-                  : params.data.category === 2
-                    ? 'STANDARD'
-                    : 'LOCATION';
-            const categoryColor =
-              params.data.category === 0
-                ? '#ef4444'
-                : params.data.category === 1
-                  ? '#f59e0b'
-                  : params.data.category === 2
-                    ? '#3b82f6'
-                    : '#10b981';
+            const rawEntity = rawGraph.entities.find((e) => e.id === params.data.id);
+            if (!rawEntity) return params.data.name;
 
-            const clickHint = location
-              ? '<div style="margin-top:6px; padding-top:6px; border-top:1px solid #3f3f46; color:#60a5fa; font-size:9px;">💡 Click to select • Double-click for map</div>'
+            const domainMeta = DOMAIN_CONFIG[rawEntity.domain];
+            const coordinatesHint = rawEntity.coordinates
+              ? `<div style="color:#38bdf8; font-size:9px; margin-top:4px;">📍 [${rawEntity.coordinates[0].toFixed(2)}, ${rawEntity.coordinates[1].toFixed(2)}] · Double-click for Intel Map</div>`
               : '';
 
-            return `<div style="max-width:280px;">
-                      <div style="font-weight:bold; font-size:12px; margin-bottom:6px; line-height:1.4; color:#fff;">
-                        ${fullTitle}
-                      </div>
-                      <div style="display:flex; align-items:center; gap:8px; margin-top:6px; padding-top:6px; border-top:1px solid #3f3f46;">
-                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${categoryColor};"></span>
-                        <span style="color:#a1a1aa; font-size:10px; font-family:monospace; font-weight:bold;">${category}</span>
-                        <span style="color:#71717a; margin-left:auto;">•</span>
-                        <span style="color:#60a5fa; font-family:monospace; font-size:10px;">${params.data.value} connections</span>
-                      </div>
-                      ${clickHint}
-                    </div>`;
+            return `
+              <div style="max-width:300px; font-family:sans-serif;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                  <span>${domainMeta?.icon || '🔹'}</span>
+                  <span style="color:${domainMeta?.color || '#fff'}; font-size:10px; font-family:monospace; font-weight:bold; text-transform:uppercase;">
+                    ${domainMeta?.label || rawEntity.domain}
+                  </span>
+                  <span style="margin-left:auto; font-size:9px; background:#27272a; padding:1px 5px; border-radius:3px; color:#a1a1aa;">
+                    ${rawEntity.riskLevel}
+                  </span>
+                </div>
+                <div style="font-weight:bold; font-size:12px; color:#fff; line-height:1.3; margin-bottom:6px;">
+                  ${rawEntity.name}
+                </div>
+                <div style="font-size:10px; color:#cbd5e1; line-height:1.4; border-top:1px solid #334155; padding-top:6px;">
+                  ${rawEntity.summary.slice(0, 140)}...
+                </div>
+                ${coordinatesHint}
+              </div>
+            `;
           }
-          return `<div style="color:#a1a1aa; font-size:10px;">
-                    ${params.data.source} → ${params.data.target}
-                    <span style="color:#60a5fa; margin-left:8px;">strength: ${params.data.value}</span>
-                  </div>`;
+
+          if (params.dataType === 'edge') {
+            return `
+              <div style="font-family:monospace; font-size:10px; color:#cbd5e1;">
+                <span style="color:#38bdf8;">${params.data.source}</span> ➔ <span style="color:#38bdf8;">${params.data.target}</span>
+                <div style="margin-top:3px; color:#f43f5e; font-weight:bold;">${params.data.label?.formatter || 'RELATION VECTOR'}</div>
+              </div>
+            `;
+          }
+
+          return '';
         },
-      },
-      legend: {
-        data: networkData.categories.map((c: any) => c.name),
-        textStyle: { color: '#71717a', fontSize: 9 },
-        top: 0,
-        left: 0,
-        itemWidth: 10,
-        itemHeight: 10,
-        icon: 'circle',
       },
       series: [
         {
           type: 'graph',
-          layout: 'force',
-          // Apply highlighting based on selection state
-          data: networkData.nodes.map((node: any) => ({
-            ...node,
-            itemStyle: {
-              ...node.itemStyle,
-              // Highlight selected node
-              opacity:
-                selection.selectedEventId === node.id
-                  ? 1
-                  : neighborIds.includes(node.id) || selection.highlightedEvents.includes(node.id)
-                    ? 0.9
-                    : 0.7,
-              shadowBlur:
-                selection.selectedEventId === node.id ? 25 : node.itemStyle.shadowBlur,
-              shadowColor:
-                selection.selectedEventId === node.id
-                  ? 'rgba(59, 130, 246, 1)'
-                  : node.itemStyle.shadowColor,
-              borderWidth:
-                selection.selectedEventId === node.id ? 3 : node.itemStyle.borderWidth,
-            },
-            label: {
-              ...node.label,
-              // Show label for selected node
-              show: selection.selectedEventId === node.id || node.label.show,
-            },
-          })),
-          links: networkData.links,
-          categories: networkData.categories,
+          layout: layoutMode,
+          circular: { rotateLabel: true },
+          data: nodes,
+          links: links,
+          categories: categories,
           roam: true,
           draggable: true,
-          label: {
-            position: 'right',
-            formatter: '{b}',
-            fontSize: 8,
-          },
-          lineStyle: {
-            color: 'source',
-            curveness: 0.2,
-            opacity: 0.15,
+          force: {
+            repulsion: 260,
+            gravity: 0.06,
+            edgeLength: [70, 160],
+            friction: 0.6,
+            layoutAnimation: true,
           },
           emphasis: {
             focus: 'adjacency',
-            lineStyle: {
-              width: 3,
-              opacity: 0.6,
-            },
-            itemStyle: {
-              shadowBlur: 15,
-              shadowColor: 'rgba(59, 130, 246, 0.6)',
-            },
-          },
-          force: {
-            repulsion: 180,
-            gravity: 0.08,
-            edgeLength: [60, 120],
-            layoutAnimation: true,
-            friction: 0.6,
+            lineStyle: { width: 3, opacity: 0.8 },
+            itemStyle: { shadowBlur: 20, shadowColor: 'rgba(56, 189, 248, 0.8)' },
           },
         },
       ],
     };
-  }, [neighborIds, networkData, selection]); // Re-render when selection changes
+  }, [filteredGraph, activePath, layoutMode, activeInspectorEntity, selection, rawGraph.entities, categories]);
+
+  // Quick Metrics
+  const metrics = useMemo(() => {
+    const totalNodes = rawGraph.entities.length;
+    const totalEdges = rawGraph.edges.length;
+    const aptCount = rawGraph.entities.filter((e) => e.domain === 'ACTOR').length;
+    const targetCount = rawGraph.entities.filter((e) => e.domain === 'TARGET').length;
+    return { totalNodes, totalEdges, aptCount, targetCount };
+  }, [rawGraph]);
 
   return (
-    <Card className="bg-zinc-900/40 border-zinc-800">
-      <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
-        <CardTitle className="text-[10px] font-bold text-zinc-400 flex items-center gap-1.5 uppercase tracking-widest">
-          <Box className="w-3 h-3 text-emerald-500" />
-          News Network Graph
-          {selection.selectedEventId && (
-            <Badge variant="outline" className="ml-2 text-[8px] bg-blue-500/10 border-blue-500/30 text-blue-400">
-              <Target className="w-2 h-2 mr-1" />
-              SELECTED
-            </Badge>
-          )}
-        </CardTitle>
-        <span className="text-[8px] text-zinc-500 max-w-[200px] text-right leading-tight flex items-center gap-1">
-          {selection.selectedEventId ? (
+    <Card className="bg-zinc-950/90 border-zinc-800 text-zinc-100 flex flex-col overflow-hidden shadow-2xl relative">
+      {/* ── TOP CONTROL & WORKBENCH HEADER ── */}
+      <CardHeader className="p-3 pb-2 border-b border-zinc-800/80 bg-zinc-900/40 shrink-0 space-y-2.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-purple-400">
+              <Box className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-1.5">
+                  ENTITY LINK ANALYSIS // GOTHAM INTELLIGENCE GRAPH
+                </CardTitle>
+                <Badge variant="outline" className="text-[8px] font-mono bg-purple-950/30 border-purple-500/40 text-purple-300">
+                  PALANTIR WORKBENCH
+                </Badge>
+                {activeInspectorEntity && (
+                  <Badge variant="outline" className="text-[8px] font-mono bg-cyan-950/30 border-cyan-500/40 text-cyan-300 animate-pulse">
+                    <Target className="w-2.5 h-2.5 mr-1" />
+                    {activeInspectorEntity.name.slice(0, 18)}...
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[9px] font-mono text-zinc-500">
+                MULTI-DOMAIN LINK GRAPH · ATTRIBUTION MATRIX · MAP SYNCHRONIZED
+              </p>
+            </div>
+          </div>
+
+          {/* Quick HUD Metrics */}
+          <div className="flex items-center gap-1.5 overflow-x-auto text-[9px] font-mono">
+            <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+              NODES: <strong className="text-zinc-200">{metrics.totalNodes}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+              EDGES: <strong className="text-purple-400">{metrics.totalEdges}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-red-400">
+              APTS: <strong className="text-red-300">{metrics.aptCount}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-cyan-400">
+              TARGETS: <strong className="text-cyan-300">{metrics.targetCount}</strong>
+            </span>
+
+            {/* Layout Toggle */}
+            <div className="flex items-center p-0.5 bg-zinc-900 border border-zinc-800 rounded">
+              <button
+                onClick={() => setLayoutMode('force')}
+                className={`px-1.5 py-0.5 text-[8px] font-mono rounded ${
+                  layoutMode === 'force' ? 'bg-zinc-800 text-cyan-300' : 'text-zinc-500'
+                }`}
+              >
+                FORCE
+              </button>
+              <button
+                onClick={() => setLayoutMode('circular')}
+                className={`px-1.5 py-0.5 text-[8px] font-mono rounded ${
+                  layoutMode === 'circular' ? 'bg-zinc-800 text-cyan-300' : 'text-zinc-500'
+                }`}
+              >
+                RING
+              </button>
+            </div>
+
+            {/* Fullscreen Expand */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => dispatch(clearSelection())}
-              className="h-5 px-2 text-[8px] text-zinc-400 hover:text-zinc-100"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded"
             >
-              Clear Selection
+              {isExpanded ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
             </Button>
-          ) : (
-            <>
-              <ExternalLink className="w-2.5 h-2.5" />
-              Click to select • Double-click for map
-            </>
-          )}
-        </span>
+          </div>
+        </div>
+
+        {/* ── TOOLBAR: DOMAIN FILTERS & SEARCH & PATHFINDING ── */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2 pt-1 border-t border-zinc-800/60">
+          {/* Domain Chips */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 hide-scrollbar">
+            <button
+              onClick={() => setSelectedDomain('ALL')}
+              className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded transition ${
+                selectedDomain === 'ALL'
+                  ? 'bg-zinc-100 text-zinc-900 shadow'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+              }`}
+            >
+              ALL
+            </button>
+
+            {(Object.keys(DOMAIN_CONFIG) as EntityDomain[]).map((dom) => {
+              const cfg = DOMAIN_CONFIG[dom];
+              const isSel = selectedDomain === dom;
+              return (
+                <button
+                  key={dom}
+                  onClick={() => setSelectedDomain(dom)}
+                  className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded flex items-center gap-1 transition whitespace-nowrap ${
+                    isSel
+                      ? 'bg-zinc-800 text-zinc-100 border border-zinc-600 shadow'
+                      : 'bg-zinc-900/80 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                  }`}
+                  style={{ color: isSel ? cfg.color : undefined }}
+                >
+                  <span>{cfg.icon}</span>
+                  <span>{dom}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Input & Path Mode Toggle */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative w-44">
+              <Search className="w-3 h-3 absolute left-2 top-2 text-zinc-500" />
+              <Input
+                placeholder="Search entity, IP, alias..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-7 pl-7 pr-2 text-[10px] font-mono bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 rounded"
+              />
+            </div>
+
+            <Button
+              variant={isPathMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setIsPathMode(!isPathMode)}
+              className={`h-7 px-2 text-[9px] font-mono font-bold ${
+                isPathMode
+                  ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                  : 'border-zinc-800 text-zinc-400 hover:text-zinc-200 bg-zinc-900'
+              }`}
+            >
+              <Route className="w-3 h-3 mr-1" />
+              {isPathMode ? 'PATH ACTIVE' : 'TRACE VECTOR'}
+            </Button>
+          </div>
+        </div>
+
+        {/* ── CONDITIONAL PATH TRACER CONTROLS ── */}
+        {isPathMode && (
+          <div className="p-2 rounded bg-rose-950/20 border border-rose-500/30 flex flex-wrap items-center justify-between gap-2 animate-in fade-in">
+            <div className="flex items-center gap-2 text-[9px] font-mono">
+              <span className="text-rose-400 font-bold flex items-center gap-1">
+                <Zap className="w-3 h-3 text-rose-400" /> SOURCE (APT/ORIGIN):
+              </span>
+              <select
+                value={pathSourceId}
+                onChange={(e) => setPathSourceId(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1 rounded text-[9px] font-mono"
+              >
+                {rawGraph.entities
+                  .filter((e) => e.domain === 'ACTOR' || e.domain === 'PROXY' || e.domain === 'GEO')
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+              </select>
+
+              <span className="text-cyan-400 font-bold ml-2">➔ TARGET ASSET:</span>
+              <select
+                value={pathTargetId}
+                onChange={(e) => setPathTargetId(e.target.value)}
+                className="bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1 rounded text-[9px] font-mono"
+              >
+                {rawGraph.entities
+                  .filter((e) => e.domain === 'TARGET' || e.domain === 'GEO' || e.domain === 'DISINFO')
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {activePath ? (
+              <Badge variant="outline" className="text-[8px] font-mono bg-rose-500/20 border-rose-500/40 text-rose-300">
+                ATTACK VECTOR IDENTIFIED ({activePath.pathNodeIds.length} HOPS)
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[8px] font-mono bg-zinc-800 text-zinc-400">
+                NO DIRECT VECTOR FOUND
+              </Badge>
+            )}
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="p-3 pt-0">
-        <ReactECharts
-          // @ts-ignore
-          ref={chartRef}
-          option={option}
-          style={{ height: '320px' }}
-          onEvents={{
-            click: handleNodeClick,
-            dblclick: handleNodeDblClick,
-          }}
-        />
+
+      {/* ── GRAPH CANVAS & DOSSIER PANEL LAYOUT ── */}
+      <CardContent className="p-0 relative flex-1 min-h-0 overflow-hidden">
+        <div
+          className={`w-full flex transition-all duration-200 ${
+            isExpanded ? 'h-[620px]' : 'h-[380px]'
+          }`}
+        >
+          {/* Graph Visualization */}
+          <div className="flex-1 h-full relative overflow-hidden bg-radial from-zinc-900/50 to-zinc-950">
+            <ReactECharts
+              // @ts-ignore
+              ref={chartRef}
+              option={option}
+              style={{ width: '100%', height: '100%' }}
+              onEvents={{
+                click: handleNodeClick,
+                dblclick: handleNodeDblClick,
+              }}
+            />
+
+            {/* Bottom Status Tip */}
+            <div className="absolute bottom-2 left-2 z-10 flex items-center gap-2 pointer-events-none">
+              <span className="text-[9px] font-mono text-zinc-500 bg-zinc-950/80 px-2 py-1 rounded border border-zinc-800/80 flex items-center gap-1.5 backdrop-blur-sm">
+                <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                Click node for Classified Dossier · Double-click to Fly Intel Map
+              </span>
+            </div>
+          </div>
+
+          {/* Dossier Flyout Panel */}
+          {activeInspectorEntity && (
+            <div className="w-80 h-full shrink-0 border-l border-zinc-800 bg-zinc-950/95 z-20">
+              <EntityDossierInspector
+                entity={activeInspectorEntity}
+                edges={rawGraph.edges}
+                allEntities={rawGraph.entities}
+                onClose={() => setActiveInspectorEntity(null)}
+                onSelectEntity={(id) => {
+                  const target = rawGraph.entities.find((e) => e.id === id);
+                  if (target) setActiveInspectorEntity(target);
+                }}
+                onLocateOnMap={handleLocateOnMap}
+              />
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
