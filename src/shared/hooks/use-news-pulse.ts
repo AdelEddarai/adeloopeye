@@ -8,6 +8,7 @@ import { addPulses } from '@/shared/state/news-pulse-slice';
 import { publicConflictId } from '@/shared/lib/env';
 
 import { playNotificationSound } from '@/features/notifications/lib/notification-sound';
+import { readNotificationPrefs } from '@/features/notifications/lib/notification-storage';
 import { toast } from 'sonner';
 
 const PULSE_URL = `/api/v1/news/pulse?limit=15`;
@@ -72,11 +73,13 @@ export function useNewsPulse() {
       for (const p of newOnes) seenRef.current.add(p.id);
       saveSeen(seenRef.current);
 
-      // Dispatch to redux for map rendering
+      // Dispatch to redux for map rendering (always — needed for map layer regardless of notification prefs)
       dispatch(addPulses(newOnes));
 
-      // Sound + toast for the latest
-      if (toastCountRef.current < MAX_TOASTS) {
+      // Read notification preferences — gate toasts and sounds on user settings
+      const prefs = readNotificationPrefs();
+
+      if (prefs.enabled && toastCountRef.current < MAX_TOASTS) {
         const latest = newOnes[newOnes.length - 1];
         toast(latest.title, {
           description: `${latest.source} · ${new Date(latest.publishedAt).toLocaleTimeString()}`,
@@ -89,7 +92,7 @@ export function useNewsPulse() {
           duration: 6000,
         });
         toastCountRef.current += 1;
-        if (playNotificationSound) {
+        if (prefs.playSound) {
           try { playNotificationSound(); } catch { /* silent */ }
         }
         // Reset toast counter after a burst cooldown

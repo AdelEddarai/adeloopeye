@@ -20,22 +20,21 @@ const LEGEND_ITEMS = [
   { color: 'var(--teal)', shape: 'arc', label: 'TRADE / ALLIANCE / AGREEMENT' },
 ] as const;
 
-export function IntelMapLegend() {
+export function IntelMapLegend({ embedded = true }: { embedded?: boolean }) {
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: 16,
-        left: 12,
-        background: 'rgba(28,33,39,0.92)',
-        border: '1px solid var(--bd)',
+        position: embedded ? 'static' : 'absolute',
+        bottom: embedded ? undefined : 16,
+        left: embedded ? undefined : 12,
+        background: embedded ? 'transparent' : 'rgba(28,33,39,0.92)',
+        border: embedded ? 'none' : '1px solid var(--bd)',
         borderRadius: 2,
-        padding: '10px 12px',
+        padding: embedded ? '0' : '10px 12px',
         fontFamily: 'monospace',
-        pointerEvents: 'none',
+        pointerEvents: 'auto',
       }}
     >
-      <div style={{ fontSize: 'var(--text-tiny)', color: 'var(--t4)', marginBottom: 6 }}>LEGEND</div>
       {LEGEND_ITEMS.map(({ color, shape, label }) => (
         <div
           key={label}

@@ -99,55 +99,49 @@ export function MapCNController() {
   if (!isLoaded) return null;
 
   return (
-    <div className="absolute top-[72px] left-3 z-10 flex flex-col gap-2 pointer-events-auto">
-      <div className="flex flex-col gap-2 bg-background/30 backdrop-blur-md border border-white/10 rounded-lg p-2 shadow-2xl">
-        <div className="flex gap-2">
-          <Button 
-            size="sm" 
-            variant="secondary" 
-            className="bg-background/50 hover:bg-background/80 border-0"
-            onClick={handle3DView}
-          >
-            <Mountain className="mr-1.5 size-4 text-blue-400" />
-            3D
-          </Button>
-          <Button 
-            size="sm" 
-            variant="secondary" 
-            className="bg-background/50 hover:bg-background/80 border-0"
-            onClick={handleReset}
-          >
-            <RotateCcw className="mr-1.5 size-4 text-muted-foreground" />
-            Reset
-          </Button>
-        </div>
-        
-        <Button 
-          size="sm" 
-          variant={isCinematic ? "default" : "secondary"}
-          className={`w-full border-0 transition-all ${isCinematic ? 'bg-blue-600 hover:bg-blue-700 shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'bg-background/50 hover:bg-background/80'}`}
-          onClick={toggleCinematic}
+    <div className="absolute top-3 left-32 z-30 flex items-center gap-1.5 p-1 rounded-sm bg-zinc-950/90 border border-zinc-800 shadow-xl backdrop-blur-md font-mono text-[10px] pointer-events-auto">
+      {/* 3D Mode Button */}
+      <button
+        onClick={handle3DView}
+        className="px-2 py-0.5 rounded-xs font-bold text-zinc-300 hover:text-cyan-300 hover:bg-zinc-900 transition-colors flex items-center gap-1"
+        title="Tilt Camera to 3D View"
+      >
+        <Mountain size={11} className="text-cyan-400" />
+        <span>3D</span>
+      </button>
+
+      {/* Cinematic Rotation Button */}
+      <button
+        onClick={toggleCinematic}
+        className={`px-2 py-0.5 rounded-xs font-bold transition-all flex items-center gap-1 ${
+          isCinematic
+            ? 'bg-blue-600/30 text-blue-300 border border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.4)] animate-pulse'
+            : 'text-zinc-300 hover:text-blue-300 hover:bg-zinc-900'
+        }`}
+        title="Toggle Cinematic 360° Auto-Rotation"
+      >
+        {isCinematic ? <Square size={10} className="fill-current text-blue-400" /> : <Play size={10} className="fill-current text-blue-400" />}
+        <span>{isCinematic ? 'STOP CINE' : 'CINEMATIC'}</span>
+      </button>
+
+      {/* Quick Reset to Top-Down 0° */}
+      {(pitch > 0 || bearing !== 0) && (
+        <button
+          onClick={handleReset}
+          className="px-1.5 py-0.5 rounded-xs text-zinc-400 hover:text-red-400 hover:bg-zinc-900 transition-colors flex items-center gap-0.5"
+          title="Reset Camera to Top-Down North (0°)"
         >
-          {isCinematic ? (
-            <Square className="mr-1.5 size-4 fill-current" />
-          ) : (
-            <Play className="mr-1.5 size-4 fill-current" />
-          )}
-          {isCinematic ? 'Stop Cinematic' : 'Cinematic Mode'}
-        </Button>
-      </div>
-      
-      <div className="bg-background/30 rounded-md border border-white/10 px-3 py-2 font-mono text-xs backdrop-blur-md shadow-lg">
-        <div className="text-blue-400 font-semibold tracking-wider mb-1">CAMERA</div>
-        <div className="flex justify-between w-24">
-          <span className="text-muted-foreground">PITCH</span>
-          <span className="text-white">{pitch}°</span>
-        </div>
-        <div className="flex justify-between w-24">
-          <span className="text-muted-foreground">BEAR</span>
-          <span className="text-white">{bearing}°</span>
-        </div>
-      </div>
+          <RotateCcw size={10} />
+          <span>0°</span>
+        </button>
+      )}
+
+      {/* Small Pitch Indicator Badge */}
+      {pitch > 0 && (
+        <span className="text-[9px] text-zinc-400 px-1 border-l border-zinc-800">
+          P:{pitch}°
+        </span>
+      )}
     </div>
   );
 }
@@ -161,8 +155,20 @@ export function MapCNEventFlyTo({ moroccoData, showMoroccoLayer, setMoroccoLayer
 
   useEffect(() => {
     if (!map || !isLoaded || !eventSelection.followSelection) return;
-    
-    if (eventSelection.selectedEventId && eventSelection.timestamp) {
+
+    // 1️⃣ Fly to arbitrary coordinates (from Link Analysis, Dossiers, Chokepoints, etc.)
+    if (eventSelection.flyToCoords) {
+      map.flyTo({
+        center: [eventSelection.flyToCoords.coordinates[0], eventSelection.flyToCoords.coordinates[1]],
+        zoom: eventSelection.flyToCoords.zoom,
+        duration: 1500,
+      });
+      return;
+    }
+
+    // 2️⃣ Fly to a selected event by ID (from Morocco layer / event list)
+    if (eventSelection.selectedEventId) {
+      // Ensure Morocco layer is visible when selecting events
       if (!showMoroccoLayer && setShowMoroccoLayer) {
         setShowMoroccoLayer(true);
         if (setMoroccoLayerToggles) {
@@ -176,35 +182,33 @@ export function MapCNEventFlyTo({ moroccoData, showMoroccoLayer, setMoroccoLayer
           });
         }
       }
-      
+
       const event = moroccoData?.events?.find((e: any) => e.id === eventSelection.selectedEventId);
-      
       if (event && event.position) {
         map.flyTo({
           center: [event.position[0], event.position[1]],
           zoom: 12,
           duration: 1500,
         });
-      } else if (eventSelection.selectedLocation) {
-        const coordinates = getCoordinatesForLocation(eventSelection.selectedLocation);
-        if (coordinates) {
-          map.flyTo({
-            center: [coordinates.lng, coordinates.lat],
-            zoom: coordinates.zoom || 11,
-            duration: 1500,
-          });
-        }
-      } else if (eventSelection.flyToCoords) {
+        return;
+      }
+      // If event not found but has a location, fall through to location handler
+    }
+
+    // 3️⃣ Fly to a named location (from city/location selection)
+    if (eventSelection.selectedLocation) {
+      const coordinates = getCoordinatesForLocation(eventSelection.selectedLocation);
+      if (coordinates) {
         map.flyTo({
-          center: [eventSelection.flyToCoords.coordinates[0], eventSelection.flyToCoords.coordinates[1]],
-          zoom: eventSelection.flyToCoords.zoom,
+          center: [coordinates.lng, coordinates.lat],
+          zoom: coordinates.zoom || 11,
           duration: 1500,
         });
       }
     }
   }, [
-    map, isLoaded, eventSelection.followSelection, eventSelection.selectedEventId, 
-    eventSelection.selectedLocation, eventSelection.flyToCoords, eventSelection.timestamp, 
+    map, isLoaded, eventSelection.followSelection, eventSelection.selectedEventId,
+    eventSelection.selectedLocation, eventSelection.flyToCoords, eventSelection.timestamp,
     moroccoData, showMoroccoLayer, setShowMoroccoLayer, setMoroccoLayerToggles
   ]);
 

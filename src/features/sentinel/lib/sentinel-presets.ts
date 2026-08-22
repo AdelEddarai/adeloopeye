@@ -1,0 +1,220 @@
+import type { GeofenceZone, WatchlistRule } from '../types';
+import { computeBoundingBox } from './point-in-polygon';
+
+/**
+ * Built-in Strategic Geofence Presets
+ */
+export const DEFAULT_GEOFENCE_ZONES: GeofenceZone[] = [
+  {
+    id: 'zone-gibraltar-chokepoint',
+    name: 'Strait of Gibraltar Strategic Chokepoint',
+    description: 'Maritime & airspace chokepoint between Morocco and Spain. Highest-density traffic corridor.',
+    category: 'STRATEGIC_CHOKEPOINT',
+    severity: 'CRITICAL',
+    color: '#ef4444', // Neon Red
+    coordinates: [
+      [-5.980, 35.850],
+      [-5.600, 36.120],
+      [-5.150, 36.050],
+      [-5.300, 35.750],
+      [-5.850, 35.680],
+    ],
+    bbox: computeBoundingBox([
+      [-5.980, 35.850],
+      [-5.600, 36.120],
+      [-5.150, 36.050],
+      [-5.300, 35.750],
+      [-5.850, 35.680],
+    ]),
+    triggers: {
+      flights: true,
+      maritime: true,
+      cyber: true,
+      disinfo: true,
+      news: true,
+      events: true,
+      militaryOnlyFlights: false,
+      minFlightSpeedKnots: 200,
+    },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    breachCount: 0,
+  },
+  {
+    id: 'zone-tanger-med-port',
+    name: 'Tanger Med Port Maritime Exclusion Zone',
+    description: 'Surveillance perimeter around Africa’s largest container and transshipment port.',
+    category: 'CRITICAL_INFRASTRUCTURE',
+    severity: 'HIGH',
+    color: '#06b6d4', // Cyan
+    coordinates: [
+      [-5.560, 35.910],
+      [-5.450, 35.930],
+      [-5.420, 35.860],
+      [-5.550, 35.840],
+    ],
+    bbox: computeBoundingBox([
+      [-5.560, 35.910],
+      [-5.450, 35.930],
+      [-5.420, 35.860],
+      [-5.550, 35.840],
+    ]),
+    triggers: {
+      flights: true,
+      maritime: true,
+      cyber: true,
+      disinfo: false,
+      news: true,
+      events: true,
+      minVesselSpeedKnots: 15,
+    },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    breachCount: 0,
+  },
+  {
+    id: 'zone-casablanca-hub',
+    name: 'Casablanca Port & Financial Coastal Corridor',
+    description: 'Primary commercial maritime hub and critical communication exchange zone.',
+    category: 'MARITIME',
+    severity: 'ELEVATED',
+    color: '#f59e0b', // Amber
+    coordinates: [
+      [-7.700, 33.640],
+      [-7.540, 33.680],
+      [-7.480, 33.580],
+      [-7.650, 33.550],
+    ],
+    bbox: computeBoundingBox([
+      [-7.700, 33.640],
+      [-7.540, 33.680],
+      [-7.480, 33.580],
+      [-7.650, 33.550],
+    ]),
+    triggers: {
+      flights: true,
+      maritime: true,
+      cyber: true,
+      disinfo: true,
+      news: true,
+      events: true,
+    },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    breachCount: 0,
+  },
+  {
+    id: 'zone-alboran-subsea-corridor',
+    name: 'Alboran Sea Subsea Telecoms & Energy Zone',
+    description: 'Subsea internet cables and energy interconnectors between North Africa and Europe.',
+    category: 'CRITICAL_INFRASTRUCTURE',
+    severity: 'HIGH',
+    color: '#a855f7', // Purple
+    coordinates: [
+      [-4.500, 35.800],
+      [-3.000, 36.200],
+      [-2.800, 35.500],
+      [-4.300, 35.200],
+    ],
+    bbox: computeBoundingBox([
+      [-4.500, 35.800],
+      [-3.000, 36.200],
+      [-2.800, 35.500],
+      [-4.300, 35.200],
+    ]),
+    triggers: {
+      flights: false,
+      maritime: true,
+      cyber: true,
+      disinfo: false,
+      news: true,
+      events: true,
+    },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    breachCount: 0,
+  },
+  {
+    id: 'zone-southern-sahara-border',
+    name: 'Southern Sahara & Border Surveillance Corridor',
+    description: 'Security zone monitoring cross-border movement, drone activity, and logistics routes.',
+    category: 'BORDER_SURVEILLANCE',
+    severity: 'CRITICAL',
+    color: '#10b981', // Emerald
+    coordinates: [
+      [-16.500, 21.500],
+      [-12.000, 21.500],
+      [-10.000, 27.500],
+      [-13.000, 27.800],
+      [-17.000, 24.000],
+    ],
+    bbox: computeBoundingBox([
+      [-16.500, 21.500],
+      [-12.000, 21.500],
+      [-10.000, 27.500],
+      [-13.000, 27.800],
+      [-17.000, 24.000],
+    ]),
+    triggers: {
+      flights: true,
+      maritime: true,
+      cyber: true,
+      disinfo: true,
+      news: true,
+      events: true,
+    },
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    breachCount: 0,
+  },
+];
+
+/**
+ * Built-in Target Watchlist Rules
+ */
+export const DEFAULT_WATCHLIST_RULES: WatchlistRule[] = [
+  {
+    id: 'watch-dark-fleet',
+    label: 'Dark Fleet & AIS-Disabled Tankers',
+    keywords: ['dark fleet', 'shadow tanker', 'sts transfer', 'sanctioned vessel', 'ais spoofing'],
+    category: 'VESSEL_IMO',
+    severity: 'CRITICAL',
+    color: '#ef4444',
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    matchCount: 0,
+  },
+  {
+    id: 'watch-uav-drone',
+    label: 'Unmanned Aerial Vehicles & Drones',
+    keywords: ['drone', 'uav', 'loitering munition', 'bayraktar', 'shahed', 'reconnaissance flight'],
+    category: 'KEYWORD',
+    severity: 'HIGH',
+    color: '#06b6d4',
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    matchCount: 0,
+  },
+  {
+    id: 'watch-cyber-ransomware',
+    label: 'Critical Ransomware & State Actors',
+    keywords: ['lockbit', 'blackcat', 'c2 infrastructure', 'ddos assault', 'botnet', 'apt28', 'apt29'],
+    category: 'ACTOR',
+    severity: 'CRITICAL',
+    color: '#a855f7',
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    matchCount: 0,
+  },
+  {
+    id: 'watch-morocco-air-assets',
+    label: 'Morocco Military & Gov Flight Identifiers',
+    keywords: ['CN-', 'RAM', 'MAF', 'VIP FLIGHT', 'F-16', 'C-130'],
+    category: 'CALLSIGN',
+    severity: 'ELEVATED',
+    color: '#10b981',
+    enabled: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    matchCount: 0,
+  },
+];

@@ -2,9 +2,12 @@
  * Alert Notification System for Morocco OSINT
  * Monitors new events and triggers visual/audio/browser alerts for critical events
  * Real monitoring-center behavior: sound on by default, unread badge, bell panel.
+ *
+ * NOTE: This hook reads from the MAIN notification preferences (notification-storage.ts)
+ * so that user toggles in Settings → Notifications are respected.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import type { MoroccoEvent } from '@/server/lib/morocco-intelligence-analyzer';
 import { playMonitoringAlert, playNotificationTone } from '@/features/notifications/lib/monitoring-sound';
@@ -13,6 +16,20 @@ import {
   requestNotificationPermission,
   showSystemNotification,
 } from '@/features/notifications/lib/browser-notifications';
+import {
+  getNotificationPrefsSnapshot,
+  getServerNotificationPrefsSnapshot,
+  parseNotificationPrefs,
+  patchNotificationPrefs,
+  subscribeToNotificationPrefs,
+  type NotificationSeverity,
+} from '@/features/notifications/lib/notification-storage';
+
+const SEVERITY_ORDER: Record<string, number> = {
+  CRITICAL: 3,
+  HIGH: 2,
+  STANDARD: 1,
+};
 
 type AlertNotification = {
   id: string;
@@ -24,15 +41,19 @@ type AlertNotification = {
 export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean = true) {
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [soundMuted, setSoundMuted] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const stored = window.localStorage.getItem('adeloopeye_sound_muted');
-      return stored === 'true';
-    } catch {
-      return false;
-    }
-  });
+
+  // Read from the MAIN notification preferences (same source as Settings page)
+  const prefsSnapshot = useSyncExternalStore(
+    subscribeToNotificationPrefs,
+    getNotificationPrefsSnapshot,
+    getServerNotificationPrefsSnapshot,
+  );
+  const prefs = parseNotificationPrefs(prefsSnapshot);
+
+  // Effective enabled: both the caller's `enabled` prop AND the main prefs master toggle
+  const isEnabled = enabled && prefs.enabled;
+  const soundEnabled = prefs.playSound;
+
   const [pushGranted, setPushGranted] = useState<boolean | null>(() => {
     if (typeof window === 'undefined') return null;
     return 'Notification' in window && window.Notification.permission === 'granted';
@@ -44,7 +65,7 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
 
   // Preload notification worker so system alerts are possible
   useEffect(() => {
-    if (!enabled) return;
+    if (!isEnabled) return;
     let active = true;
     registerNotificationWorker()
       .then(registration => {
@@ -54,13 +75,13 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
     return () => {
       active = false;
     };
-  }, [enabled]);
+  }, [isEnabled]);
 
   // Monitor events for new events — every newly-arriving event triggers an alert.
   // The first batch seen on mount is seeded silently (no spam of existing news);
   // only events that appear AFTER that initial load ring a bell.
   useEffect(() => {
-    if (!enabled || !events || events.length === 0) return;
+    if (!isEnabled || !events || events.length === 0) return;
 
     // First data arrival: seed the processed set so old news doesn't spam alerts
     if (!initializedRef.current) {
@@ -69,14 +90,20 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
       return;
     }
 
-    const soundEnabled = !soundMuted;
-
     const now = Date.now();
     const newAlerts: AlertNotification[] = [];
 
     events.forEach(event => {
       // Skip if already processed
       if (processedEventIds.current.has(event.id)) return;
+
+      // Respect severity threshold from main notification settings
+      const eventSeverityLevel = SEVERITY_ORDER[event.severity] ?? 0;
+      const minSeverityLevel = SEVERITY_ORDER[prefs.minSeverity] ?? 0;
+      if (eventSeverityLevel < minSeverityLevel) {
+        processedEventIds.current.add(event.id);
+        return;
+      }
 
       processedEventIds.current.add(event.id);
 
@@ -108,6 +135,7 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
       );
 
       // Ring for every new event (siren for critical/high, tone for the rest)
+      // Respects main notification sound preference
       if (soundEnabled) {
         if (event.severity === 'CRITICAL') {
           playMonitoringAlert('CRITICAL');
@@ -137,7 +165,7 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
         return merged;
       });
     }
-  }, [events, enabled, soundMuted, pushGranted]);
+  }, [events, isEnabled, soundEnabled, pushGranted, prefs.minSeverity]);
 
   // Clean up old alerts (older than 1 hour)
   useEffect(() => {
@@ -160,16 +188,11 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
     setUnreadCount(0);
   }, []);
 
+  // Toggle sound — syncs with the main notification preferences
   const toggleSound = useCallback(() => {
-    setSoundMuted(prev => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem('adeloopeye_sound_muted', String(next));
-      } catch {}
-      if (!next) playMonitoringAlert('MEDIUM'); // preview tone on unmute
-      return next;
-    });
-  }, []);
+    patchNotificationPrefs({ playSound: !prefs.playSound });
+    if (!prefs.playSound) playMonitoringAlert('MEDIUM'); // preview tone on unmute
+  }, [prefs.playSound]);
 
 
   const enableNotifications = useCallback(async () => {
@@ -183,7 +206,7 @@ export function useAlertNotifications(events: MoroccoEvent[], enabled: boolean =
     totalAlerts: alerts.length,
     criticalAlerts: alerts.filter(a => a.event.severity === 'CRITICAL').length,
     unreadCount,
-    soundMuted,
+    soundMuted: !soundEnabled,
     pushGranted,
     markAllRead,
     toggleSound,

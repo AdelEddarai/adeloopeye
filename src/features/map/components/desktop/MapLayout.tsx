@@ -23,7 +23,15 @@ import type { MapPageContext } from '@/features/map/components/use-map-page';
 
 import { getCoordinatesForLocation } from '@/shared/lib/location-coordinates';
 import type { RootState } from '@/shared/state';
+import { useAppDispatch, useAppSelector } from '@/shared/state';
 import { usePanelLayout } from '@/shared/hooks/use-panel-layout';
+
+import { useSentinelMonitor } from '@/features/sentinel/hooks/use-sentinel-monitor';
+import { getSentinelMapLayers } from '@/features/sentinel/components/SentinelMapLayers';
+import { SentinelHUD } from '@/features/sentinel/components/SentinelHUD';
+import { DrawZoneToolbar } from '@/features/sentinel/components/DrawZoneToolbar';
+import { addDrawVertex, setSelectedZoneId, setHoveredZoneId } from '@/features/sentinel/state/sentinel-slice';
+import { useMemo } from 'react';
 
 import '@/features/map/lib/deckgl-device';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -58,6 +66,43 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
 
   // MapCNEventFlyTo component handles event selection flying natively.
   // We no longer rely on viewState changes for flying to events since MapCN manages its own viewState.
+
+  // Sentinel Geofence & Watchlist State
+  const dispatch = useAppDispatch();
+  const sentinel = useAppSelector(state => state.sentinel);
+
+  useSentinelMonitor({
+    flights: ctx.flights || [],
+    vessels: undefined,
+    events: moroccoData?.events || [],
+    newsPulses: undefined,
+    disinfoNodes: undefined,
+  });
+
+  const sentinelLayers = useMemo(() => {
+    return getSentinelMapLayers({
+      zones: sentinel.zones,
+      drawMode: sentinel.drawMode,
+      breachingZoneIds: sentinel.breachingZoneIds,
+      hoveredZoneId: sentinel.hoveredZoneId,
+      selectedZoneId: sentinel.selectedZoneId,
+      visible: true,
+      onZoneClick: (zone) => dispatch(setSelectedZoneId(zone.id)),
+      onZoneHover: (zone) => dispatch(setHoveredZoneId(zone ? zone.id : null)),
+    });
+  }, [sentinel, dispatch]);
+
+  const allLayers = useMemo(() => {
+    return [...layers, ...sentinelLayers];
+  }, [layers, sentinelLayers]);
+
+  const onOverlayClick = (info: any) => {
+    if (sentinel.drawMode.active && info.coordinate) {
+      dispatch(addDrawVertex([info.coordinate[0], info.coordinate[1]]));
+      return;
+    }
+    handleMapClick(info);
+  };
 
   return (
     <ResizablePanelGroup
@@ -140,10 +185,14 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
               setMoroccoLayerToggles={setMoroccoLayerToggles}
             />
             <MapCNDeckGLOverlay
-              layers={layers}
+              layers={allLayers}
               getTooltip={tooltip as any}
-              onClick={handleMapClick as any}
+              onClick={onOverlayClick as any}
             />
+
+            {/* Sentinel Geofencing Command Center & Drawing Toolbar */}
+            <SentinelHUD />
+            <DrawZoneToolbar />
 
             {/* Overlays */}
             <MapOverlays

@@ -31,6 +31,12 @@ import { clearSelection } from '@/shared/state/event-selection-slice';
 import type { RootState } from '@/shared/state';
 import { MAP_STYLE_SAT, MAP_STYLE_DARK } from '@/features/map/components/map-styles';
 
+import { useSentinelMonitor } from '@/features/sentinel/hooks/use-sentinel-monitor';
+import { getSentinelMapLayers } from '@/features/sentinel/components/SentinelMapLayers';
+import { SentinelHUD } from '@/features/sentinel/components/SentinelHUD';
+import { DrawZoneToolbar } from '@/features/sentinel/components/DrawZoneToolbar';
+import { addDrawVertex, setSelectedZoneId, setHoveredZoneId } from '@/features/sentinel/state/sentinel-slice';
+
 
 import '@/features/map/lib/deckgl-device';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -66,10 +72,46 @@ export function IntelMap() {
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const [visibility, setVisibility] = useState<LayerVisibility>(DEFAULT_VISIBILITY);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const [isSatStyle, setIsSatStyle] = useState(true);
   const [is3dPitch, setIs3dPitch] = useState(true);
+  const [isCinematic, setIsCinematic] = useState(false);
   const activeLayerCount = BUTTON_CONFIG.filter(c => visibility[c.key]).length;
   const { data: disinfoData } = useLiveDisinformation('MA', visibility.disinfo);
+
+  // Cinematic 360° Auto-Rotation Loop
+  useEffect(() => {
+    if (!isCinematic) return;
+
+    let animId: number;
+    let lastT = performance.now();
+
+    // Tilt camera to 50° on cinematic start
+    setViewState(prev => ({
+      ...prev,
+      pitch: 50,
+      transitionDuration: 1000,
+    }));
+
+    const spin = (now: number) => {
+      const dt = now - lastT;
+      lastT = now;
+      setViewState(prev => ({
+        ...prev,
+        bearing: ((prev.bearing || 0) + (dt * 0.008)) % 360,
+      }));
+      animId = requestAnimationFrame(spin);
+    };
+
+    const timeout = setTimeout(() => {
+      animId = requestAnimationFrame(spin);
+    }, 800);
+
+    return () => {
+      clearTimeout(timeout);
+      cancelAnimationFrame(animId);
+    };
+  }, [isCinematic]);
 
   
   // MapLibre map instance for 3D controls
@@ -220,8 +262,39 @@ export function IntelMap() {
     return flights.find(f => f.id === selectedFlightId) || null;
   }, [selectedFlightId, flights]);
   
+  // Sentinel Geofence & Watchlist State
+  const sentinel = useSelector((state: RootState) => state.sentinel);
+
+  // Run real-time Sentinel breach & watchlist monitor
+  useSentinelMonitor({
+    flights: flights,
+    vessels: useMemo(() => (mapData?.assets || []).filter(a => a.type === 'VESSEL'), [mapData]),
+    events: mapData?.events || [],
+    newsPulses: undefined,
+    disinfoNodes: disinfoData?.nodes || [],
+  });
+
   const layers = useMapLayers(visibility, mapData, flights, time, selectedFlightId, flightTrails,
     disinfoData ? { edges: disinfoData.edges, nodes: disinfoData.nodes } : null);
+
+  // Merge Sentinel layers
+  const sentinelLayers = useMemo(() => {
+    return getSentinelMapLayers({
+      zones: sentinel.zones,
+      drawMode: sentinel.drawMode,
+      breachingZoneIds: sentinel.breachingZoneIds,
+      hoveredZoneId: sentinel.hoveredZoneId,
+      selectedZoneId: sentinel.selectedZoneId,
+      visible: true,
+      onZoneClick: (zone) => dispatch(setSelectedZoneId(zone.id)),
+      onZoneHover: (zone) => dispatch(setHoveredZoneId(zone ? zone.id : null)),
+    });
+  }, [sentinel, dispatch]);
+
+  const allLayers = useMemo(() => {
+    return [...layers, ...sentinelLayers];
+  }, [layers, sentinelLayers]);
+
   const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, object: any, html: string } | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -242,8 +315,14 @@ export function IntelMap() {
     }
   }, []);
   
-  // Handle click on map objects (especially flights)
+  // Handle click on map objects (especially flights) and drawing mode
   const handleClick = useCallback((info: PickingInfo) => {
+    // If in Sentinel Polygon Drawing Mode, drop a vertex at clicked coordinate
+    if (sentinel.drawMode.active && info.coordinate) {
+      dispatch(addDrawVertex([info.coordinate[0], info.coordinate[1]]));
+      return;
+    }
+
     if (info.object && info.layer?.id === 'flights-icons') {
       const flight = info.object as Asset;
       
@@ -268,9 +347,23 @@ export function IntelMap() {
         setSelectedFlightId(null);
       }
     }
-  }, [selectedFlightId]);
+  }, [selectedFlightId, sentinel.drawMode.active, dispatch]);
   
-  // 🎯 FLY TO LOCATION when event is selected
+  // 🎯 FLY TO COORDINATES when dispatched from Link Analysis, Dossiers, Chokepoints, etc.
+  useEffect(() => {
+    if (eventSelection.flyToCoords && eventSelection.timestamp) {
+      setViewState(prev => ({
+        ...prev,
+        longitude: eventSelection.flyToCoords!.coordinates[0],
+        latitude: eventSelection.flyToCoords!.coordinates[1],
+        zoom: eventSelection.flyToCoords!.zoom,
+        transitionDuration: 1500,
+        transitionInterpolator: undefined,
+      }));
+    }
+  }, [eventSelection.flyToCoords, eventSelection.timestamp]);
+
+  // 🎯 FLY TO LOCATION when location is selected
   useEffect(() => {
     if (eventSelection.selectedLocation && eventSelection.timestamp) {
       const coordinates = getCoordinatesForLocation(eventSelection.selectedLocation);
@@ -356,34 +449,65 @@ export function IntelMap() {
 
         {/* Toggle buttons */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center', position: 'relative' }}>
-          {/* Map Config Toggles */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsSatStyle(s => !s)}
-            className="h-auto px-1.5 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono border border-[var(--bd)] bg-[var(--bg-1)] text-[var(--t2)] hover:bg-[var(--bg-2)]"
-            title="Toggle Satellite vs Dark Map style"
-          >
-            {isSatStyle ? '🛰 SAT' : '🗺 DARK'}
-          </Button>
+          {/* Map Config & 3D/Cinematic Micro-Toolbar */}
+          <div className="flex items-center gap-1 bg-[var(--bg-1)] border border-[var(--bd)] p-0.5 rounded-sm">
+            <button
+              onClick={() => setIsSatStyle(s => !s)}
+              className="px-1.5 py-0.5 rounded-xs text-[9px] font-mono font-bold text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--bg-2)] transition-colors"
+              title="Toggle Satellite vs Dark Base Map"
+            >
+              {isSatStyle ? '🛰 SAT' : '🗺 DARK'}
+            </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIs3dPitch(p => {
-                const next = !p;
-                setViewState(prev => ({ ...prev, pitch: next ? 45 : 0, transitionDuration: 800 }));
-                return next;
-              });
-            }}
-            className={`h-auto px-1.5 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono border ${
-              is3dPitch ? 'border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue-l)]' : 'border-[var(--bd)] bg-[var(--bg-1)] text-[var(--t3)]'
-            }`}
-            title="Toggle 3D Pitch camera tilt"
-          >
-            📐 3D {is3dPitch ? 'ON' : 'OFF'}
-          </Button>
+            <button
+              onClick={() => {
+                setIsCinematic(false);
+                setIs3dPitch(p => {
+                  const next = !p;
+                  setViewState(prev => ({ ...prev, pitch: next ? 45 : 0, transitionDuration: 800 }));
+                  return next;
+                });
+              }}
+              className={`px-1.5 py-0.5 rounded-xs text-[9px] font-mono font-bold transition-all ${
+                is3dPitch && !isCinematic ? 'bg-[var(--blue-dim)] text-[var(--blue-l)] shadow-xs' : 'text-[var(--t3)] hover:text-[var(--t1)]'
+              }`}
+              title="Toggle 3D Pitch tilt"
+            >
+              3D
+            </button>
+
+            <button
+              onClick={() => {
+                setIsCinematic(c => {
+                  const next = !c;
+                  if (!next) {
+                    setViewState(prev => ({ ...prev, pitch: 0, bearing: 0, transitionDuration: 800 }));
+                  }
+                  return next;
+                });
+              }}
+              className={`px-1.5 py-0.5 rounded-xs text-[9px] font-mono font-bold transition-all flex items-center gap-0.5 ${
+                isCinematic ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400 animate-pulse' : 'text-[var(--t3)] hover:text-[var(--t1)]'
+              }`}
+              title="Toggle Cinematic 360° Auto-Rotation"
+            >
+              <span>🎬 CINE</span>
+            </button>
+
+            {(is3dPitch || isCinematic || (viewState.bearing && Math.abs(viewState.bearing) > 1)) && (
+              <button
+                onClick={() => {
+                  setIsCinematic(false);
+                  setIs3dPitch(false);
+                  setViewState(prev => ({ ...prev, pitch: 0, bearing: 0, transitionDuration: 800 }));
+                }}
+                className="px-1 py-0.5 rounded-xs text-[8px] font-mono text-[var(--t4)] hover:text-red-400 transition-colors"
+                title="Reset Camera to Top-Down 0°"
+              >
+                ↺ 0°
+              </button>
+            )}
+          </div>
 
           {/* Clear Selection Button */}
           {(eventSelection.selectedEventId || eventSelection.selectedLocation) && (
@@ -407,7 +531,10 @@ export function IntelMap() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLayersOpen(o => !o)}
+              onClick={() => {
+                setLayersOpen(o => !o);
+                setLegendOpen(false);
+              }}
               className="h-auto px-2 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono"
               style={{
                 border: `1px solid ${layersOpen ? 'var(--blue)' : 'var(--bd)'}`,
@@ -480,6 +607,49 @@ export function IntelMap() {
               </div>
             )}
           </div>
+
+          {/* Collapsible LEGEND dropdown in top bar */}
+          <div style={{ position: 'relative' }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setLegendOpen(o => !o);
+                setLayersOpen(false);
+              }}
+              className="h-auto px-2 py-0.5 rounded-sm text-[length:var(--text-tiny)] font-bold mono"
+              style={{
+                border: `1px solid ${legendOpen ? 'var(--blue)' : 'var(--bd)'}`,
+                background: legendOpen ? 'var(--blue-dim)' : 'var(--bg-1)',
+                color: legendOpen ? 'var(--blue-l)' : 'var(--t2)',
+              }}
+            >
+              LEGEND {legendOpen ? '▴' : '▾'}
+            </Button>
+
+            {legendOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  right: 0,
+                  minWidth: 240,
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  padding: '8px 10px',
+                  background: 'var(--bg-app)',
+                  border: '1px solid var(--bd)',
+                  borderRadius: 3,
+                  zIndex: 120,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.55)',
+                  fontFamily: 'monospace',
+                }}
+              >
+                <div style={{ fontSize: 'var(--text-tiny)', color: 'var(--t4)', marginBottom: 6, fontWeight: 700 }}>MAP SYMBOLOGY</div>
+                <IntelMapLegend />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -497,7 +667,7 @@ export function IntelMap() {
             });
           }}
           controller={true}
-          layers={layers}
+          layers={allLayers}
           onHover={handleHover}
           onClick={handleClick}
           style={{ width: '100%', height: '100%' }}
@@ -508,9 +678,9 @@ export function IntelMap() {
           />
         </DeckGL>
 
-
-        {/* 3D View Controls */}
-        <Map3DControls map={mapInstance} isLoaded={isMapLoaded} />
+        {/* Sentinel Geofencing Command Center & Drawing HUD */}
+        <SentinelHUD />
+        <DrawZoneToolbar />
 
         {hoverInfo && (
           <div
@@ -633,13 +803,6 @@ export function IntelMap() {
             </div>
           </div>
         )}
-
-        <IntelMapLegend />
-
-        {/* Coords */}
-        <div style={{ position: 'absolute', bottom: 52, right: 12, background: 'rgba(28,33,39,0.85)', border: '1px solid var(--bd)', padding: '4px 8px', fontSize: 'var(--text-caption)', fontFamily: 'monospace', color: 'var(--t4)', pointerEvents: 'none' }}>
-          {viewState.latitude.toFixed(2)}°N {viewState.longitude.toFixed(2)}°E · ZOOM {viewState.zoom?.toFixed(1) ?? '—'} · PITCH {viewState.pitch?.toFixed(0) ?? '0'}°
-        </div>
 
         <OpenMapButton />
       </div>

@@ -30,6 +30,7 @@ import mapReducer, {
 } from '@/features/map/state/map-slice';
 import eventSelectionReducer from './event-selection-slice';
 import newsPulseReducer from './news-pulse-slice';
+import sentinelReducer from '@/features/sentinel/state/sentinel-slice';
 
 import {
   hasPreferencesConsent,
@@ -141,6 +142,7 @@ export const store = configureStore({
     map: mapReducer,
     eventSelection: eventSelectionReducer,
     newsPulses: newsPulseReducer,
+    sentinel: sentinelReducer,
   },
   preloadedState: loadPersistedState(),
   middleware: (getDefaultMiddleware) =>
