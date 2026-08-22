@@ -632,17 +632,22 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
     if (!object || !layer) return null;
 
     const id = layer.id;
-    if (id === 'strikes') return wrap(strikeTooltip(object as StrikeArc));
-    if (id === 'missiles') return wrap(missileTooltip(object as MissileTrack));
+    if (id === 'strikes' || id === 'strikes-origins' || id === 'strikes-impacts') return wrap(strikeTooltip(object as StrikeArc));
+    if (id === 'missiles' || id === 'missiles-origins' || id === 'missiles-impacts') return wrap(missileTooltip(object as MissileTrack));
     if (id === 'targets' || id === 'target-labels' || id === 'fire-icons') return wrap(targetTooltip(object as Target));
     if (id === 'assets' || id === 'asset-labels') return wrap(assetTooltip(object as Asset));
     if (id === 'zones') return wrap(zoneTooltip(object as ThreatZone));
     if (id === 'cyber-threats') return wrap(cyberThreatTooltip(object as CyberThreat));
-    if (id === 'disinfo-arcs') {
+    if (id === 'disinfo-arcs' || id === 'disinfo-edge-sources' || id === 'disinfo-edge-targets') {
       const d = object as any;
       const isCampaign = d.kind === 'CAMPAIGN';
       const color = isCampaign ? 'var(--warning)' : 'var(--info)';
       const kindLabel = isCampaign ? 'REPORTED DISINFO CAMPAIGN' : `OBSERVED BOT TRAFFIC${d.subKind ? ` · ${d.subKind}` : ''}`;
+      const isSource = id === 'disinfo-edge-sources';
+      const isTarget = id === 'disinfo-edge-targets';
+      const endpointTag = isSource ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◉ ATTACK ORIGIN</div>'
+                         : isTarget ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◎ TARGET</div>'
+                         : '';
       const refs = (d.sources || [])
         .map(
           (s: any) =>
@@ -650,7 +655,8 @@ export function createBuildTooltip(am: Record<string, ActorMeta>) {
         )
         .join('');
       return wrap(
-        `<div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.label || `${d.source} → ${d.target}`}</div>
+        `${endpointTag}
+         <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.label || `${d.source} → ${d.target}`}</div>
          <div style="color:${color};font-size:10px;margin-bottom:2px">KIND: ${kindLabel}</div>
          <div style="color:var(--t3);font-size:10px;margin-bottom:2px">WEIGHT: ${d.weight}</div>
          ${refs}`

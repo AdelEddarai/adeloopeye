@@ -1639,7 +1639,7 @@ export function useMapLayers({
     });
 
     // 2. Animated Workflow Stream (Laser Comet with Head + Trailing Sub-Packets in PIXELS)
-    const disinfoPulseParticles = useMemo(() => {
+    const disinfoPulseParticles = (() => {
       if (!showDisinfo || !disinfo || !disinfo.edges.length) return [];
       const normalizedPhase = (pulseTime / (Math.PI * 2)); // 0 to 1
 
@@ -1690,7 +1690,7 @@ export function useMapLayers({
       });
 
       return particles;
-    }, [showDisinfo, disinfo, pulseTime]);
+    })();
 
     const disinfoArcPulseLayer = showDisinfo && disinfoPulseParticles.length > 0 && new ScatterplotLayer({
       id: 'disinfo-arc-pulses',
@@ -1772,7 +1772,7 @@ export function useMapLayers({
     const showDisinfoText = showDisinfo && (viewState.zoom || 2) >= 3.2;
 
     // 5. Tactical Disinfo Vector Midpoint Labels (Directly on Vector Curve - Zoom Gated)
-    const disinfoMidpointLabels = useMemo(() => {
+    const disinfoMidpointLabels = (() => {
       if (!showDisinfoText || !disinfo || !disinfo.edges.length) return [];
       return disinfo.edges.map(edge => {
         const src = disinfo.nodes.find(n => n.code === edge.source);
@@ -1786,7 +1786,7 @@ export function useMapLayers({
           edge,
         };
       }).filter(Boolean);
-    }, [showDisinfoText, disinfo]);
+    })();
 
     const disinfoMidpointLabelLayer = showDisinfoText && disinfoMidpointLabels.length > 0 && new TextLayer({
       id: 'disinfo-mid-labels',
