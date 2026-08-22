@@ -1,26 +1,53 @@
 'use client';
 
-import { useState } from 'react';
-
+import React, { useState, useMemo } from 'react';
 import type { MapViewState } from '@deck.gl/core';
-import { FlyToInterpolator } from '@deck.gl/core';
-import { Map } from '@/components/ui/map';
+import { Map, useMap } from '@/components/ui/map';
 import { MapCNDeckGLOverlay } from '@/features/map/components/MapCNDeckGLOverlay';
-import { MapCNController } from '@/features/map/components/MapCNControllers';
-
 import { MAP_STYLE_DARK, MAP_STYLE_SAT } from '@/features/map/components/map-styles';
-import { MapFilterPanel } from '@/features/map/components/MapFilterPanel';
-import { MapLegend } from '@/features/map/components/MapLegend';
-import { MapOverlays } from '@/features/map/components/MapOverlays';
-import { MapSidebar } from '@/features/map/components/MapSidebar';
-import { MapTimeline } from '@/features/map/components/MapTimeline';
-import { MapVisibilityMenu } from '@/features/map/components/MapVisibilityMenu';
-import { MobileDetailPanel } from '@/features/map/components/mobile/MapDetailPanel';
-import { UnifiedMapControls } from '@/features/map/components/UnifiedMapControls';
 import type { MapPageContext } from '@/features/map/components/use-map-page';
+import { MobileFloatingControls } from '@/features/map/components/mobile/MobileFloatingControls';
+import { MobileBottomSheet } from '@/features/map/components/mobile/MobileBottomSheet';
+import { MobileLayersTab } from '@/features/map/components/mobile/MobileLayersTab';
+import { MobileIntelTab } from '@/features/map/components/mobile/MobileIntelTab';
+import { MobileSearchTab } from '@/features/map/components/mobile/MobileSearchTab';
+import { MobileDetailPanel } from '@/features/map/components/mobile/MapDetailPanel';
+import { SentinelHUD } from '@/features/sentinel/components/SentinelHUD';
+import { DrawZoneToolbar } from '@/features/sentinel/components/DrawZoneToolbar';
+import { getSentinelMapLayers } from '@/features/sentinel/components/SentinelMapLayers';
+import { addDrawVertex, setSelectedZoneId, setHoveredZoneId } from '@/features/sentinel/state/sentinel-slice';
+import { useSentinelMonitor } from '@/features/sentinel/hooks/use-sentinel-monitor';
+import { useAppDispatch, useAppSelector } from '@/shared/state';
 
 import '@/features/map/lib/deckgl-device';
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+/**
+ * Directly captures MapLibre clicks when Sentinel drawing mode is active on mobile.
+ */
+function MobileDrawMapClickHandler() {
+  const { map, isLoaded } = useMap();
+  const dispatch = useAppDispatch();
+  const drawModeActive = useAppSelector(state => state.sentinel.drawMode.active);
+
+  React.useEffect(() => {
+    if (!map || !isLoaded || !drawModeActive) return;
+
+    const handleMapClick = (e: any) => {
+      if (!e.lngLat) return;
+      const lng = Number(e.lngLat.lng.toFixed(5));
+      const lat = Number(e.lngLat.lat.toFixed(5));
+      dispatch(addDrawVertex([lng, lat]));
+    };
+
+    map.on('click', handleMapClick);
+    return () => {
+      map.off('click', handleMapClick);
+    };
+  }, [map, isLoaded, drawModeActive, dispatch]);
+
+  return null;
+}
 
 type Props = {
   ctx: MapPageContext;
@@ -29,206 +56,218 @@ type Props = {
 
 export function MobileMapLayout({ ctx, embedded = false }: Props) {
   const {
-    viewState, activeStory, selectedItem, showAllLabels, sidebarOpen, mapStyle, stories,
-    overlayVisibility, toggleOverlay, f, tooltip, layers, handleMapClick, showTimeline,
-    setViewState, activateStory, setActiveStory, setSelectedItem, setShowAllLabels,
-    toggleSidebar, setSidebarOpen, setMapStyle,
-    moroccoLayerToggles, toggleMoroccoLayerType,
-    dataLayers, scope, setScope,
-    showTerrain, toggleTerrain, terrainExaggeration, hillshadeIntensity, showRoads, show3DBuildings,
-    setTerrainExaggeration, setHillshadeIntensity, setShowRoads, setShow3DBuildings,
+    viewState,
+    activeStory,
+    selectedItem,
+    showAllLabels,
+    mapStyle,
+    overlayVisibility,
+    toggleOverlay,
+    tooltip,
+    layers,
+    handleMapClick,
+    setViewState,
+    activateStory,
+    setActiveStory,
+    setSelectedItem,
+    setShowAllLabels,
+    setMapStyle,
+    moroccoLayerToggles,
+    toggleMoroccoLayerType,
+    dataLayers,
+    scope,
+    setScope,
+    showTerrain,
+    toggleTerrain,
+    terrainExaggeration,
+    hillshadeIntensity,
+    showRoads,
+    show3DBuildings,
+    setTerrainExaggeration,
+    setHillshadeIntensity,
+    setShowRoads,
+    setShow3DBuildings,
     toggleDataLayer,
   } = ctx;
 
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const dispatch = useAppDispatch();
+  const sentinel = useAppSelector(state => state.sentinel);
+
+  // Bottom Sheet State
+  const [activeTab, setActiveTab] = useState<'layers' | 'intel' | 'search'>('intel');
+  const [sheetState, setSheetState] = useState<'collapsed' | 'peek' | 'expanded'>('peek');
+  const [is3D, setIs3D] = useState(false);
+
+  // Monitor geofence breaches in background
+  useSentinelMonitor();
+
+  // Sentinel Deck.gl Layers
+  const sentinelLayers = useMemo(() => {
+    return getSentinelMapLayers({
+      zones: sentinel.zones,
+      drawMode: sentinel.drawMode,
+      breachingZoneIds: sentinel.breachingZoneIds,
+      hoveredZoneId: sentinel.hoveredZoneId,
+      selectedZoneId: sentinel.selectedZoneId,
+      visible: true,
+      onZoneClick: zone => dispatch(setSelectedZoneId(zone.id)),
+      onZoneHover: zone => dispatch(setHoveredZoneId(zone ? zone.id : null)),
+    });
+  }, [
+    sentinel.zones,
+    sentinel.drawMode,
+    sentinel.breachingZoneIds,
+    sentinel.hoveredZoneId,
+    sentinel.selectedZoneId,
+    dispatch,
+  ]);
+
+  const allLayers = useMemo(() => {
+    return [...layers, ...sentinelLayers];
+  }, [layers, sentinelLayers]);
+
+  // Handler to fly to any coordinate on map
+  const handleFlyTo = ({ lat, lng, zoom = 10 }: { lat: number; lng: number; zoom?: number }) => {
+    setViewState({
+      ...viewState,
+      latitude: lat,
+      longitude: lng,
+      zoom,
+      transitionDuration: 1200,
+    });
+    // Snap sheet down to peek so the user sees the map in view
+    setSheetState('peek');
+  };
+
+  // Toggle 3D pitch
+  const handleToggle3D = () => {
+    setIs3D(prev => {
+      const next = !prev;
+      setViewState({
+        ...viewState,
+        pitch: next ? 50 : 0,
+        bearing: next ? -15 : 0,
+        transitionDuration: 800,
+      });
+      return next;
+    });
+  };
+
+  const handleResetView = () => {
+    setIs3D(false);
+    setViewState({
+      ...viewState,
+      pitch: 0,
+      bearing: 0,
+      transitionDuration: 800,
+    });
+  };
+
+  const onOverlayClick = (info: any) => {
+    if (sentinel.drawMode.active && info.coordinate) {
+      dispatch(addDrawVertex([info.coordinate[0], info.coordinate[1]]));
+      return;
+    }
+    handleMapClick(info);
+  };
 
   return (
-    <div className="w-full h-full bg-[var(--bg-app)] overflow-hidden min-w-0">
-      <div className="relative overflow-hidden w-full h-full">
-        {/* Map canvas */}
-        <Map
-          center={[viewState.longitude || 0, viewState.latitude || 0]}
-          zoom={viewState.zoom || 2}
-          pitch={viewState.pitch || 0}
-          bearing={viewState.bearing || 0}
-          // @ts-ignore
-          style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT}
-        >
-          <MapCNController />
-          <MapCNDeckGLOverlay
-            layers={layers}
-            getTooltip={tooltip as any}
-            onClick={handleMapClick as any}
-          />
+    <div className="w-full h-full bg-zinc-950 overflow-hidden relative select-none">
+      {/* ── 100% Full-Bleed Map Canvas ── */}
+      <Map
+        center={[viewState.longitude || 0, viewState.latitude || 0]}
+        zoom={viewState.zoom || 2}
+        pitch={viewState.pitch || 0}
+        bearing={viewState.bearing || 0}
+        // @ts-ignore
+        style={mapStyle === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_SAT}
+      >
+        <MapCNDeckGLOverlay
+          layers={allLayers}
+          getTooltip={tooltip as any}
+          onClick={onOverlayClick as any}
+        />
+        <MobileDrawMapClickHandler />
+      </Map>
 
-          {/* ── Bottom sheet: detail + stories ── */}
-          {(sidebarOpen || selectedItem) && (
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: sheetExpanded ? '100%' : '55%',
-                transition: 'height 0.22s cubic-bezier(0.4,0,0.2,1)',
-                zIndex: 25,
-                background: 'var(--bg-app)',
-                borderTop: '1px solid var(--bd)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {/* Detail panel (inline, above stories) */}
-              {selectedItem && (
-                <MobileDetailPanel
-                  item={selectedItem}
-                  onClose={() => setSelectedItem(null)}
-                  onSelectItem={setSelectedItem}
-                  onActivateStory={activateStory}
-                />
-              )}
+      {/* ── Floating Tactical Top Controls & Quick Target Strip ── */}
+      <MobileFloatingControls
+        mapStyle={mapStyle}
+        onStyleChange={setMapStyle}
+        is3d={is3D}
+        onToggle3D={handleToggle3D}
+        bearing={viewState.bearing || 0}
+        pitch={viewState.pitch || 0}
+        onResetView={handleResetView}
+        onCityFlyTo={handleFlyTo}
+        activeStory={activeStory}
+        onClearStory={() => setActiveStory(null)}
+        embedded={embedded}
+      />
 
-              {/* Stories list */}
-              {sidebarOpen && (
-                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                  <MapSidebar
-                    isOpen={sidebarOpen}
-                    stories={stories}
-                    activeStory={activeStory}
-                    onToggle={() => { setSheetExpanded(false); toggleSidebar(); }}
-                    onActivateStory={story => {
-                      setSidebarOpen(true);
-                      setSelectedItem(null);
-                      activateStory(story);
-                    }}
-                    onClearStory={() => setActiveStory(null)}
-                    expanded={sheetExpanded}
-                    onToggleExpand={() => setSheetExpanded(prev => !prev)}
-                    onCitySelect={(city) => {
-                      // Navigate to city on map
-                      setViewState({
-                        ...viewState,
-                        longitude: city.lon,
-                        latitude: city.lat,
-                        zoom: 10,
-                        transitionDuration: 1500,
-                      });
-                    }}
-                    onNewsClick={(news) => {
-                      // Navigate to news location on map
-                      if (news.location) {
-                        setViewState({
-                          ...viewState,
-                          longitude: news.location.lon,
-                          latitude: news.location.lat,
-                          zoom: 12,
-                          transitionDuration: 1500,
-                        });
-                      }
-                    }}
-                    onIntelItemClick={(item) => {
-                      // Navigate to intel item location on map
-                      if (item.coordinates) {
-                        setViewState({
-                          ...viewState,
-                          longitude: item.coordinates[0],
-                          latitude: item.coordinates[1],
-                          zoom: item.type === 'FLIGHT' ? 8 : 10,
-                          transitionDuration: 1500,
-                        });
-                      }
-                    }}
-                    selectedCountry={selectedItem?.type === 'country' ? {
-                      name: selectedItem.data.name,
-                      code: selectedItem.data.code,
-                    } : null}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+      {/* ── Sentinel HUD & Geofence Drawing Modals ── */}
+      <SentinelHUD />
+      <DrawZoneToolbar />
 
-          {/* ── Map overlays ── */}
-          <MapOverlays
-            activeStory={activeStory}
-            onClearStory={() => setActiveStory(null)}
-            sidebarOpen={sidebarOpen}
-            onToggleSidebar={toggleSidebar}
-            embedded={embedded}
-            isMobile
-          />
-
-          {overlayVisibility.legend && (
-            <MapLegend
-              hasPanel={false}
-              timelineVisible={showTimeline}
-              isMobile
-            />
-          )}
-
-          <div style={{ position: 'absolute', top: 12, right: 'max(12px, var(--safe-right))', zIndex: 10 }}>
-            <UnifiedMapControls
-              mapStyle={mapStyle}
-              onStyleChange={setMapStyle}
-              showAllLabels={showAllLabels}
-              onShowAllLabelsChange={setShowAllLabels}
-              dataLayers={dataLayers}
-              onDataLayerToggle={toggleDataLayer}
-              scope={scope}
-              onScopeChange={setScope}
-              moroccoLayerToggles={moroccoLayerToggles}
-              onMoroccoLayerToggle={toggleMoroccoLayerType}
-              visibility={overlayVisibility}
-              onVisibilityToggle={toggleOverlay}
-              showTerrain={showTerrain}
-              onTerrainToggle={toggleTerrain}
-              terrainExaggeration={terrainExaggeration}
-              onTerrainExaggerationChange={setTerrainExaggeration}
-              hillshadeIntensity={hillshadeIntensity}
-              onHillshadeIntensityChange={setHillshadeIntensity}
-              showRoads={showRoads}
-              onShowRoadsChange={setShowRoads}
-              show3DBuildings={show3DBuildings}
-              onShow3DBuildingsChange={setShow3DBuildings}
+      {/* ── Selected Map Object Card (Slide up above bottom sheet) ── */}
+      {selectedItem && (
+        <div className="absolute inset-x-2 bottom-16 z-50 animate-in slide-in-from-bottom-4 duration-200">
+          <div className="bg-zinc-950/95 border border-cyan-500/50 rounded-md shadow-2xl backdrop-blur-2xl overflow-hidden max-h-[45vh] flex flex-col">
+            <MobileDetailPanel
+              item={selectedItem}
+              onClose={() => setSelectedItem(null)}
+              onSelectItem={setSelectedItem}
+              onActivateStory={activateStory}
             />
           </div>
+        </div>
+      )}
 
-          {/* Visibility menu removed - handled by UnifiedMapControls */}
+      {/* ── Interactive Command Deck (Swipeable Bottom Sheet) ── */}
+      <MobileBottomSheet
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        sheetState={sheetState}
+        onSheetStateChange={setSheetState}
+      >
+        {activeTab === 'layers' && (
+          <MobileLayersTab
+            dataLayers={dataLayers}
+            onDataLayerToggle={toggleDataLayer}
+            visibility={overlayVisibility}
+            onVisibilityToggle={toggleOverlay}
+            scope={scope}
+            onScopeChange={setScope}
+            moroccoLayerToggles={moroccoLayerToggles}
+            onMoroccoLayerToggle={toggleMoroccoLayerType}
+            showAllLabels={showAllLabels}
+            onShowAllLabelsChange={setShowAllLabels}
+            showTerrain={showTerrain}
+            onTerrainToggle={toggleTerrain}
+            terrainExaggeration={terrainExaggeration}
+            onTerrainExaggerationChange={setTerrainExaggeration}
+            show3DBuildings={show3DBuildings}
+            onShow3DBuildingsChange={setShow3DBuildings}
+            showRoads={showRoads}
+            onShowRoadsChange={setShowRoads}
+          />
+        )}
 
-          {/* Filter panel */}
-          {overlayVisibility.filters && (
-            <div style={{ position: 'absolute', top: 56, right: 'max(12px, var(--safe-right))', zIndex: 10 }}>
-              <MapFilterPanel
-                defaultExpanded
-                state={f.state}
-                facets={f.facets}
-                isFiltered={f.isFiltered}
-                onToggleDataset={f.toggleDataset}
-                onToggleType={f.toggleType}
-                onToggleActor={f.toggleActor}
-                onTogglePriority={f.togglePriority}
-                onToggleStatus={f.toggleStatus}
-                onToggleHeat={f.toggleHeat}
-                onReset={f.resetFilters}
-              />
-            </div>
-          )}
+        {activeTab === 'intel' && (
+          <MobileIntelTab
+            onFlyToLocation={handleFlyTo}
+            onIntelItemClick={item => {
+              if (item.coordinates) {
+                handleFlyTo({ lat: item.coordinates[1], lng: item.coordinates[0], zoom: 10 });
+              }
+            }}
+          />
+        )}
 
-          {/* Timeline */}
-          {showTimeline && (
-            <MapTimeline
-              rawData={f.rawData}
-              dataExtent={f.dataExtent}
-              viewExtent={f.viewExtent}
-              onViewExtent={f.setViewExtent}
-              timeRange={f.state.timeRange}
-              onTimeRange={f.setTimeRange}
-              isMobile
-            />
-          )}
-        </Map>
-      </div>
+        {activeTab === 'search' && (
+          <MobileSearchTab onFlyToLocation={handleFlyTo} />
+        )}
+      </MobileBottomSheet>
     </div>
   );
 }
