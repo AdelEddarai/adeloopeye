@@ -8,6 +8,7 @@ export interface SentinelLayerProps {
   hoveredZoneId: string | null;
   selectedZoneId: string | null;
   visible: boolean;
+  zoom?: number;
   onZoneClick?: (zone: GeofenceZone) => void;
   onZoneHover?: (zone: GeofenceZone | null) => void;
 }
@@ -47,6 +48,7 @@ export function getSentinelMapLayers({
   hoveredZoneId,
   selectedZoneId,
   visible,
+  zoom = 3,
   onZoneClick,
   onZoneHover,
 }: SentinelLayerProps) {
@@ -119,40 +121,46 @@ export function getSentinelMapLayers({
       })
     );
 
-    // ── 2. GEOFENCE LABELS (Centroid Names) ──
-    const labelData = enabledZones.map(z => ({
-      ...z,
-      position: calculateCentroid(z.coordinates),
-    }));
+    // ── 2. GEOFENCE LABELS (Centroid Names - Hidden on global zoom, reveals on deep zoom-in >= 6.5 or focus) ──
+    const showZoneLabels = zoom >= 6.5;
+    const labelData = enabledZones
+      .filter(z => showZoneLabels || z.id === selectedZoneId || z.id === hoveredZoneId)
+      .map(z => ({
+        ...z,
+        position: calculateCentroid(z.coordinates),
+      }));
 
-    layers.push(
-      new TextLayer({
-        id: 'sentinel-geofence-labels',
-        data: labelData,
-        pickable: false,
-        getPosition: (d: any) => [d.position[0], d.position[1]],
-        getText: (d: any) => {
-          const breachSuffix = d.breachCount > 0 ? ` (${d.breachCount} BREACHES)` : '';
-          return `⬡ ${d.name.toUpperCase()}${breachSuffix}`;
-        },
-        getSize: 10,
-        getColor: (d: any) => {
-          const isBreaching = breachingZoneIds.includes(d.id);
-          return isBreaching ? [255, 80, 80, 255] : [200, 230, 255, 220];
-        },
-        getTextAnchor: 'middle',
-        getAlignmentBaseline: 'center',
-        fontFamily: 'monospace',
-        fontWeight: 700,
-        background: true,
-        getBackgroundColor: [15, 20, 28, 210],
-        backgroundPadding: [4, 2, 4, 2],
-        updateTriggers: {
-          getColor: [breachingZoneIds],
-          getText: [zones],
-        },
-      })
-    );
+    if (labelData.length > 0) {
+      layers.push(
+        new TextLayer({
+          id: 'sentinel-geofence-labels',
+          data: labelData,
+          pickable: false,
+          getPosition: (d: any) => [d.position[0], d.position[1]],
+          getText: (d: any) => {
+            const breachSuffix = d.breachCount > 0 ? ` (${d.breachCount} BREACHES)` : '';
+            return `⬡ ${d.name.toUpperCase()}${breachSuffix}`;
+          },
+          getSize: 10,
+          getColor: (d: any) => {
+            const isBreaching = breachingZoneIds.includes(d.id);
+            return isBreaching ? [255, 80, 80, 255] : [200, 230, 255, 220];
+          },
+          getTextAnchor: 'middle',
+          getAlignmentBaseline: 'center',
+          fontFamily: 'monospace',
+          fontWeight: 700,
+          background: true,
+          getBackgroundColor: [15, 20, 28, 210],
+          backgroundPadding: [4, 2, 4, 2],
+          updateTriggers: {
+            getColor: [breachingZoneIds],
+            getText: [zones],
+            getPosition: [labelData.map(z => z.position.join(',')).join('|')],
+          },
+        })
+      );
+    }
   }
 
   // ── 3. ACTIVE DRAWING MODE OVERLAYS ──

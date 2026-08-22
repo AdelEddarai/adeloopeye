@@ -110,6 +110,7 @@ export function MobileMapLayout({ ctx, embedded = false }: Props) {
       hoveredZoneId: sentinel.hoveredZoneId,
       selectedZoneId: sentinel.selectedZoneId,
       visible: true,
+      zoom: viewState?.zoom ?? 3,
       onZoneClick: zone => dispatch(setSelectedZoneId(zone.id)),
       onZoneHover: zone => dispatch(setHoveredZoneId(zone ? zone.id : null)),
     });
@@ -119,6 +120,7 @@ export function MobileMapLayout({ ctx, embedded = false }: Props) {
     sentinel.breachingZoneIds,
     sentinel.hoveredZoneId,
     sentinel.selectedZoneId,
+    viewState?.zoom,
     dispatch,
   ]);
 
