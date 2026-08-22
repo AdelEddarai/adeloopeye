@@ -144,6 +144,7 @@ export function DrawZoneToolbar() {
           <Check size={13} className="mr-1" /> Complete Zone
         </Button>
       </div>
+      </div>
 
       {/* Sub-banner instruction pill */}
       <div className="flex items-center gap-2 px-3 py-1 bg-zinc-950/90 border border-zinc-800/80 rounded-full text-[10px] text-zinc-400 font-mono shadow-md backdrop-blur-md">
