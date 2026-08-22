@@ -561,7 +561,7 @@ export function useMapLayers({
       },
     });
 
-    const strategicHotspotLabels = showZones && new TextLayer<any>({
+    const strategicHotspotLabels = showZones && showAllLabels && currentZoom >= 5.5 && new TextLayer<any>({
       id: 'strategic-hotspot-labels',
       data: STRATEGIC_SECTORS,
       getPosition: (d: any) => d.center,
@@ -656,8 +656,8 @@ export function useMapLayers({
       },
     });
 
-    // Target labels
-    const targetLabels = showAllLabels && !isMobile && filtered.targets.length > 0 && new TextLayer<Target>({
+    // Target labels (only show on zoom-in >= 5.0 when enabled)
+    const targetLabels = showAllLabels && currentZoom >= 5.0 && filtered.targets.length > 0 && new TextLayer<Target>({
       id: 'target-labels',
       data: filtered.targets,
       getPosition: (d: Target): [number, number] => d.position,
@@ -772,8 +772,8 @@ export function useMapLayers({
     });
 
     const currentZoom = viewState?.zoom ?? 3;
-    const zoomScale = Math.max(0.42, Math.min(1.25, 0.4 + (currentZoom / 9) * 0.7));
-    const showDenseLabels = currentZoom >= 4.0;
+    const zoomScale = Math.max(0.72, Math.min(1.35, 0.70 + (currentZoom / 10) * 0.55));
+    const showDenseLabels = currentZoom >= 6.0 && showAllLabels;
 
     // Asset layer with modern SVG aircraft icons (dynamically scaled by zoom)
     const assetLayer = showFlights && allAssets.length > 0 && new IconLayer<Asset>({
@@ -801,8 +801,8 @@ export function useMapLayers({
       },
     });
 
-    // Asset labels (show callsigns + altitude for flights only when zoomed in or on desktop)
-    const assetLabelsData = !isMobile && showFlights && showDenseLabels ? allAssets : [];
+    // Asset labels (show callsigns + altitude for flights only when zoomed in >= 6.0)
+    const assetLabelsData = showFlights && showDenseLabels ? allAssets : [];
     const assetLabels = assetLabelsData.length > 0 && new TextLayer<any>({
       id: 'asset-labels',
       data: assetLabelsData,
@@ -1162,8 +1162,8 @@ export function useMapLayers({
       greatCircle: true,
     });
 
-    // ENHANCED: Country labels for relationships
-    const relationshipLabels = relationships.length > 0 && new TextLayer<any>({
+    // Country labels for relationships (only on zoom-in >= 5.5)
+    const relationshipLabels = showAllLabels && currentZoom >= 5.5 && relationships.length > 0 && new TextLayer<any>({
       id: 'relationship-country-labels',
       data: relationships.flatMap((r: any) => [
         { 
@@ -1215,7 +1215,7 @@ export function useMapLayers({
       ENERGY_DEPENDENCY: 'ENERGY',
       MIGRATION_FLOW: 'MIGRATION',
     };
-    const relationshipMidLabels = relationships.length > 0 && new TextLayer<any>({
+    const relationshipMidLabels = showAllLabels && currentZoom >= 5.5 && relationships.length > 0 && new TextLayer<any>({
       id: 'relationship-mid-labels',
       data: relationships.map((r: any) => ({
         position: [
@@ -1333,8 +1333,8 @@ export function useMapLayers({
       },
     });
 
-    // City labels
-    const cityLabels = !isMobile && cities.length > 0 && new TextLayer<any>({
+    // City labels (only on zoom-in >= 5.5)
+    const cityLabels = showAllLabels && currentZoom >= 5.5 && cities.length > 0 && new TextLayer<any>({
       id: 'city-labels',
       data: cities,
       getPosition: (d: any): [number, number] => d.position,
@@ -1502,7 +1502,7 @@ export function useMapLayers({
       else if (cat === 'DESTROYER') base = 32;
       else if (cat === 'FRIGATE' || cat === 'SUBMARINE') base = 28;
       else if (cat === 'PATROL') base = 24;
-      return Math.round(base * zoomScale);
+      return Math.max(20, Math.round(base * zoomScale));
     };
 
     // Modern vessel deck layer (dynamically scaled by zoom)

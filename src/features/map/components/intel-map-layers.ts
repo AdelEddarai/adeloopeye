@@ -406,7 +406,7 @@ export function useMapLayers(
       }),
 
 
-    visibility.labels && visibility.targets && targets.length > 0 &&
+    visibility.labels && (viewState?.zoom || 3) >= 5.0 && visibility.targets && targets.length > 0 &&
       new TextLayer<Target>({
         id: 'target-labels',
         data: targets,
@@ -421,7 +421,7 @@ export function useMapLayers(
         backgroundPadding: [3, 2, 3, 2] as [number, number, number, number],
       }),
 
-    visibility.labels && visibility.assets && assets.length > 0 &&
+    visibility.labels && (viewState?.zoom || 3) >= 5.0 && visibility.assets && assets.length > 0 &&
       new TextLayer<Asset>({
         id: 'asset-labels',
         data: assets,
@@ -562,7 +562,8 @@ export function useMapLayers(
         },
       });
 
-      return [flightIcons, flightLabels];
+      const showFlightLabels = visibility.labels && (viewState?.zoom || 3) >= 6.0;
+      return [flightIcons, showFlightLabels && flightLabels].filter(Boolean);
     })(),
 
     // Selected flight highlight circle
@@ -854,7 +855,8 @@ export function useMapLayers(
         },
       });
 
-      return [vesselLayer, radarRings, vesselLabels].filter(Boolean);
+      const showVesselLabels = visibility.labels && (viewState?.zoom || 3) >= 6.0;
+      return [vesselLayer, radarRings, showVesselLabels && vesselLabels].filter(Boolean);
     })(),
 
 
