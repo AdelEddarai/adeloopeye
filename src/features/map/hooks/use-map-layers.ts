@@ -1856,10 +1856,7 @@ export function useMapLayers({
       maritimeVesselLabels,
       showDisinfo && disinfoLayer,
       showDisinfo && disinfoArcPulseLayer,
-      showDisinfo && disinfoNodeShockwaveLayer,
       showDisinfo && disinfoNodeLayer,
-      showDisinfoText && disinfoMidpointLabelLayer,
-      showDisinfoText && disinfoLabelsLayer,
       ...(showMoroccoLayer ? moroccoLayers : []),
     ].filter(Boolean);
 

@@ -1038,28 +1038,7 @@ export function useMapLayers(
         },
       });
 
-      // 8. Compact monospace country-code labels on each node
-      const nodeLabels = new TextLayer<DisinfoNode>({
-        id: 'disinfo-node-labels',
-        data: validNodes,
-        getPosition: (d: DisinfoNode): [number, number] => [d.lon, d.lat],
-        getText: (d: DisinfoNode): string => d.code || d.name?.substring(0, 3).toUpperCase() || '?',
-        getSize: 8,
-        getColor: (d: DisinfoNode): [number, number, number, number] => {
-          const c = getNodeColor(d);
-          return [c[0], c[1], c[2], 200];
-        },
-        getPixelOffset: [0, -14],
-        fontFamily: 'SFMono-Regular, Menlo, monospace',
-        fontWeight: 'bold',
-        background: true,
-        getBackgroundColor: (): [number, number, number, number] => [10, 12, 18, 200],
-        backgroundPadding: [2, 1, 2, 1] as [number, number, number, number],
-        billboard: true,
-        pickable: false,
-      });
-
-      return [glowArcs, mainArcs, edgeSourceDots, edgeTargetDots, flowParticles, nodeRings, disinfoNodes, nodeLabels];
+      return [glowArcs, mainArcs, edgeSourceDots, edgeTargetDots, flowParticles, nodeRings, disinfoNodes];
     })(),
 
 

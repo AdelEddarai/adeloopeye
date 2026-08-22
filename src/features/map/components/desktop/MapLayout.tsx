@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 
 import type { MapViewState } from '@deck.gl/core';
 import { FlyToInterpolator } from '@deck.gl/core';
-import { Map } from '@/components/ui/map';
+import { Map, useMap } from '@/components/ui/map';
 import { MapCNDeckGLOverlay } from '@/features/map/components/MapCNDeckGLOverlay';
 import { MapCNController, MapCNEventFlyTo } from '@/features/map/components/MapCNControllers';
 
@@ -35,6 +35,40 @@ import { useMemo } from 'react';
 
 import '@/features/map/lib/deckgl-device';
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+/**
+ * Directly captures MapLibre map clicks when drawing geofences.
+ * Ensures clicks on any area of the map canvas (sea, land, empty space) reliably add polygon vertices.
+ */
+function SentinelDrawMapClickHandler() {
+  const { map, isLoaded } = useMap();
+  const dispatch = useAppDispatch();
+  const drawModeActive = useAppSelector(state => state.sentinel.drawMode.active);
+
+  useEffect(() => {
+    if (!map || !isLoaded || !drawModeActive) return;
+
+    const canvas = map.getCanvas();
+    const prevCursor = canvas.style.cursor;
+    canvas.style.cursor = 'crosshair';
+
+    const handleMapClick = (e: any) => {
+      if (!e.lngLat) return;
+      const lng = Number(e.lngLat.lng.toFixed(5));
+      const lat = Number(e.lngLat.lat.toFixed(5));
+      dispatch(addDrawVertex([lng, lat]));
+    };
+
+    map.on('click', handleMapClick);
+
+    return () => {
+      map.off('click', handleMapClick);
+      canvas.style.cursor = prevCursor;
+    };
+  }, [map, isLoaded, drawModeActive, dispatch]);
+
+  return null;
+}
 
 type Props = {
   ctx: MapPageContext;
@@ -200,6 +234,7 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
             {/* Sentinel Geofencing Command Center & Drawing Toolbar */}
             <SentinelHUD />
             <DrawZoneToolbar />
+            <SentinelDrawMapClickHandler />
 
             {/* Overlays */}
             <MapOverlays

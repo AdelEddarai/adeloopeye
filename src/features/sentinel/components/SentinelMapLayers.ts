@@ -157,6 +157,9 @@ export function getSentinelMapLayers({
 
   // ── 3. ACTIVE DRAWING MODE OVERLAYS ──
   if (drawMode.active && drawMode.vertices.length > 0) {
+    const drawRgba = hexToRgba(drawMode.zoneColor || '#06b6d4', 255);
+    const drawFill = hexToRgba(drawMode.zoneColor || '#06b6d4', 60);
+
     // Vertices dots
     layers.push(
       new ScatterplotLayer({
@@ -164,13 +167,17 @@ export function getSentinelMapLayers({
         data: drawMode.vertices.map((v, i) => ({ position: v, index: i })),
         pickable: false,
         getPosition: (d: any) => d.position,
-        getRadius: 8,
+        getRadius: 7,
         radiusUnits: 'pixels',
-        getFillColor: [6, 182, 212, 255], // Neon Cyan
+        getFillColor: drawRgba,
         getLineColor: [255, 255, 255, 255],
         getLineWidth: 2,
         lineWidthUnits: 'pixels',
         stroked: true,
+        updateTriggers: {
+          getPosition: [drawMode.vertices.map(v => v.join(',')).join('|')],
+          getFillColor: [drawMode.zoneColor],
+        },
       })
     );
 
@@ -182,9 +189,13 @@ export function getSentinelMapLayers({
           data: [{ path: drawMode.vertices }],
           pickable: false,
           getPath: (d: any) => d.path,
-          getColor: [6, 182, 212, 240],
+          getColor: drawRgba,
           getWidth: 2.5,
           widthUnits: 'pixels',
+          updateTriggers: {
+            getPath: [drawMode.vertices.map(v => v.join(',')).join('|')],
+            getColor: [drawMode.zoneColor],
+          },
         })
       );
     }
@@ -199,10 +210,15 @@ export function getSentinelMapLayers({
           stroked: true,
           filled: true,
           getPolygon: (d: any) => d.coordinates,
-          getFillColor: [6, 182, 212, 50],
-          getLineColor: [6, 182, 212, 200],
+          getFillColor: drawFill,
+          getLineColor: drawRgba,
           getLineWidth: 2,
           lineWidthUnits: 'pixels',
+          updateTriggers: {
+            getPolygon: [drawMode.vertices.map(v => v.join(',')).join('|')],
+            getFillColor: [drawMode.zoneColor],
+            getLineColor: [drawMode.zoneColor],
+          },
         })
       );
     }

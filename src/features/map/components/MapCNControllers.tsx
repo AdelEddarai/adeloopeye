@@ -99,7 +99,7 @@ export function MapCNController() {
   if (!isLoaded) return null;
 
   return (
-    <div className="absolute top-3 left-32 z-30 flex items-center gap-1.5 p-1 rounded-sm bg-zinc-950/90 border border-zinc-800 shadow-xl backdrop-blur-md font-mono text-[10px] pointer-events-auto">
+    <div className="absolute top-3 left-36 z-50 flex items-center gap-1.5 p-1 rounded-sm bg-zinc-950/95 border border-zinc-800 shadow-xl backdrop-blur-md font-mono text-[10px] pointer-events-auto shrink-0">
       {/* 3D Mode Button */}
       <button
         onClick={handle3DView}

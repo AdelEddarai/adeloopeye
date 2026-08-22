@@ -12,6 +12,33 @@ export function DrawZoneToolbar() {
   const dispatch = useAppDispatch();
   const drawMode = useAppSelector(state => state.sentinel.drawMode);
 
+  // Keyboard shortcut handlers
+  React.useEffect(() => {
+    if (!drawMode.active) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if typing inside an input
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        if (e.key === 'Escape') {
+          (e.target as HTMLElement)?.blur();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        dispatch(cancelDrawing());
+      } else if (e.key === 'Enter' && drawMode.vertices.length >= 3) {
+        dispatch(finishDrawing());
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        dispatch(undoDrawVertex());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [drawMode.active, drawMode.vertices.length, dispatch]);
+
   // Live metrics calculations
   const areaKm2 = useMemo(() => {
     if (drawMode.vertices.length < 3) return 0;
@@ -33,7 +60,8 @@ export function DrawZoneToolbar() {
   if (!drawMode.active) return null;
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-zinc-950/95 border border-cyan-500/40 rounded-md shadow-2xl backdrop-blur-xl font-mono text-xs">
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-1.5 pointer-events-auto">
+      <div className="flex items-center gap-2.5 px-3.5 py-2 bg-zinc-950/95 border border-cyan-500/50 rounded-md shadow-2xl backdrop-blur-xl font-mono text-xs">
       {/* Icon & Title */}
       <div className="flex items-center gap-2 pr-3 border-r border-zinc-800">
         <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
@@ -115,6 +143,16 @@ export function DrawZoneToolbar() {
         >
           <Check size={13} className="mr-1" /> Complete Zone
         </Button>
+      </div>
+
+      {/* Sub-banner instruction pill */}
+      <div className="flex items-center gap-2 px-3 py-1 bg-zinc-950/90 border border-zinc-800/80 rounded-full text-[10px] text-zinc-400 font-mono shadow-md backdrop-blur-md">
+        <span className="text-cyan-400 font-bold">🎯 CLICK MAP</span>
+        <span>to add perimeter points</span>
+        <span className="text-zinc-600">|</span>
+        <span>Min: <strong className="text-zinc-200">3 points</strong></span>
+        <span className="text-zinc-600">|</span>
+        <span className="text-zinc-500">Shortcuts: <kbd className="px-1 py-0.5 bg-zinc-900 border border-zinc-700 rounded text-[9px] text-zinc-300">Ctrl+Z</kbd> Undo · <kbd className="px-1 py-0.5 bg-zinc-900 border border-zinc-700 rounded text-[9px] text-zinc-300">Enter</kbd> Save · <kbd className="px-1 py-0.5 bg-zinc-900 border border-zinc-700 rounded text-[9px] text-zinc-300">Esc</kbd> Cancel</span>
       </div>
     </div>
   );

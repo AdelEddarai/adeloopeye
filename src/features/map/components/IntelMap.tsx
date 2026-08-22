@@ -456,7 +456,7 @@ export function IntelMap() {
         )}
 
         {/* Toggle buttons */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center', position: 'relative' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center', position: 'relative', flexShrink: 0, zIndex: 20 }}>
           {/* Map Config & 3D/Cinematic Micro-Toolbar */}
           <div className="flex items-center gap-1 bg-[var(--bg-1)] border border-[var(--bd)] p-0.5 rounded-sm">
             <button
@@ -678,6 +678,7 @@ export function IntelMap() {
           layers={allLayers}
           onHover={handleHover}
           onClick={handleClick}
+          getCursor={({ isHovering }) => sentinel.drawMode.active ? 'crosshair' : isHovering ? 'pointer' : 'default'}
           style={{ width: '100%', height: '100%' }}
         >
           <MapGL 
