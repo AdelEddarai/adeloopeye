@@ -90,7 +90,14 @@ export function DesktopMapLayout({ ctx, embedded = false }: Props) {
       onZoneClick: (zone) => dispatch(setSelectedZoneId(zone.id)),
       onZoneHover: (zone) => dispatch(setHoveredZoneId(zone ? zone.id : null)),
     });
-  }, [sentinel, dispatch]);
+  }, [
+    sentinel.zones,
+    sentinel.drawMode,
+    sentinel.breachingZoneIds,
+    sentinel.hoveredZoneId,
+    sentinel.selectedZoneId,
+    dispatch,
+  ]);
 
   const allLayers = useMemo(() => {
     return [...layers, ...sentinelLayers];

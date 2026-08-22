@@ -20,7 +20,7 @@ import type { Asset } from '@/data/map-data';
 import { type LayerVisibility, type TooltipObject, useMapLayers } from './intel-map-layers';
 import { getMapTooltip } from './intel-map-tooltip';
 import { IntelMapLegend } from './IntelMapLegend';
-import { Map3DControls } from './Map3DControls';
+
 
 import { useLiveDisinformation } from '@/shared/hooks/use-live-disinformation';
 import { useLiveFlights } from '@/shared/hooks/use-live-flights';
@@ -264,14 +264,15 @@ export function IntelMap() {
   
   // Sentinel Geofence & Watchlist State
   const sentinel = useSelector((state: RootState) => state.sentinel);
+  const vesselAssets = useMemo(() => (mapData?.assets || []).filter(a => a.type === 'VESSEL'), [mapData?.assets]);
 
   // Run real-time Sentinel breach & watchlist monitor
   useSentinelMonitor({
     flights: flights,
-    vessels: useMemo(() => (mapData?.assets || []).filter(a => a.type === 'VESSEL'), [mapData]),
-    events: mapData?.events || [],
+    vessels: vesselAssets,
+    events: mapData?.events,
     newsPulses: undefined,
-    disinfoNodes: disinfoData?.nodes || [],
+    disinfoNodes: disinfoData?.nodes,
   });
 
   const layers = useMapLayers(visibility, mapData, flights, time, selectedFlightId, flightTrails,
@@ -289,7 +290,14 @@ export function IntelMap() {
       onZoneClick: (zone) => dispatch(setSelectedZoneId(zone.id)),
       onZoneHover: (zone) => dispatch(setHoveredZoneId(zone ? zone.id : null)),
     });
-  }, [sentinel, dispatch]);
+  }, [
+    sentinel.zones,
+    sentinel.drawMode,
+    sentinel.breachingZoneIds,
+    sentinel.hoveredZoneId,
+    sentinel.selectedZoneId,
+    dispatch,
+  ]);
 
   const allLayers = useMemo(() => {
     return [...layers, ...sentinelLayers];

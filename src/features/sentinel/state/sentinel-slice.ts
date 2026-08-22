@@ -96,6 +96,11 @@ export const sentinelSlice = createSlice({
       state.hoveredZoneId = action.payload;
     },
     setBreachingZoneIds(state, action: PayloadAction<string[]>) {
+      const current = state.breachingZoneIds;
+      const next = action.payload;
+      if (current.length === next.length && current.every((id, i) => id === next[i])) {
+        return;
+      }
       state.breachingZoneIds = action.payload;
     },
 

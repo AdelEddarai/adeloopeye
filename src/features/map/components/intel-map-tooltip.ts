@@ -36,22 +36,38 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
   const layerId = layer?.id ?? '';
   let html = '';
 
-  if (layerId === 'strikes') {
+  if (layerId === 'strikes' || layerId === 'strikes-origins' || layerId === 'strikes-impacts') {
     const d = object as StrikeArc;
     const typeLabel = d.type === 'NAVAL_STRIKE' ? 'NAVAL STRIKE' : d.actor === 'ISRAEL' ? 'IDF STRIKE' : 'US STRIKE';
     const typeColor = d.type === 'NAVAL_STRIKE' ? 'var(--teal)' : d.actor === 'ISRAEL' ? 'var(--il-green)' : 'var(--blue-l)';
+    const isOrigin = layerId === 'strikes-origins';
+    const isImpact = layerId === 'strikes-impacts';
+    const endpointTag = isOrigin ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◉ LAUNCH ORIGIN</div>'
+                       : isImpact ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◎ IMPACT ZONE</div>'
+                       : '';
     html = `
+      ${endpointTag}
       <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.label}</div>
-      <div style="color:${typeColor};font-size:10px;margin-bottom:2px">TYPE: ${typeLabel}</div>
-      <div style="color:${d.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)'};font-size:10px">SEVERITY: ${d.severity}</div>
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <span style="border:1px solid ${typeColor};color:${typeColor};font-size:8px;padding:1px 5px;border-radius:2px">${typeLabel}</span>
+        <span style="border:1px solid ${d.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)'};color:${d.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)'};font-size:8px;padding:1px 5px;border-radius:2px">${d.severity}</span>
+      </div>
     `;
-  } else if (layerId === 'missiles') {
+  } else if (layerId === 'missiles' || layerId === 'missiles-origins' || layerId === 'missiles-impacts') {
     const d = object as MissileTrack;
+    const isOrigin = layerId === 'missiles-origins';
+    const isImpact = layerId === 'missiles-impacts';
+    const endpointTag = isOrigin ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◉ LAUNCH SITE</div>'
+                       : isImpact ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◎ IMPACT ZONE</div>'
+                       : '';
     html = `
+      ${endpointTag}
       <div style="font-weight:700;font-size:11px;color:var(--danger);margin-bottom:6px">${d.label}</div>
-      <div style="color:var(--danger);font-size:10px;margin-bottom:2px">TYPE: IRGC BALLISTIC MISSILE</div>
-      <div style="color:${d.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)'};font-size:10px;margin-bottom:2px">SEVERITY: ${d.severity}</div>
-      <div style="color:${d.status === 'INTERCEPTED' ? 'var(--gold)' : 'var(--danger)'};font-size:10px">STATUS: ${d.status === 'INTERCEPTED' ? '✓ INTERCEPTED' : '⚠ IMPACT CONFIRMED'}</div>
+      <div style="display:flex;gap:4px;margin-bottom:4px;flex-wrap:wrap">
+        <span style="border:1px solid var(--danger);color:var(--danger);font-size:8px;padding:1px 5px;border-radius:2px">BALLISTIC MISSILE</span>
+        <span style="border:1px solid ${d.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)'};color:${d.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)'};font-size:8px;padding:1px 5px;border-radius:2px">${d.severity}</span>
+        <span style="border:1px solid ${d.status === 'INTERCEPTED' ? 'var(--gold)' : 'var(--danger)'};color:${d.status === 'INTERCEPTED' ? 'var(--gold)' : 'var(--danger)'};font-size:8px;padding:1px 5px;border-radius:2px">${d.status === 'INTERCEPTED' ? '✓ INTERCEPTED' : '⚠ IMPACT'}</span>
+      </div>
     `;
   } else if (layerId === 'targets') {
     const d = object as Target;
@@ -102,11 +118,16 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.4;margin-top:4px">${d.description}</div>` : ''}
       ${refs ? `<div style="margin-top:6px;font-size:10px;">${refs}</div>` : ''}
     `;
-  } else if (layerId === 'disinfo-arcs') {
+  } else if (layerId === 'disinfo-arcs' || layerId === 'disinfo-edge-sources' || layerId === 'disinfo-edge-targets') {
     const d = object as any;
     const isCampaign = d.kind === 'CAMPAIGN';
     const color = isCampaign ? 'var(--warning)' : 'var(--info)';
-    const kindLabel = isCampaign ? 'REPORTED DISINFO CAMPAIGN' : `OBSERVED BOT TRAFFIC${d.subKind ? ` · ${d.subKind}` : ''}`;
+    const kindLabel = isCampaign ? 'DISINFO CAMPAIGN' : `BOT TRAFFIC${d.subKind ? ` · ${d.subKind}` : ''}`;
+    const isSource = layerId === 'disinfo-edge-sources';
+    const isTarget = layerId === 'disinfo-edge-targets';
+    const endpointTag = isSource ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◉ ATTACK ORIGIN</div>'
+                       : isTarget ? '<div style="color:var(--t4);font-size:8px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">◎ TARGET</div>'
+                       : '';
     const refs = (d.sources || [])
       .map(
         (s: any) =>
@@ -114,20 +135,25 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       )
       .join('');
     html = `
+      ${endpointTag}
       <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.label || `${d.source} → ${d.target}`}</div>
-      <div style="color:${color};font-size:10px;margin-bottom:2px">KIND: ${kindLabel}</div>
-      <div style="color:var(--t3);font-size:10px;margin-bottom:2px">WEIGHT: ${d.weight}</div>
+      <div style="display:flex;gap:4px;margin-bottom:4px;flex-wrap:wrap">
+        <span style="border:1px solid ${color};color:${color};font-size:8px;padding:1px 5px;border-radius:2px">${kindLabel}</span>
+        <span style="border:1px solid var(--t3);color:var(--t2);font-size:8px;padding:1px 5px;border-radius:2px">WT: ${d.weight}</span>
+      </div>
       ${refs}
     `;
   } else if (layerId === 'disinfo-nodes') {
     const d = object as any;
-    const dominant = (d.campaignVolume || 0) >= (d.botVolume || 0) ? 'CAMPAIGN REFS' : 'BOT VOLUME';
-    const color = dominant === 'CAMPAIGN REFS' ? 'var(--warning)' : 'var(--info)';
+    const dominant = (d.campaignVolume || 0) >= (d.botVolume || 0) ? 'CAMPAIGN' : 'BOT NET';
+    const color = dominant === 'CAMPAIGN' ? 'var(--warning)' : 'var(--info)';
     html = `
-      <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.name}</div>
-      <div style="color:var(--warning);font-size:10px;margin-bottom:2px">CAMPAIGN REFS: ${d.campaignVolume || 0}</div>
-      <div style="color:var(--info);font-size:10px;margin-bottom:2px">BOT VOLUME: ${d.botVolume || 0}</div>
-      <div style="color:${color};font-size:10px">DOMINANT: ${dominant}</div>
+      <div style="font-weight:700;font-size:11px;color:var(--t1);margin-bottom:6px">${d.name} <span style="color:var(--t3);font-size:9px">(${d.code || ''})</span></div>
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <span style="border:1px solid var(--warning);color:var(--warning);font-size:8px;padding:1px 5px;border-radius:2px">CAMPAIGNS: ${d.campaignVolume || 0}</span>
+        <span style="border:1px solid var(--info);color:var(--info);font-size:8px;padding:1px 5px;border-radius:2px">BOT IPs: ${d.botVolume || 0}</span>
+      </div>
+      <div style="color:${color};font-size:9px;font-weight:600">DOMINANT: ${dominant}</div>
     `;
   } else if (layerId === 'flights-icons' || layerId === 'flights-labels') {
     const d = object as Asset;
@@ -193,25 +219,6 @@ export function getMapTooltip({ object, layer }: PickingInfo<TooltipObject>) {
       ${d.description ? `<div style="color:var(--t2);font-size:10px;line-height:1.4;margin-bottom:4px">${d.description}</div>` : ''}
       ${d.impact ? `<div style="color:var(--warning);font-size:9px;margin-top:4px;font-weight:600">IMPACT: ${d.impact}</div>` : ''}
     `;
-  } else if (layerId === 'disinfo-arcs' || layerId === 'disinfo-arc-pulses' || layerId === 'disinfo-nodes') {
-    const d = object as any;
-    const isNode = layerId === 'disinfo-nodes' || d.code !== undefined;
-    if (isNode) {
-      html = `
-        <div style="font-weight:700;font-size:11px;color:#f59e0b;margin-bottom:4px">⚠️ CIB NODE: ${d.name || d.code}</div>
-        <div style="color:var(--t3);font-size:9px;margin-bottom:2px">BOTNET VOLUME: <strong style="color:#38bdf8">${d.botVolume || 12} IPs</strong></div>
-        <div style="color:var(--t3);font-size:9px">CAMPAIGN INTEL: <strong style="color:#f59e0b">${d.campaignVolume || d.weight || 45} OPS</strong></div>
-        <div style="color:var(--cyan);font-size:8px;margin-top:6px;font-weight:700">CLICK TO OPEN FORENSIC DOSSIER ↗</div>
-      `;
-    } else {
-      html = `
-        <div style="font-weight:700;font-size:11px;color:#f59e0b;margin-bottom:4px">⚡ DISINFO ATTACK VECTOR</div>
-        <div style="color:var(--t1);font-size:10px;font-weight:700;margin-bottom:3px">${d.source} ➔ ${d.target}</div>
-        <div style="color:var(--t3);font-size:9px;margin-bottom:2px">TYPE: <strong style="color:#38bdf8">${d.subKind || d.kind || 'INFLUENCE_OP'}</strong></div>
-        <div style="color:var(--t3);font-size:9px">IMPACT WEIGHT: <strong style="color:#ef4444">${d.weight || 50}/100</strong></div>
-        <div style="color:var(--cyan);font-size:8px;margin-top:6px;font-weight:700">CLICK TO OPEN FORENSIC DOSSIER ↗</div>
-      `;
-    }
   } else {
     const obj = object as unknown as Record<string, unknown>;
     const hasContent = obj.label || obj.name;
